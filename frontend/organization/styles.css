@@ -1,0 +1,28 @@
+/* organization/styles.css */
+.welcome {
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+    padding: 2rem;
+}
+
+.welcome h1 {
+    margin: 0 0 0.75rem;
+    font-size: 2.5rem;
+}
+
+.welcome p {
+    margin: 0 0 2rem;
+
+    color: var(--muted);
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+}
