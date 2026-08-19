@@ -12,5 +12,6 @@ FROM debian:bookworm-slim
 WORKDIR /app
 
 COPY --from=builder /app/target/release/rusty-noname .
+COPY --from=builder /app/frontend ./frontend
 
 CMD ["./rusty-noname"]
