@@ -1,7 +1,23 @@
 services:
-  app:
+  server:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://admin:password@database:5432/database
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
