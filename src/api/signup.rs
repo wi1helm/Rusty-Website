@@ -3,6 +3,7 @@ use serde::Deserialize;
 use axum::{extract::State, Form};
 use crate::{Context, api::validation::{ValidationError}};
 // This represents that the application does not deem trustworthy.
+// #derive means this struct is automaticly creates from form data.
 #[derive(Deserialize)]
 pub struct SignupRequest {
     pub name: String,
