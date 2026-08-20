@@ -7,5 +7,5 @@ mod validation;
 
 pub fn router() -> Router<Context> {
     Router::new()
-        .route("/signup", post(signup::signup))
+        .route("/organizations/signup", post(signup::signup))
 }
