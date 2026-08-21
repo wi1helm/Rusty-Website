@@ -42,10 +42,16 @@ pub struct Organization {
     pub id: i64,
     pub name: String,
 }
+pub struct Member {
+    pub id: i64,
+    pub organization_id: i64,
+    pub email: String,
+    pub password_hash: String,
+}
 
 #[async_trait]
 pub trait Database: Send + Sync {
 
     async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(Organization, i64), DatabaseError>;
-    
+    async fn find_member_by_email(&self, email: &str) -> Result<Option<Member>, DatabaseError>;
 }

@@ -21,3 +21,8 @@ pub async fn organization() -> Html<&'static str> {
 pub async fn signup() -> Html<&'static str> {
     Html(include_str!("../../frontend/signup/index.html"))
 }
+
+pub async fn login() -> Html<&'static str> {
+    Html(include_str!("../../frontend/login/index.html"))
+}
+

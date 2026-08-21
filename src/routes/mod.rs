@@ -9,6 +9,7 @@ pub fn router(context: Context) -> Router {
         .route("/", get(pages::main))
         .route("/organization", get(pages::organization))
         .route("/signup", get(pages::signup))
+        .route("/login", get(pages::login))
         .nest("/api", api::router())
         .nest_service("/assets", ServeDir::new("frontend"))
         .with_state(context)
