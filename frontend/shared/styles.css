@@ -46,6 +46,33 @@ body {
     border: 1px solid var(--border);
 }
 
+.error-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+
+    background: #fdecea;
+    border: 1px solid #f5c2c0;
+    border-left: 4px solid #c0392b;
+    border-radius: 6px;
+
+    color: #7a1f1a;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.error-banner[hidden] {
+    display: none;
+}
+
+.error-banner::before {
+    content: "⚠";
+    font-size: 1.1rem;
+}
+
 footer {
     padding: 1.5rem;
 

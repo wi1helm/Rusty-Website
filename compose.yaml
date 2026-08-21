@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
     environment:
       DATABASE_URL: postgres://admin:password@postgres:5432/database
     depends_on:

@@ -13,6 +13,7 @@
 
 <body>
 
+<!--signup/index.html -->
 <main class="signup">
     <div class="signup-card">
 
@@ -22,7 +23,9 @@
             Set up your organization and create your owner account.
         </p>
 
-        <form action="/api/organizations/signup" method="post">
+        <div id="form-error" class="error-banner" hidden></div>
+
+        <form action="/api/organizations/signup" method="post" id="signup-form">
 
             <label for="organization-name">
                 Organization name
@@ -90,5 +93,6 @@
     <p>© 2026 YourApp</p>
 </footer>
 
+<script src="/assets/signup/script.js"></script>
 </body>
 </html>
