@@ -8,16 +8,36 @@ services:
     environment:
       DATABASE_URL: postgres://admin:password@postgres:5432/database
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   postgres:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
       POSTGRES_DB: database
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d database"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  sqlx-tools:
+    image: rust:1.97.1
+    profiles: [ "tools" ]
+    working_dir: /app
+    volumes:
+      - .:/app
+      - cargo_registry:/usr/local/cargo/registry
+    environment:
+      DATABASE_URL: postgres://admin:password@postgres:5432/database
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  cargo_registry:

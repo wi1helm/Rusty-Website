@@ -2,9 +2,14 @@ FROM rust:1.97.1 AS builder
 
 WORKDIR /app
 
+ENV SQLX_OFFLINE=true
+
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-Copy frontend ./frontend
+COPY frontend ./frontend
+COPY migrations ./migrations
+COPY .sqlx ./.sqlx
+
 RUN cargo build --release
 
 FROM debian:bookworm-slim
