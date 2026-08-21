@@ -1,7 +1,7 @@
 // database/postgres.rs
 use async_trait::async_trait;
 use sqlx::PgPool;
-use super::{Database, NewMember, NewOrganization, Organization, DatabaseError};
+use super::{Database, NewMember, NewOrganization, Organization, Member, DatabaseError};
 
 
 #[derive(Clone)]
@@ -66,6 +66,22 @@ impl Database for PostgresDatabase {
         tx.commit().await?;
 
         Ok((organization, owner_id))
+    }
+
+    async fn find_member_by_email(&self, email: &str) -> Result<Option<Member>, DatabaseError> {
+        let member = sqlx::query_as!(
+            Member,
+            r#"
+            SELECT id, organization_id, email, password_hash
+            FROM members
+            WHERE email = $1
+            "#,
+            email
+            )
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(member)
     }
 }
 
