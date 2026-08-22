@@ -129,6 +129,7 @@ pub fn is_valid_email(email: &str) -> bool {
 /// hash, verify, or otherwise determine whether the password is correct.
 pub fn is_valid_password(password: &str) -> bool {
     // NOTE: i guess 8 is reasonable could be changed
+    // TODO impose more strict reqs for example digits not just length for stronger passwords( maby)
     const MIN_PASSWORD_LENGTH: usize = 8;
     const MAX_PASSWORD_LENGTH: usize = 128;
 
@@ -144,4 +145,167 @@ pub fn is_valid_password(password: &str) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- is_valid_name ----
+
+    #[test]
+    fn accepts_a_normal_name() {
+        assert!(is_valid_name("Alice"));
+    }
+
+    #[test]
+    fn rejects_name_below_minimum_length() {
+        assert!(!is_valid_name("A")); // 1 char, MIN is 2
+    }
+
+    #[test]
+    fn accepts_name_at_minimum_length() {
+        assert!(is_valid_name("Al")); // exactly 2 chars
+    }
+
+    #[test]
+    fn rejects_name_above_maximum_length() {
+        let name = "A".repeat(101); // MAX is 100
+        assert!(!is_valid_name(&name));
+    }
+
+    #[test]
+    fn accepts_name_at_maximum_length() {
+        let name = "A".repeat(100);
+        assert!(is_valid_name(&name));
+    }
+
+    #[test]
+    fn rejects_leading_whitespace() {
+        assert!(!is_valid_name(" Alice"));
+    }
+
+    #[test]
+    fn rejects_trailing_whitespace() {
+        assert!(!is_valid_name("Alice "));
+    }
+
+    #[test]
+    fn rejects_control_characters() {
+        assert!(!is_valid_name("Alice\n"));
+        assert!(!is_valid_name("Ali\0ce"));
+    }
+
+    #[test]
+    fn accepts_name_with_internal_space() {
+        // e.g. "Alice Smith" -- internal whitespace is fine,
+        // only leading/trailing is rejected.
+        assert!(is_valid_name("Alice Smith"));
+    }
+
+    // ---- is_valid_email ----
+
+    #[test]
+    fn accepts_a_normal_email() {
+        assert!(is_valid_email("user@example.com"));
+    }
+
+    #[test]
+    fn rejects_missing_at_symbol() {
+        assert!(!is_valid_email("userexample.com"));
+    }
+
+    #[test]
+    fn rejects_multiple_at_symbols() {
+        assert!(!is_valid_email("user@ex@ample.com"));
+    }
+
+    #[test]
+    fn rejects_empty_local_part() {
+        assert!(!is_valid_email("@example.com"));
+    }
+
+    #[test]
+    fn rejects_empty_domain() {
+        assert!(!is_valid_email("user@"));
+    }
+
+    #[test]
+    fn rejects_domain_without_dot() {
+        assert!(!is_valid_email("user@example"));
+    }
+
+    #[test]
+    fn rejects_whitespace_anywhere() {
+        assert!(!is_valid_email("user name@example.com"));
+        assert!(!is_valid_email("user@ example.com"));
+        assert!(!is_valid_email("user@example.com\n"));
+    }
+
+    #[test]
+    fn rejects_local_part_starting_with_dot() {
+        assert!(!is_valid_email(".user@example.com"));
+    }
+
+    #[test]
+    fn rejects_local_part_ending_with_dot() {
+        assert!(!is_valid_email("user.@example.com"));
+    }
+
+    #[test]
+    fn rejects_consecutive_dots_in_local_part() {
+        assert!(!is_valid_email("user..name@example.com"));
+    }
+
+    #[test]
+    fn rejects_consecutive_dots_in_domain() {
+        assert!(!is_valid_email("user@example..com"));
+    }
+
+    #[test]
+    fn rejects_email_below_minimum_length() {
+        assert!(!is_valid_email("a@")); // 2 chars, MIN is 3
+    }
+
+    #[test]
+    fn rejects_email_above_maximum_length() {
+        let long_local = "a".repeat(250);
+        let email = format!("{long_local}@example.com"); // > 254 total
+        assert!(!is_valid_email(&email));
+    }
+
+    // ---- is_valid_password ----
+
+    #[test]
+    fn accepts_password_at_minimum_length() {
+        assert!(is_valid_password("12345678")); // exactly 8 chars
+    }
+
+    #[test]
+    fn rejects_password_below_minimum_length() {
+        assert!(!is_valid_password("1234567")); // 7 chars
+    }
+
+    #[test]
+    fn accepts_password_at_maximum_length() {
+        let password = "a".repeat(128);
+        assert!(is_valid_password(&password));
+    }
+
+    #[test]
+    fn rejects_password_above_maximum_length() {
+        let password = "a".repeat(129);
+        assert!(!is_valid_password(&password));
+    }
+
+    #[test]
+    fn rejects_control_characters_in_password() {
+        assert!(!is_valid_password("abcd\nefgh"));
+        assert!(!is_valid_password("abcd\0efgh"));
+    }
+
+    #[test]
+    fn accepts_password_with_special_characters() {
+        assert!(is_valid_password("p@ssw0rd!#$"));
+    }
 }
