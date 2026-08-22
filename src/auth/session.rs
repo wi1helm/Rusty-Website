@@ -103,10 +103,6 @@ impl SessionManager {
     /// The session ID is cryptographically random and unpredictable.
     /// Only the session ID will eventually be sent to the browser as a cookie.
     pub async fn create(&self, member_id: i64, organization_id: i64) -> Result<Session, SessionError> {
-        // Generate a new random identifier for this session.
-        //
-        // This ID becomes the secret that the browser presents later
-        // to prove that it has an authenticated session.
         let session_id = self.generate_session_id();
 
         let session = Session {
@@ -115,23 +111,11 @@ impl SessionManager {
             organization_id,
         };
 
-        // Serialize the session before storing it in the cache.
-        //
-        // The cache intentionally only knows about raw bytes, so
-        // serialization is the responsibility of the session layer.
-        //
         // TODO(security): look into ways if needed encrypt the data in redis so no attacked can use / desqrilize data and use.
         let value = serde_json::to_vec(&session)?;
 
-        // Use a namespaced cache key so this doesn't collide with other
-        // data stored in Redis, such as password-reset tokens,
-        // email-verification tokens, rate limits, etc.
         let key = Self::cache_key(&session.id);
 
-        // Store the session in the cache with the configured expiration time.
-        //
-        // Redis will automatically remove the session once SESSION_TTL
-        // expires.
         self.cache.set(&key, &value, SESSION_TTL).await?;
 
         Ok(session)
@@ -141,21 +125,12 @@ impl SessionManager {
     ///
     /// Returns `Ok(None)` when the session does not exist or has expired.
     pub async fn get(&self, session_id: &str) -> Result<Option<Session>, SessionError> {
-        // Build the same cache key used by `create()`.
         let key = Self::cache_key(session_id);
 
-        // Ask the cache for the stored session.
         let Some(value) = self.cache.get(&key).await? else {
-            // Redis returns no value when the key does not exist.
-            //
-            // This can mean either:
-            // - the session was explicitly deleted, or
-            // - the session's TTL expired.
             return Ok(None);
         };
 
-        // Deserialize the cached bytes back into a Session.
-        //
         // TODO(security): decrypt `value` here once at-rest encryption
         // is added, before handing it to serde_json.
         let session = serde_json::from_slice(&value)?;
@@ -165,45 +140,113 @@ impl SessionManager {
 
     /// Deletes a session, effectively logging the member out.
     pub async fn delete(&self, session_id: &str) -> Result<(), SessionError> {
-        // Build the same cache key used by `create()` and `get()`.
         let key = Self::cache_key(session_id);
-
-        // Removing the session from the cache immediately invalidates it.
-        //
-        // The browser may still possess the old cookie, but that cookie
-        // will no longer correspond to a valid server-side session.
         self.cache.delete(&key).await?;
-
         Ok(())
     }
 
     /// Builds the namespaced Redis key for a given session ID.
-    ///
-    /// e.g. `session:abc123`
     fn cache_key(session_id: &str) -> String {
         format!("session:{session_id}")
     }
 
     /// Generates a new cryptographically secure random session ID.
-    ///
-    /// The session ID is used as the identifier for an authenticated session.
-    /// It must be unpredictable so that an attacker cannot guess another
-    /// user's session ID and use it to authenticate as them.
-    ///
-    /// 32 random bytes = 256 bits of randomness.
-    ///
-    /// The bytes are encoded as hexadecimal so the result can safely be used
-    /// as a string, for example as a Redis key and later as a cookie value.
     pub fn generate_session_id(&self) -> String {
-        // Allocate 32 bytes of random data.
         let mut bytes = [0u8; 32];
-
-        // Fill the byte array using rand's secure random-number generator.
         rand::fill(&mut bytes);
-
-        // Convert the random bytes into a hexadecimal string.
-        //
-        // 32 random bytes become 64 hexadecimal characters.
         hex::encode(bytes)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    /// A fake, in-memory stand-in for Redis. Implements the same `Cache`
+    /// trait `RedisCache` does, so `SessionManager` can't tell the
+    /// difference -- this is the whole point of depending on `dyn Cache`
+    /// rather than a concrete Redis type.
+    ///
+    /// Note: this fake ignores TTL entirely, so it can prove
+    /// create/get/delete logic is correct, but says nothing about whether
+    /// real Redis expiry actually works. That needs a real-Redis
+    /// integration test later.
+    #[derive(Default)]
+    struct FakeCache {
+        store: Mutex<HashMap<String, Vec<u8>>>,
+    }
+
+    #[async_trait]
+    impl Cache for FakeCache {
+        async fn set(&self, key: &str, value: &[u8], _ttl: Duration) -> Result<(), CacheError> {
+            self.store.lock().unwrap().insert(key.to_string(), value.to_vec());
+            Ok(())
+        }
+
+        async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
+            Ok(self.store.lock().unwrap().get(key).cloned())
+        }
+
+        async fn delete(&self, key: &str) -> Result<(), CacheError> {
+            self.store.lock().unwrap().remove(key);
+            Ok(())
+        }
+    }
+
+    fn manager_with_fake_cache() -> SessionManager {
+        SessionManager::new(Arc::new(FakeCache::default()))
+    }
+
+    #[tokio::test]
+    async fn create_then_get_returns_the_same_session() {
+        let manager = manager_with_fake_cache();
+
+        let created = manager.create(42, 7).await.expect("create should succeed");
+        let fetched = manager.get(&created.id).await.expect("get should succeed");
+
+        let fetched = fetched.expect("session should exist right after creation");
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.member_id, 42);
+        assert_eq!(fetched.organization_id, 7);
+    }
+
+    #[tokio::test]
+    async fn get_returns_none_for_unknown_session_id() {
+        let manager = manager_with_fake_cache();
+
+        let result = manager.get("this-session-id-was-never-created").await.expect("get should not error");
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_then_get_returns_none() {
+        let manager = manager_with_fake_cache();
+
+        let created = manager.create(1, 1).await.expect("create should succeed");
+        manager.delete(&created.id).await.expect("delete should succeed");
+
+        let result = manager.get(&created.id).await.expect("get should not error");
+        assert!(result.is_none(), "session should be gone after delete");
+    }
+
+    #[tokio::test]
+    async fn two_created_sessions_have_different_ids() {
+        let manager = manager_with_fake_cache();
+
+        let a = manager.create(1, 1).await.expect("create should succeed");
+        let b = manager.create(1, 1).await.expect("create should succeed");
+
+        assert_ne!(a.id, b.id);
+    }
+
+    #[tokio::test]
+    async fn generated_session_ids_are_64_hex_characters() {
+        let manager = manager_with_fake_cache();
+        let id = manager.generate_session_id();
+
+        assert_eq!(id.len(), 64, "32 random bytes hex-encoded should be 64 chars");
+        assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

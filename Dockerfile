@@ -10,6 +10,9 @@ COPY frontend ./frontend
 COPY migrations ./migrations
 COPY .sqlx ./.sqlx
 
+# Run tests (Unit Tests)
+RUN cargo test --release
+
 RUN cargo build --release
 
 FROM debian:bookworm-slim
