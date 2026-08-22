@@ -11,3 +11,8 @@ sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "macros", "
 async-trait = "=0.1.92"
 serde = { version = "=1.0.229", features = ["derive"] }
 thiserror = "=2.0.20"
+redis = { version = "=1.6.0", features = ["tokio-comp"] }
+rand = "=0.10.2"
+hex = "=0.4.3"
+serde_json = "=1.0.151"
+tracing = "=0.1.44"
