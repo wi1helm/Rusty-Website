@@ -1,6 +1,5 @@
 // database/mod.rs
 pub mod postgres;
-pub use postgres::PostgresDatabase;
 
 use async_trait::async_trait;
 
@@ -19,7 +18,7 @@ pub enum OrganizationRoles{
     Member,
 }
 impl OrganizationRoles {
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             OrganizationRoles::Owner => "owner",
             OrganizationRoles::Recruiter => "recruiter",
