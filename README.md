@@ -1,5 +1,5 @@
-# Rusty-NoName (Ai Fucking generated im lazy could and should be rewritten)
-
+# Rusty-NoName
+ (Ai Fucking generated im lazy could and should be rewritten)
 A Rust web application with a PostgreSQL database, Redis cache, and frontend.
 
 This project is still being developed, so the name and structure may change over time.
