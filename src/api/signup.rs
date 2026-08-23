@@ -119,6 +119,9 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
         // Session(_) means we dont care what specific session error happened just that we could not
         // establish a session (for example, Redis could be down etc.)
         Err(AuthenticationError::Session(_)) => {
+            //TODO add logging for bug / bad errors such as serilization
+            //The session ID is effectively a bearer credential. Someone who obtains a valid session ID may be able to authenticate as that user.
+            // IMPORTANT TO NOT LOG the id, application logs could potentially be access
             // The account exists, but we could not create the session.
             Redirect::to("/login?error=account-created").into_response()
         }
