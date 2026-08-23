@@ -81,3 +81,40 @@ footer {
     color: var(--muted);
     font-size: 0.9rem;
 }
+
+.box {
+    padding: 2rem;
+
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.pill-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.pill-nav-item {
+    padding: 0.5rem 1rem;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--muted);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pill-nav-item:hover {
+    background: var(--background);
+}
+
+.pill-nav-item.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+
+    color: white;
+}
