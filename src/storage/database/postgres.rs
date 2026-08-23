@@ -34,7 +34,6 @@ impl PostgresDatabase {
         Ok(organization)
     }
 
-
     async fn add_member(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization_id: i64, member: NewMember) -> Result<i64, DatabaseError> {
         let record = sqlx::query!(
             r#"
@@ -82,6 +81,23 @@ impl Database for PostgresDatabase {
             .await?;
 
         Ok(member)
+    }
+    //TODO think about orgnazition view structs meaning that we dont use the Orgnizatin struct everywhere but sub views of if depending on what info we need
+    // as of now no problem due to small abount of data
+    async fn find_organization_by_id(&self, id: i64) -> Result<Option<Organization>, DatabaseError> {
+        let organization = sqlx::query_as!(
+            Organization,
+            r#"
+            SELECT id, name
+            FROM organizations
+            WHERE id = $1
+            "#,
+            id
+            )
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(organization)
     }
 }
 
