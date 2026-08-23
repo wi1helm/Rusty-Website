@@ -53,4 +53,8 @@ pub trait Database: Send + Sync {
 
     async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(Organization, i64), DatabaseError>;
     async fn find_member_by_email(&self, email: &str) -> Result<Option<Member>, DatabaseError>;
+    // Option<Organization> rather than just Organization,
+    // because an ID from a session might theoretically
+    // refer to an organization that no longer exists.
+    async fn find_organization_by_id(&self, id: i64) -> Result<Option<Organization>, DatabaseError>;
 }
