@@ -30,6 +30,17 @@ pub fn is_valid_name(name: &str) -> bool {
         return false;
     }
 
+    // Angle brackets are not allowed in a name.
+    //
+    // This is NOT the app's XSS defense, every place a name is rendered
+    // into HTML must escape it regardless of what's allowed here. This is
+    // just data-quality: organization/member names shouldn't legitimately
+    // contain markup, so we reject it early and give the user a clear
+    // error instead of silently mangling it later.
+    if name.contains('<') || name.contains('>') {
+        return false;
+    }
+
     true
 }
 
@@ -152,7 +163,13 @@ mod tests {
     use super::*;
 
     // ---- is_valid_name ----
-
+    #[test]
+    fn rejects_angle_brackets() {
+        assert!(!is_valid_name("<script>alert(1)</script>"));
+        assert!(!is_valid_name("Alice <b>Smith</b>"));
+        assert!(!is_valid_name("Ali<ce"));
+        assert!(!is_valid_name("Alice>"));
+    }
     #[test]
     fn accepts_a_normal_name() {
         assert!(is_valid_name("Alice"));
