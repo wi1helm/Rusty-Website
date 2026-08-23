@@ -6,13 +6,14 @@
 //! targets that perform actions like signup/login), and serves static
 //! frontend assets.
 
-use axum::{routing::get, Router};
-use axum::{response::{IntoResponse, Redirect, Response}, };
+use axum::Router;
+use axum::response::{IntoResponse, Redirect, Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use tower_http::services::ServeDir;
-use crate::{Context, api};
+use crate::{api, Context};
 
-mod pages;
+mod public;
+mod protected;
 
 /// Builds the complete application router.
 ///
@@ -23,26 +24,13 @@ mod pages;
 /// extraction.
 pub fn router(context: Context) -> Router {
     Router::new()
-        // Server-rendered HTML pages. These are what a browser GETs
-        // when a user navigates directly (typing a URL, following a
-        // link, form redirect targets, etc).
-        .route("/", get(pages::main))
-        .route("/organization", get(pages::organization))
-        .route("/signup", get(pages::signup))
-        .route("/login", get(pages::login))
-
-        // Everything the browser's <form> elements POST to lives under
-        // /api, kept separate from the page routes above.
+        .merge(public::router())
+        .merge(protected::router(context.clone()))
         .nest("/api", api::router())
-
-        // Static assets (CSS, JS, images) served directly from the
-        // `frontend` directory on disk, mounted at /assets.
         .nest_service("/assets", ServeDir::new("frontend"))
-
-        // Makes `Context` (database, cache, authenticator) available to
-        // every handler above via `State(context): State<Context>`.
         .with_state(context)
 }
+
 
 
 

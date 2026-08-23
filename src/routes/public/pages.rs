@@ -11,18 +11,18 @@ use axum::response::Html;
 // when the application is compiled.
 
 pub async fn main() -> Html<&'static str> {
-    Html(include_str!("../../frontend/main/index.html"))
+    Html(include_str!("../../../frontend/main/index.html"))
 }
 
 pub async fn organization() -> Html<&'static str> {
-    Html(include_str!("../../frontend/organization/index.html"))
+    Html(include_str!("../../../frontend/organization/index.html"))
 }
 
 pub async fn signup() -> Html<&'static str> {
-    Html(include_str!("../../frontend/signup/index.html"))
+    Html(include_str!("../../../frontend/signup/index.html"))
 }
 
 pub async fn login() -> Html<&'static str> {
-    Html(include_str!("../../frontend/login/index.html"))
+    Html(include_str!("../../../frontend/login/index.html"))
 }
 
