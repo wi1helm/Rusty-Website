@@ -7,6 +7,8 @@
 //! frontend assets.
 
 use axum::{routing::get, Router};
+use axum::{response::{IntoResponse, Redirect, Response}, };
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use tower_http::services::ServeDir;
 use crate::{Context, api};
 
@@ -40,4 +42,19 @@ pub fn router(context: Context) -> Router {
         // Makes `Context` (database, cache, authenticator) available to
         // every handler above via `State(context): State<Context>`.
         .with_state(context)
+}
+
+
+
+pub fn redirect_with_session_cookie(location: &str, session_id: &str, ) -> Response {
+    let cookie = Cookie::build(("session", session_id.to_owned()))
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .path("/")
+        .build();
+
+    let jar = CookieJar::new().add(cookie);
+
+    (jar, Redirect::to(location)).into_response()
 }

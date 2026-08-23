@@ -1,11 +1,12 @@
 // routes/pages/login.rs
 use serde::Deserialize;
 use axum::{extract::State, Form};
-use axum::response::Redirect;
+use axum::response::{IntoResponse, Redirect};
 use crate::Context;
 use crate::api::validation::{is_valid_email, is_valid_password};
 use crate::auth::{AuthenticationError, LoginCredentials};
 use crate::auth::session::SessionError;
+use crate::routes::redirect_with_session_cookie;
 
 #[derive(Debug)]
 pub enum LoginValidationError {
@@ -45,32 +46,21 @@ impl LoginValidator<'_> {
     }
 }
 
-pub async fn login(State(context): State<Context>, Form(input): Form<LoginRequest>, ) -> impl axum::response::IntoResponse {
+pub async fn login(State(context): State<Context>, Form(input): Form<LoginRequest>, ) -> impl IntoResponse {
     let validated = match (LoginValidator { input: &input }).validate() {
         Ok(v) => v,
-        Err(LoginValidationError::InvalidEmail) => return Redirect::to("/login?error=invalid-credentials"),
-        Err(LoginValidationError::InvalidPassword) => return Redirect::to("/login?error=invalid-credentials")
+        Err(LoginValidationError::InvalidEmail) => return Redirect::to("/login?error=invalid-credentials").into_response(),
+        Err(LoginValidationError::InvalidPassword) => return Redirect::to("/login?error=invalid-credentials").into_response(),
     };
 
     let credentials = LoginCredentials {email: validated.email, password: validated.password};
 
     match context.authenticator.login(credentials).await {
         Ok(session) => {
-            // TODO: Set the session cookie and redirect to /dashboard.
-            // TODO(test-only): this puts session data directly in the URL so we
-            // can visually confirm login -> SessionManager::create -> Redis
-            // round-trips correctly, without needing to inspect Redis/Postgres
-            // directly. This is NOT how the session should reach the client in
-            // the real implementation -- it belongs in an HTTP-only cookie, set
-            // via CookieJar, not a URL query string. Remove this once cookie
-            // handling + a real /dashboard route exist.
-            Redirect::to(&format!(
-                "/dashboard?session_id={}&member_id={}&organization_id={}",
-                session.id, session.member_id, session.organization_id
-            ))
+            redirect_with_session_cookie("/dashboard", &session.id)
         }
-        Err(AuthenticationError::InvalidCredentials) => Redirect::to("/login?error=invalid-credentials"),
-        Err(AuthenticationError::Database(_)) => Redirect::to("/login?error=server-error"),
+        Err(AuthenticationError::InvalidCredentials) => Redirect::to("/login?error=invalid-credentials").into_response(),
+        Err(AuthenticationError::Database(_)) => Redirect::to("/login?error=server-error").into_response(),
 
         // Credentials were correct, but we couldn't establish a session
         // (e.g. Redis unavailable). The account/credentials are fine —
@@ -80,7 +70,7 @@ pub async fn login(State(context): State<Context>, Form(input): Form<LoginReques
                 SessionError::Cache(_) => tracing::warn!("session cache error during login: {session_err}"),
                 SessionError::Serialization(_) => tracing::error!("session serialization bug during login: {session_err}"),
             }
-            Redirect::to("/login?error=server-error")
+            Redirect::to("/login?error=server-error").into_response()
         }
     }
 }

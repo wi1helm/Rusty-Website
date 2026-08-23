@@ -16,3 +16,4 @@ rand = "=0.10.2"
 hex = "=0.4.3"
 serde_json = "=1.0.151"
 tracing = "=0.1.44"
+axum-extra = { version = "=0.12.6", features = ["cookie"] }
