@@ -8,7 +8,7 @@ pub struct SignupTemplate {
     pub year: u16,
 }
 
-pub async fn signup() -> SignupTemplate {
+pub async fn get_page() -> SignupTemplate {
     SignupTemplate {
         app_name: crate::config::APP_NAME,
         year: crate::config::APP_YEAR,

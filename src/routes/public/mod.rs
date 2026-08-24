@@ -1,17 +1,12 @@
-use axum::{
-    routing::get,
-    Router,
-};
-
+use axum::{routing::get, Router};
 use crate::Context;
-mod pages;
 mod signup;
 mod login;
+mod organization;
 
 pub fn router() -> Router<Context> {
     Router::new()
-        .route("/", get(pages::main))
-        .route("/login", get(login::login))
-        .route("/signup", get(signup::signup))
-        .route("/organizations", get(pages::organization))
+        .route("/login", get(login::get_page))
+        .route("/signup", get(signup::get_page))
+        .route("/organization", get(organization::get_page))
 }

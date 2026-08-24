@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/assets/css/organization.css">
+{% endblock %}
+
+{% block content %}
+<main class="welcome">
+    <h1>Welcome</h1>
+
+    <p>
+        Create and manage your organization in one place.
+    </p>
+
+    <div class="actions">
+        <a href="/signup" class="button primary">Sign up</a>
+        <a href="/login" class="button secondary">Log in</a>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/assets/js/organization.js"></script>
+{% endblock %}
