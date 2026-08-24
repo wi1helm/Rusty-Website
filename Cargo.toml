@@ -4,16 +4,58 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+
+# ─────────────────────────────────────────────
+# Web / HTTP
+# ─────────────────────────────────────────────
+# HTTP framework and routing.
 axum = "=0.8.9"
-tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread"] }
-tower-http = { version = "=0.7.0", features = ["fs"] }
-sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "macros", "migrate"] }
-async-trait = "=0.1.92"
-serde = { version = "=1.0.229", features = ["derive"] }
-thiserror = "=2.0.20"
-redis = { version = "=1.6.0", features = ["tokio-comp"] }
-rand = "=0.10.2"
-hex = "=0.4.3"
-serde_json = "=1.0.151"
-tracing = "=0.1.44"
+# Additional Axum extractors, including cookie support.
 axum-extra = { version = "=0.12.6", features = ["cookie"] }
+# Static file serving via ServeDir.
+tower-http = { version = "=0.7.0", features = ["fs"] }
+# ─────────────────────────────────────────────
+# Async runtime
+# ─────────────────────────────────────────────
+# Async runtime used by Axum, database operations, and Redis.
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread"] }
+# Allows async functions in traits.
+async-trait = "=0.1.92"
+# ─────────────────────────────────────────────
+# Database
+# ─────────────────────────────────────────────
+# PostgreSQL database access, migrations, and compile-time query support.
+sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "macros", "migrate"] }
+# ─────────────────────────────────────────────
+# Caching
+# ─────────────────────────────────────────────
+# Redis client using Tokio for async operations.
+redis = { version = "=1.6.0", features = ["tokio-comp"] }
+# ─────────────────────────────────────────────
+# Serialization
+# ─────────────────────────────────────────────
+# Serialization/deserialization of application data and API payloads.
+serde = { version = "=1.0.229", features = ["derive"] }
+# JSON serialization/deserialization.
+serde_json = "=1.0.151"
+# ─────────────────────────────────────────────
+# HTML templates
+# ─────────────────────────────────────────────
+# Compile-time HTML templates with automatic escaping.
+askama = "=0.16.0"
+# Axum integration for Askama templates.
+askama_web = { version = "=0.16.0", features = ["axum-0.8"] }
+# ─────────────────────────────────────────────
+# Errors / logging
+# ─────────────────────────────────────────────
+# Application error types.
+thiserror = "=2.0.20"
+# Structured application logging.
+tracing = "=0.1.44"
+# ─────────────────────────────────────────────
+# Utilities
+# ─────────────────────────────────────────────
+# Random value generation.
+rand = "=0.10.2"
+# Encoding/decoding binary data as hexadecimal.
+hex = "=0.4.3"
