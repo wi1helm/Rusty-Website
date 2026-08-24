@@ -1,4 +1,4 @@
-/* dashboard/styles.css */
+/* dashboard/shared.css */
 
 .dashboard {
     flex: 1;
@@ -53,7 +53,7 @@
     color: var(--primary);
 }
 
-/* The big box the whole dashboard lives in. Reuses .box from shared/styles.css
+/* The big box the whole dashboard lives in. Reuses .box from shared/shared.css
    and just controls how much space it takes up on this page. */
 .dashboard-box {
     width: 100%;

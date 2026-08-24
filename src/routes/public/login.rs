@@ -8,7 +8,7 @@ pub struct LoginTemplate {
     pub year: u16,
 }
 
-pub async fn login() -> LoginTemplate {
+pub async fn get_page() -> LoginTemplate {
     LoginTemplate {
         app_name: crate::config::APP_NAME,
         year: crate::config::APP_YEAR,
