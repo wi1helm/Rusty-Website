@@ -83,20 +83,6 @@
     grid-column: span 2;
 }
 
-.widget-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 2.25rem;
-    height: 2.25rem;
-    margin-bottom: 0.75rem;
-
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-
-    font-size: 1.1rem;
-}
 
 .widget-value {
     margin: 0;

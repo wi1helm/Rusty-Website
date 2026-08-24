@@ -60,8 +60,8 @@ async fn main() {
             .expect("failed to connect to cache")
     );
 
-    // The SessionManager needs accsess to the cache (redis) at the sametime as
-    // the rest of the application, so clone the Arc handle rather then the cache itself.
+    // The SessionManager needs access to the cache (redis) at the sametime as
+    // the rest of the application, so clone the Arc handle rather than the cache itself.
     let session_manager = Arc::new(SessionManager::new(cache.clone()));
 
     // The Authenticator needs access to the same database as the rest of

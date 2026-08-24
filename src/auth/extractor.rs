@@ -20,7 +20,7 @@ use crate::auth::session::Session;
 ///
 ///     pub async fn dashboard(
 ///         AuthenticatedSession(session): AuthenticatedSession,
-///     ) -> Html<String> {
+///     ) -> HTML<String> {
 ///         // use session.member_id, session.organization_id, etc.
 ///     }
 pub struct AuthenticatedSession(pub Session);

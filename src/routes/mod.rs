@@ -3,8 +3,7 @@
 //!
 //! Combines the HTML page routes (server-rendered pages the browser
 //! navigates to directly) with the `/api/*` routes (form submission
-//! targets that perform actions like signup/login), and serves static
-//! static assets.
+//! targets that perform actions like signup/login), and serves static assets.
 
 use axum::Router;
 use axum::response::{IntoResponse, Redirect, Response};
@@ -27,6 +26,10 @@ pub fn router(context: Context) -> Router {
         .merge(public::router())
         .merge(protected::router(context.clone()))
         .nest("/api", api::router())
+        // Expose the local `static/` directory as `/assets/*` over HTTP.
+        // The URL path is intentionally `/assets` rather than `/static` so the
+        // filesystem layout stays an internal implementation detail.
+        // For example: `/assets/shared/styles.css` -> `static/shared/styles.css`.
         .nest_service("/assets", ServeDir::new("static"))
         .with_state(context)
 }
