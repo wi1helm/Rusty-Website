@@ -6,7 +6,8 @@ ENV SQLX_OFFLINE=true
 
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-COPY frontend ./frontend
+COPY static ./static
+COPY templates ./templates
 COPY migrations ./migrations
 COPY .sqlx ./.sqlx
 
@@ -18,8 +19,10 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 
 WORKDIR /app
-
+# Askama templates are already compiled into the binary.
 COPY --from=builder /app/target/release/rusty-noname .
-COPY --from=builder /app/frontend ./frontend
+
+# Static files are needed at runtime.
+COPY --from=builder /app/static ./static
 
 CMD ["./rusty-noname"]
