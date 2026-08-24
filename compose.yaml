@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app/frontend
+      - ./static:/app/static
     environment:
       DATABASE_URL: postgres://admin:password@postgres:5432/database
       CACHE_URL: redis://redis:6379

@@ -13,48 +13,42 @@
 
 <body>
 
-<!--dashboard/index.html -->
 <main class="dashboard">
 
     <div class="dashboard-header">
-        <h1>{{ORGANIZATION_NAME}}</h1>
+        <h1>{{ organization_name }}</h1>
+
+        <nav class="dashboard-nav">
+            <span class="dashboard-nav-item is-active">Dashboard</span>
+            <span class="dashboard-nav-item">Profile</span>
+            <span class="dashboard-nav-item">Members</span>
+            <span class="dashboard-nav-item">Settings</span>
+        </nav>
     </div>
 
     <div class="box dashboard-box">
 
-        <nav class="pill-nav">
-            <button type="button" class="pill-nav-item is-active">Profile</button>
-            <button type="button" class="pill-nav-item">Members</button>
-            <button type="button" class="pill-nav-item">Settings</button>
-        </nav>
-
-        <div class="dashboard-divider"></div>
-
         <div class="widgets-grid">
 
-            <article class="widget widget-blue">
-                <div class="widget-icon" aria-hidden="true">💼</div>
+            <article class="widget widget-blue widget-large">
                 <p class="widget-value">12</p>
                 <p class="widget-label">Active job postings</p>
                 <p class="widget-sub">Currently open on your org profile</p>
             </article>
 
             <article class="widget widget-purple">
-                <div class="widget-icon" aria-hidden="true">👁️</div>
                 <p class="widget-value">8,400</p>
                 <p class="widget-label">Impressions</p>
                 <p class="widget-sub">How many people have seen your profile</p>
             </article>
 
             <article class="widget widget-green">
-                <div class="widget-icon" aria-hidden="true">📖</div>
                 <p class="widget-value">1,280</p>
                 <p class="widget-label">Profile views</p>
                 <p class="widget-sub">How many have opened your full profile</p>
             </article>
 
-            <article class="widget widget-amber">
-                <div class="widget-icon" aria-hidden="true">↗️</div>
+            <article class="widget widget-amber widget-large">
                 <p class="widget-value">342</p>
                 <p class="widget-label">Outbound clicks</p>
                 <p class="widget-sub">Clicks to your application or email</p>
