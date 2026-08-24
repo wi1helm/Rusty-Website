@@ -8,6 +8,7 @@ mod routes;
 mod api;
 mod storage;
 mod auth;
+mod config;
 
 use std::sync::Arc;
 use storage::database::Database;

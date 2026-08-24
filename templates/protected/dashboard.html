@@ -1,0 +1,85 @@
+{% extends "protected/base.html" %}
+
+{% block title %}
+Dashboard - {{ organization_name }}
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/assets/dashboard/styles.css">
+{% endblock %}
+
+{% block protected_content %}
+
+<main class="dashboard">
+
+    <div class="dashboard-header">
+
+        <h1>{{ organization_name }}</h1>
+
+        <nav class="dashboard-nav">
+            <a href="/dashboard" class="dashboard-nav-item is-active">
+                Dashboard
+            </a>
+
+            <a href="/profile" class="dashboard-nav-item">
+                Profile
+            </a>
+
+            <a href="/members" class="dashboard-nav-item">
+                Members
+            </a>
+
+            <a href="/settings" class="dashboard-nav-item">
+                Settings
+            </a>
+        </nav>
+
+    </div>
+
+    <div class="box dashboard-box">
+
+        <div class="widgets-grid">
+
+            <article class="widget widget-blue widget-large">
+                <p class="widget-value">12</p>
+                <p class="widget-label">Active job postings</p>
+                <p class="widget-sub">
+                    Currently open on your org profile
+                </p>
+            </article>
+
+            <article class="widget widget-purple">
+                <p class="widget-value">8,400</p>
+                <p class="widget-label">Impressions</p>
+                <p class="widget-sub">
+                    How many people have seen your profile
+                </p>
+            </article>
+
+            <article class="widget widget-green">
+                <p class="widget-value">1,280</p>
+                <p class="widget-label">Profile views</p>
+                <p class="widget-sub">
+                    How many have opened your full profile
+                </p>
+            </article>
+
+            <article class="widget widget-amber widget-large">
+                <p class="widget-value">342</p>
+                <p class="widget-label">Outbound clicks</p>
+                <p class="widget-sub">
+                    Clicks to your application or email
+                </p>
+            </article>
+
+        </div>
+
+    </div>
+
+</main>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/assets/dashboard/script.js"></script>
+{% endblock %}
