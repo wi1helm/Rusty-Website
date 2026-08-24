@@ -77,7 +77,7 @@ SQLx can check SQL queries against the database during compilation.
 For example:
 
 ```rust
-sqlx::query!("SELECT id, username FROM users")
+sqlx::query!("SELECT id, username FROM users");
 ```
 
 SQLx can check that:

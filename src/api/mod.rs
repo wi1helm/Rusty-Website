@@ -2,7 +2,7 @@
 //! JSON/form API routes (as opposed to the HTML page routes in `routes/pages`).
 //!
 //! These are the endpoints that actually perform actions,
-//! (signup,login, join etc( and are what the HTML forms in `pages` submit to.
+//! (signup,login, join etc.) and are what the HTML forms in `pages` submit to.
 //! They live under `/api` once nested into the main router (see the top-level router below).
 
 use axum::{routing::post, Router};
