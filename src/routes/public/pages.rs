@@ -18,11 +18,4 @@ pub async fn organization() -> Html<&'static str> {
     Html(include_str!("../../../static/organization/index.html"))
 }
 
-pub async fn signup() -> Html<&'static str> {
-    Html(include_str!("../../../static/signup/index.html"))
-}
-
-pub async fn login() -> Html<&'static str> {
-    Html(include_str!("../../../static/login/index.html"))
-}
 
