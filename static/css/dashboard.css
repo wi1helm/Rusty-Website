@@ -1,8 +1,6 @@
-/* dashboard/shared.css */
+/* dashboard.css */
 
 .dashboard {
-    flex: 1;
-
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -10,60 +8,12 @@
     padding: 3rem 2rem;
 }
 
-.dashboard-header {
-    width: 100%;
-    max-width: 960px;
-    margin-bottom: 2rem;
-
-    text-align: center;
-}
-
-.dashboard-header h1 {
-    margin: 0 0 1.25rem;
-}
-
-/* Text-only nav, evenly spread, no button chrome. A hairline above it
-   separates it from the org name without needing a background. */
-.dashboard-nav {
-    display: flex;
-    justify-content: space-evenly;
-
-    padding-top: 1rem;
-
-    border-top: 1px solid var(--border);
-}
-
-.dashboard-nav-item {
-    padding-bottom: 0.4rem;
-
-    border-bottom: 2px solid transparent;
-
-    color: var(--muted);
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.dashboard-nav-item:hover {
-    color: var(--text);
-}
-
-.dashboard-nav-item.is-active {
-    border-bottom-color: var(--primary);
-
-    color: var(--primary);
-}
-
-/* The big box the whole dashboard lives in. Reuses .box from shared/shared.css
-   and just controls how much space it takes up on this page. */
 .dashboard-box {
     width: 100%;
-    max-width: 90%;
+    max-width: 1080px;
     min-height: 70vh;
 }
 
-/* 3-column bento: a "large" widget spans 2 columns, so a large + a
-   regular fill a row exactly (2 + 1 = 3). Alternating which side is
-   large per row is what gives the grid its rhythm. */
 .widgets-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -82,7 +32,6 @@
 .widget-large {
     grid-column: span 2;
 }
-
 
 .widget-value {
     margin: 0;
@@ -122,6 +71,10 @@
 }
 
 @media (max-width: 640px) {
+    .dashboard {
+        padding: 2rem 1rem;
+    }
+
     .widgets-grid {
         grid-template-columns: 1fr;
     }
@@ -132,9 +85,5 @@
 
     .dashboard-box {
         min-height: auto;
-    }
-
-    .dashboard-nav {
-        gap: 1.5rem;
     }
 }
