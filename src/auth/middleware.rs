@@ -13,7 +13,8 @@ pub struct AuthenticatedUser {
     pub member_id: i64,
     pub organization: AuthenticatedUserOrganizationContext,
 }
-
+// This represents shared easy to get data that all protected sites can access.
+// Specific data like profile, members, settings should be got separately using id
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUserOrganizationContext {
     pub id: i64,
