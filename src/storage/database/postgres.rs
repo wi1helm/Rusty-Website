@@ -1,7 +1,7 @@
 // database/postgres.rs
 use async_trait::async_trait;
 use sqlx::PgPool;
-use super::{Database, NewMember, NewOrganization, Organization, Member, DatabaseError};
+use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError};
 
 
 #[derive(Clone)]
@@ -18,9 +18,9 @@ impl PostgresDatabase {
 
         Ok(Self { pool })
     }
-    async fn create_organization(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization: NewOrganization) -> Result<Organization, DatabaseError> {
+    async fn create_organization(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization: NewOrganization) -> Result<DatabaseOrganization, DatabaseError> {
         let organization = sqlx::query_as!(
-            Organization,
+            DatabaseOrganization,
             r#"
             INSERT INTO organizations (name)
             VALUES ($1)
@@ -56,7 +56,7 @@ impl PostgresDatabase {
 
 #[async_trait]
 impl Database for PostgresDatabase {
-    async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(Organization, i64), DatabaseError> {
+    async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(DatabaseOrganization, i64), DatabaseError> {
         let mut tx = self.pool.begin().await?;
 
         let organization = self.create_organization(&mut tx, organization).await?;
@@ -67,9 +67,9 @@ impl Database for PostgresDatabase {
         Ok((organization, owner_id))
     }
 
-    async fn find_member_by_email(&self, email: &str) -> Result<Option<Member>, DatabaseError> {
+    async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError> {
         let member = sqlx::query_as!(
-            Member,
+            DatabaseMember,
             r#"
             SELECT id, organization_id, email, password_hash
             FROM members
@@ -84,9 +84,9 @@ impl Database for PostgresDatabase {
     }
     //TODO think about orgnazition view structs meaning that we dont use the Orgnizatin struct everywhere but sub views of if depending on what info we need
     // as of now no problem due to small abount of data
-    async fn find_organization_by_id(&self, id: i64) -> Result<Option<Organization>, DatabaseError> {
+    async fn find_organization_by_id(&self, id: i64) -> Result<Option<DatabaseOrganization>, DatabaseError> {
         let organization = sqlx::query_as!(
-            Organization,
+            DatabaseOrganization,
             r#"
             SELECT id, name
             FROM organizations
