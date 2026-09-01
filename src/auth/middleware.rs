@@ -11,11 +11,11 @@ use crate::Context;
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
     pub member_id: i64,
-    pub organization: OrganizationContext,
+    pub organization: AuthenticatedUserOrganizationContext,
 }
 
 #[derive(Debug, Clone)]
-pub struct OrganizationContext {
+pub struct AuthenticatedUserOrganizationContext {
     pub id: i64,
     pub name: String,
 }
@@ -175,7 +175,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     // identity and organization context they need.
     let authenticated_user = AuthenticatedUser {
         member_id: session.member_id,
-        organization: OrganizationContext {
+        organization: AuthenticatedUserOrganizationContext {
             id: organization.id,
             name: organization.name,
         },

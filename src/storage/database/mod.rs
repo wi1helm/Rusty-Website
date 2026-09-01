@@ -37,11 +37,11 @@ pub struct NewMember {
     pub role: OrganizationRoles,
 }
 
-pub struct Organization {
+pub struct DatabaseOrganization {
     pub id: i64,
     pub name: String,
 }
-pub struct Member {
+pub struct DatabaseMember {
     pub id: i64,
     pub organization_id: i64,
     pub email: String,
@@ -51,10 +51,10 @@ pub struct Member {
 #[async_trait]
 pub trait Database: Send + Sync {
 
-    async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(Organization, i64), DatabaseError>;
-    async fn find_member_by_email(&self, email: &str) -> Result<Option<Member>, DatabaseError>;
+    async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(DatabaseOrganization, i64), DatabaseError>;
+    async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError>;
     // Option<Organization> rather than just Organization,
     // because an ID from a session might theoretically
     // refer to an organization that no longer exists.
-    async fn find_organization_by_id(&self, id: i64) -> Result<Option<Organization>, DatabaseError>;
+    async fn find_organization_by_id(&self, id: i64) -> Result<Option<DatabaseOrganization>, DatabaseError>;
 }
