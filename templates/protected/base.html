@@ -1,7 +1,58 @@
 {% extends "../base.html" %}
 
+{% block styles %}
+<link rel="stylesheet" href="/assets/css/protected.css">
+{% block site_styles %}{% endblock %}
+{% endblock %}
+
 {% block content %}
 
-{% block protected_content %}{% endblock %}
+<div class="protected-app">
 
+    <header class="protected-header">
+
+        <div class="protected-header-inner">
+
+            <h1 class="protected-org-name">
+                {{ organization_name }}
+            </h1>
+
+            <nav class="protected-nav">
+
+                <a href="/dashboard">
+                    Dashboard
+                </a>
+
+                <a href="/profile">
+                    Profile
+                </a>
+
+                <a href="/members">
+                    Members
+                </a>
+
+                <a href="/settings">
+                    Settings
+                </a>
+
+            </nav>
+
+        </div>
+
+    </header>
+
+    <main class="protected-main">
+        {% block protected_content %}{% endblock %}
+    </main>
+
+</div>
+
+{% endblock %}
+
+{% block footer %}
+<footer class="protected-footer">
+    <p>
+        © {{ year }} {{ app_name }} · Organization workspace
+    </p>
+</footer>
 {% endblock %}

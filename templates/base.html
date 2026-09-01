@@ -6,7 +6,7 @@
 
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
 
-    <link rel="stylesheet" href="/assets/css/shared.css">
+    <link rel="stylesheet" href="/assets/css/global.css">
 
     {% block styles %}{% endblock %}
 </head>
@@ -15,9 +15,11 @@
 
 {% block content %}{% endblock %}
 
+{% block footer %}
 <footer>
     <p>© {{ year }} {{ app_name }}</p>
 </footer>
+{% endblock %}
 
 {% block scripts %}{% endblock %}
 
