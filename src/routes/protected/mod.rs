@@ -4,6 +4,7 @@ use crate::Context;
 use crate::auth::middleware::require_auth;
 
 mod dashboard;
+mod profile;
 
 /// Routes that require an authenticated session.
 ///
@@ -14,6 +15,7 @@ mod dashboard;
 /// protected handler.
 pub fn router(context: Context) -> Router<Context> {
     Router::new()
-        .route("/dashboard", get(dashboard::dashboard))
+        .route("/dashboard", get(dashboard::get_page))
+        .route("/profile", get(profile::get_page))
         .layer(middleware::from_fn_with_state(context, require_auth))
 }
