@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n            id,\n            profile_id,\n            version,\n            display_name,\n            about,\n            created_by_member_id\n            FROM profile_versions\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profile_versions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "profile_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profile_versions",
+            "name": "profile_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "profile_versions",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_versions",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "about",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_versions",
+            "name": "about"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_by_member_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profile_versions",
+            "name": "created_by_member_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "ef521f30bb3f6f7ebe8360e6f2afda8596161cc9effa1ac6c91c8654a9534192"
+}
