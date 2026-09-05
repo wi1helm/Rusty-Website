@@ -1,7 +1,8 @@
 // database/postgres.rs
 use async_trait::async_trait;
 use sqlx::PgPool;
-use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError};
+use crate::config;
+use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfileVersion, DatabaseProfile};
 
 
 #[derive(Clone)]
@@ -18,24 +19,34 @@ impl PostgresDatabase {
 
         Ok(Self { pool })
     }
-    async fn create_organization(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization: NewOrganization) -> Result<DatabaseOrganization, DatabaseError> {
+    // Creates the organization and returns its database ID.
+    //
+    // This is kept as a small transaction helper because organization creation
+    // is part of a larger operation. The caller is responsible for committing
+    // the transaction only after the owner and profile have also been created.
+    async fn create_organization(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization: NewOrganization) -> Result<i64, DatabaseError> {
         let organization = sqlx::query_as!(
             DatabaseOrganization,
             r#"
-            INSERT INTO organizations (name)
-            VALUES ($1)
-            RETURNING id, name
+            INSERT INTO organizations (name, slug)
+            VALUES ($1, $2)
+            RETURNING id, name, slug
             "#,
-            organization.name
+            organization.name,
+            organization.slug
             )
             .fetch_one(&mut **tx)
-            .await?;
+            .await
+            .map_err(|err| map_unique_violation(err, DatabaseError::OrganizationSlugAlreadyExists))?;
 
-        Ok(organization)
+        Ok(organization.id)
     }
-
+    // Adds a member to an existing organization and returns the member ID.
+    //
+    // The member is created inside the same transaction as the organization,
+    // so a failed signup cannot leave an organization without its owner.
     async fn add_member(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization_id: i64, member: NewMember) -> Result<i64, DatabaseError> {
-        let record = sqlx::query!(
+        let member = sqlx::query!(
             r#"
             INSERT INTO members (organization_id, email, password_hash, role)
             VALUES ($1, $2, $3, $4)
@@ -50,21 +61,100 @@ impl PostgresDatabase {
             .await
             .map_err(|err| map_unique_violation(err, DatabaseError::MemberAlreadyExists))?;
 
-        Ok(record.id)
+        Ok(member.id)
     }
+    // Creates the profile belonging to an organization and returns its ID.
+    //
+    // Every organization is expected to have exactly one profile. The UNIQUE
+    // constraint on profiles.organization_id enforces this at the database level.
+    async fn create_profile(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization_id: i64, ) -> Result<i64, DatabaseError> {
+        let profile = sqlx::query!(
+            r#"
+            INSERT INTO profiles (organization_id)
+            VALUES ($1)
+            RETURNING id
+            "#,
+            organization_id
+            )
+            .fetch_one(&mut **tx)
+            .await?;
+
+        Ok(profile.id)
+    }
+    // Creates an immutable snapshot of a profile at a specific version.
+    //
+    // Profile content is stored in profile_versions rather than directly on
+    // profiles. Each new change creates another version instead of modifying an
+    // existing version. The caller is responsible for choosing the version
+    // number and updating the profile's current/published pointers.
+    async fn create_profile_version(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, profile_id: i64, version: i32, display_name: String, about: String, created_by_member_id: i64) -> Result<i64, DatabaseError> {
+        let profile_version = sqlx::query!(
+            r#"
+            INSERT INTO profile_versions (
+            profile_id,
+            version,
+            display_name,
+            about,
+            created_by_member_id
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id
+            "#,
+            profile_id,
+            version,
+            display_name,
+            about,
+            created_by_member_id
+            )
+            .fetch_one(&mut **tx)
+            .await?;
+
+        Ok(profile_version.id)
+    }
+    // Makes a profile version the current and published version.
+    //
+    // This is used when initially creating a profile. Both pointers are set to
+    // version 1 so the profile starts with a published version. Later, when a new
+    // version is created as a draft, only current_version_id should change until
+    // the user explicitly publishes the new version.
+    async fn set_current_and_published_version(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, profile_id: i64, version_id: i64, ) -> Result<(), DatabaseError> {
+        sqlx::query!(
+            r#"
+            UPDATE profiles
+            SET
+            current_version_id = $2,
+            published_version_id = $2,
+            updated_at = NOW()
+            WHERE id = $1
+            "#,
+            profile_id,
+            version_id
+            )
+            .execute(&mut **tx)
+            .await?;
+
+        Ok(())
+    }
+
 }
 
 #[async_trait]
 impl Database for PostgresDatabase {
-    async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(DatabaseOrganization, i64), DatabaseError> {
+    async fn create_organization_with_owner_and_profile(&self, organization: NewOrganization, owner: NewMember) -> Result<(i64, i64), DatabaseError> {
         let mut tx = self.pool.begin().await?;
+        // Clone name before losing ownership to organization var.
+        let organization_name = organization.name.clone();
 
-        let organization = self.create_organization(&mut tx, organization).await?;
-        let owner_id = self.add_member(&mut tx, organization.id, owner).await?;
-
+        let organization_id = self.create_organization(&mut tx, organization).await?;
+        let owner_id = self.add_member(&mut tx, organization_id, owner).await?;
+        let profile_id = self.create_profile(&mut tx, organization_id).await?;
+        let version_id = self.create_profile_version(&mut tx, profile_id, config::INITIAL_PROFILE_VERSION, organization_name, String::new(), owner_id).await?;
+        // The initial version is both the current version and
+        // the version visible to the public.
+        self.set_current_and_published_version(&mut tx, profile_id, version_id).await?;
         tx.commit().await?;
 
-        Ok((organization, owner_id))
+        Ok((organization_id, owner_id))
     }
 
     async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError> {
@@ -88,7 +178,7 @@ impl Database for PostgresDatabase {
         let organization = sqlx::query_as!(
             DatabaseOrganization,
             r#"
-            SELECT id, name
+            SELECT id, name, slug
             FROM organizations
             WHERE id = $1
             "#,
@@ -99,7 +189,79 @@ impl Database for PostgresDatabase {
 
         Ok(organization)
     }
+
+    async fn find_organization_by_slug(&self, slug: &str) -> Result<Option<DatabaseOrganization>, DatabaseError> {
+        let organization = sqlx::query_as!(
+            DatabaseOrganization,
+            r#"
+            SELECT id, name, slug
+            FROM organizations
+            WHERE slug = $1
+            "#,
+            slug
+            )
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(organization)
+    }
+
+    // Finds the profile belonging to an organization.
+    //
+    // An organization is expected to have exactly one profile. The UNIQUE
+    // constraint on profiles.organization_id enforces this relationship at the
+    // database level, while Option is used because the profile may be missing
+    // if the database is in an inconsistent state.
+    async fn find_profile_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseProfile>, DatabaseError> {
+        let profile = sqlx::query_as!(
+            DatabaseProfile,
+            r#"
+            SELECT
+            id,
+            organization_id,
+            current_version_id,
+            published_version_id
+            FROM profiles
+            WHERE organization_id = $1
+            "#,
+           organization_id
+            )
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(profile)
+    }
+
+    // Finds a specific profile version by its database ID.
+    //
+    // Profile versions are immutable snapshots of profile content. The ID is
+    // obtained from either current_version_id or published_version_id on the
+    // associated DatabaseProfile.
+    async fn find_profile_version_by_version_id(&self, version_id: i64) -> Result<Option<DatabaseProfileVersion>, DatabaseError> {
+        let profile_version = sqlx::query_as!(
+            DatabaseProfileVersion,
+            r#"
+            SELECT
+            id,
+            profile_id,
+            version,
+            display_name,
+            about,
+            created_by_member_id
+            FROM profile_versions
+            WHERE id = $1
+            "#,
+            version_id
+            )
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(profile_version)
+    }
 }
+
+
+
 
 /// Maps a raw sqlx error into a `DatabaseError`.
 ///
@@ -112,6 +274,7 @@ impl Database for PostgresDatabase {
 ///
 /// Any other kind of error (network issue, syntax error, etc.) falls through
 /// unchanged, wrapped in `DatabaseError::Sqlx`.
+///TODO check so postgres error code for unique_violation is consistent otherwise this code would fail in future. or make better code
 fn map_unique_violation(err: sqlx::Error, mapped: DatabaseError) -> DatabaseError {
     if let sqlx::Error::Database(db_err) = &err {
         if db_err.code().as_deref() == Some("23505") {
