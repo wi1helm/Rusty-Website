@@ -3,8 +3,7 @@ use axum::{
     http::request::Parts,
     response::{IntoResponse, Redirect, Response},
 };
-
-use crate::auth::middleware::AuthenticatedUser;
+use crate::auth::AuthenticatedUser;
 
 /// Extracts the authenticated user from the current request.
 ///

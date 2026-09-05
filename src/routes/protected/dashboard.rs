@@ -1,10 +1,6 @@
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::{
-    extract::State,
-    response::{IntoResponse, Response},
-};
-use axum::response::Html;
+use axum::{extract::State, response::{IntoResponse, Response}};
 use crate::{auth::CurrentUser, Context};
 use crate::config::{APP_NAME, APP_YEAR};
 
@@ -16,7 +12,8 @@ struct DashboardTemplate {
     organization_name: String,
 }
 
-pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser, ) -> Response {
+pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
+    //TODO add and load statistics seperatly and remkae template add them.
     DashboardTemplate {
         app_name: APP_NAME,
         year: APP_YEAR,

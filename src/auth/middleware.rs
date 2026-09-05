@@ -4,22 +4,9 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::CookieJar;
-
+use crate::auth::{AssociatedOrganization, AuthenticatedUser};
 use crate::auth::session::SessionError;
 use crate::Context;
-
-#[derive(Debug, Clone)]
-pub struct AuthenticatedUser {
-    pub member_id: i64,
-    pub organization: AuthenticatedUserOrganizationContext,
-}
-// This represents shared easy to get data that all protected sites can access.
-// Specific data like profile, members, settings should be got separately using id
-#[derive(Debug, Clone)]
-pub struct AuthenticatedUserOrganizationContext {
-    pub id: i64,
-    pub name: String,
-}
 
 /// Authentication middleware for protected routes.
 ///
@@ -176,7 +163,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     // identity and organization context they need.
     let authenticated_user = AuthenticatedUser {
         member_id: session.member_id,
-        organization: AuthenticatedUserOrganizationContext {
+        organization: AssociatedOrganization {
             id: organization.id,
             name: organization.name,
         },
