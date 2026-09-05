@@ -10,6 +10,9 @@ pub enum DatabaseError {
 
     #[error("member already exists")]
     MemberAlreadyExists,
+    //TODO check if this error is handles client side in js where needed
+    #[error("slug already exists")]
+    OrganizationSlugAlreadyExists
 }
 
 pub enum OrganizationRoles{
@@ -29,6 +32,7 @@ impl OrganizationRoles {
 
 pub struct NewOrganization {
     pub name: String,
+    pub slug: String,
 }
 
 pub struct NewMember {
@@ -40,6 +44,7 @@ pub struct NewMember {
 pub struct DatabaseOrganization {
     pub id: i64,
     pub name: String,
+    pub slug: String,
 }
 pub struct DatabaseMember {
     pub id: i64,
@@ -48,13 +53,36 @@ pub struct DatabaseMember {
     pub password_hash: String,
 }
 
+pub struct DatabaseProfile {
+    pub id: i64,
+    pub organization_id: i64,
+    pub current_version_id: Option<i64>,
+    pub published_version_id: Option<i64>,
+}
+/// DatabaseProfileVersion contains the content of the a verison of the profile what version is valid
+/// given by the DatabaseProfile struct.
+pub struct DatabaseProfileVersion {
+    pub id: i64,
+    pub profile_id: i64,
+    pub version: i32,
+    pub display_name: String,
+    pub about: String,
+    pub created_by_member_id: Option<i64>,
+}
+
 #[async_trait]
 pub trait Database: Send + Sync {
-
-    async fn create_organization_with_owner(&self, organization: NewOrganization, owner: NewMember) -> Result<(DatabaseOrganization, i64), DatabaseError>;
+    /// The long name "create_organization_with_owner_and_profile" exists to communicate to implementations that both owner and profile
+    /// NEEEDS! to be created. + this is only used on signup really menaing we return id for organization and owener not struct.
+    async fn create_organization_with_owner_and_profile(&self, organization: NewOrganization, owner: NewMember) -> Result<(i64, i64), DatabaseError>;
     async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError>;
     // Option<Organization> rather than just Organization,
     // because an ID from a session might theoretically
     // refer to an organization that no longer exists.
     async fn find_organization_by_id(&self, id: i64) -> Result<Option<DatabaseOrganization>, DatabaseError>;
+
+    async fn find_organization_by_slug(&self, slug: &str) -> Result<Option<DatabaseOrganization>, DatabaseError>;
+
+    async fn find_profile_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseProfile>, DatabaseError>;
+    async fn find_profile_version_by_version_id(&self, version_id: i64) -> Result<Option<DatabaseProfileVersion>, DatabaseError>;
 }
