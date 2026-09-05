@@ -13,6 +13,7 @@ use crate::{api, Context};
 
 mod public;
 mod protected;
+mod errors;
 
 /// Builds the complete application router.
 ///
@@ -23,6 +24,10 @@ mod protected;
 /// extraction.
 pub fn router(context: Context) -> Router {
     Router::new()
+        //TODO: Maintain a list of reserved slugs for top-level application routes.
+        // Organization slugs must not collide with routes such as /login, /signup,
+        // /dashboard, /settings, /api, /assets, etc. When new top-level routes are
+        // introduced, add their names to the reserved list before exposing them.
         .merge(public::router())
         .merge(protected::router(context.clone()))
         .nest("/api", api::router())

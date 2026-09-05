@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -163,6 +162,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::sync::Mutex;
+    use async_trait::async_trait;
 
     /// A fake, in-memory stand-in for Redis. Implements the same `Cache`
     /// trait `RedisCache` does, so `SessionManager` can't tell the

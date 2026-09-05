@@ -7,7 +7,7 @@ pub struct SignupTemplate {
     pub app_name: &'static str,
     pub year: u16,
 }
-
+// Todo add posiblity to input or choose slug.
 pub async fn get_page() -> SignupTemplate {
     SignupTemplate {
         app_name: crate::config::APP_NAME,
