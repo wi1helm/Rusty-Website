@@ -70,8 +70,11 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
         Err(SignupValidationError::PasswordMismatch) => return Redirect::to("/signup?error=passwords-mismatch").into_response()
     };
 
+    let slug = create_slug(&validated.name);
+
     let organization = NewOrganization {
         name: validated.name,
+        slug,
     };
 
     let owner = NewMember {
@@ -80,9 +83,10 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
         role: OrganizationRoles::Owner,
     };
 
-    let (organization, owner_id) = match context.database.create_organization_with_owner(organization, owner).await {
+    let (organization_id, owner_id) = match context.database.create_organization_with_owner_and_profile(organization, owner).await {
         Ok(result) => result,
 
+        Err(DatabaseError::OrganizationSlugAlreadyExists) => return Redirect::to("/signup?error=invalid-slug").into_response(),
         Err(DatabaseError::MemberAlreadyExists) => return Redirect::to("/signup?error=email-taken").into_response(),
         Err(DatabaseError::Sqlx(_)) => return Redirect::to("/signup?error=server-error").into_response()
     };
@@ -112,7 +116,7 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
     // In theory the database could be unavailable directly after creating the org + owner
     // and login could therefor not access the database(password hash)
     // todo handle all of the rest Authentication errors and remove Err(_)
-    match context.authenticator.login_member(owner_id, organization.id).await {
+    match context.authenticator.login_member(owner_id, organization_id).await {
         Ok(session) => {
             redirect_with_session_cookie("/dashboard", &session.id)
         }
@@ -132,4 +136,13 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
         }
     }
 
+}
+/// Generates the slug for any company name used on signup
+///TODO for now if the slug is taken we reject the signup
+/// later on add ways to generate new unique slug instead like slug-1, slug-2!!
+fn create_slug(name: &str) -> String {
+    name.to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect::<String>()
 }
