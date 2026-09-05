@@ -30,7 +30,7 @@ pub fn router(context: Context) -> Router {
         // introduced, add their names to the reserved list before exposing them.
         .merge(public::router())
         .merge(protected::router(context.clone()))
-        .nest("/api", api::router())
+        .nest("/api", api::router(context.clone()))
         // Expose the local `static/` directory as `/assets/*` over HTTP.
         // The URL path is intentionally `/assets` rather than `/static` so the
         // filesystem layout stays an internal implementation detail.

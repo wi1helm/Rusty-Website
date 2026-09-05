@@ -124,6 +124,57 @@
     text-decoration: underline;
 }
 
+.form-group {
+    display: flex;
+    flex-direction: column;
+
+    gap: 0.5rem;
+
+    max-width: 760px;
+
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+
+    padding: 0.75rem 1rem;
+
+    font: inherit;
+
+    color: var(--text);
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 160px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.profile-actions {
+    display: flex;
+    align-items: center;
+
+    gap: 1rem;
+}
+
 @media (max-width: 640px) {
     .profile {
         padding: 1rem;
@@ -155,5 +206,10 @@
 
     .profile-content {
         padding: 0 1.5rem 1.5rem;
+    }
+
+    .profile-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

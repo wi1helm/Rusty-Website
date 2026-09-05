@@ -44,10 +44,6 @@
 
         </div>
 
-        <a href="#" class="button primary">
-          Edit profile
-        </a>
-
       </div>
 
     </div>
@@ -55,53 +51,105 @@
 
     <div class="profile-content">
 
-      <section class="profile-section">
+      <form method="post" action="/api/profile/edit">
 
-        <h2>About</h2>
+        <section class="profile-section">
 
-        <div class="profile-about">
-          {{ organization_profile.about }}
-        </div>
+          <h2>Profile information</h2>
 
-      </section>
+          <div class="form-group">
 
+            <label for="display-name">
+              Display name
+            </label>
 
-      <section class="profile-section">
+            <input
+                    id="display-name"
+                    name="display_name"
+                    type="text"
+                    value="{{ organization_profile.display_name }}"
+                    required
+            >
 
-        <h2>Locations</h2>
-
-        <div class="profile-locations">
-
-          {% for location in organization_profile.locations %}
-          <div class="profile-location">
-            {{ location.city }}, {{ location.country }}
           </div>
-          {% endfor %}
-
-        </div>
-
-      </section>
 
 
-      {% if !organization_profile.links.is_empty() %}
+          <div class="form-group">
 
-      <section class="profile-section">
+            <label for="about">
+              About
+            </label>
 
-        <h2>Links</h2>
+            <textarea
+                    id="about"
+                    name="about"
+                    rows="8"
+                    maxlength="5000"
+            >{{ organization_profile.about }}</textarea>
 
-        <div class="profile-links">
+          </div>
 
-          {% for link in organization_profile.links %}
-          <a href="{{ link.url }}">
-            {{ link.label }}
-          </a>
-          {% endfor %}
+        </section>
 
-        </div>
 
-      </section>
+        <section class="profile-section">
 
-      {% endif %}
+          <h2>Locations</h2>
+
+          <div class="profile-locations">
+
+            {% for location in organization_profile.locations %}
+            <div class="profile-location">
+              {{ location.city }}, {{ location.country }}
+            </div>
+            {% endfor %}
+
+          </div>
+
+          <!-- TODO: Add location editing. -->
+
+        </section>
+
+
+        {% if !organization_profile.links.is_empty() %}
+
+        <section class="profile-section">
+
+          <h2>Links</h2>
+
+          <div class="profile-links">
+
+            {% for link in organization_profile.links %}
+            <a href="{{ link.url }}">
+              {{ link.label }}
+            </a>
+            {% endfor %}
+
+          </div>
+
+          <!-- TODO: Add link editing. -->
+
+        </section>
+
+        {% endif %}
+
+
+        <section class="profile-section">
+
+          <div class="profile-actions">
+
+            <button
+                    type="submit"
+                    class="button primary"
+            >
+              Save changes
+            </button>
+
+          </div>
+
+        </section>
+
+      </form>
 
     </div>
 
