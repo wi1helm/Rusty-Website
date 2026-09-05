@@ -46,8 +46,7 @@ pub struct Image {
     pub alt: String,
 }
 
-//TODO check if there is need for unduplicating this load profile code (public/profile.rs and protected/profile.rs)
-// there is a diffrence in verison as we use current here instead of publiched
+
 pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
     let organization = match context.database.find_organization_by_id(user.organization.id).await {
         Ok(Some(organization)) => organization,
@@ -57,7 +56,8 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
             return not_found::get_page();
         }
     };
-
+    //TODO check if there is need for unduplicating this load profile code (public/profile.rs and protected/profile.rs)
+    // there is a diffrence in verison as we use current here instead of publiched
     let profile = match context.database.find_profile_by_organization_id(organization.id).await {
         Ok(Some(profile)) => profile,
         Ok(None) => {
@@ -92,7 +92,7 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
 
     // TODO: Replace these placeholder values with data loaded from the
     // organization profile.
-    let profile = Profile {
+    let editable_profile = Profile {
         display_name: profile_version.display_name.clone(),
 
         slug: organization.slug.clone(),
@@ -132,6 +132,6 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         app_name: APP_NAME,
         year: APP_YEAR,
         organization_name: user.organization.name,
-        organization_profile: profile,
+        organization_profile: editable_profile,
     }.into_response()
 }
