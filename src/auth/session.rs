@@ -39,9 +39,6 @@ pub struct Session {
 
     /// The member who is authenticated by this session.
     pub member_id: i64,
-
-    /// The organization the member belongs to.
-    pub organization_id: i64,
 }
 
 /// Errors that can occur while creating, retrieving, or deleting sessions.
@@ -101,13 +98,12 @@ impl SessionManager {
     ///
     /// The session ID is cryptographically random and unpredictable.
     /// Only the session ID will eventually be sent to the browser as a cookie.
-    pub async fn create(&self, member_id: i64, organization_id: i64) -> Result<Session, SessionError> {
+    pub async fn create(&self, member_id: i64) -> Result<Session, SessionError> {
         let session_id = self.generate_session_id();
 
         let session = Session {
             id: session_id,
-            member_id,
-            organization_id,
+            member_id
         };
 
         // TODO(security): look into ways if needed encrypt the data in redis so no attacked can use / desqrilize data and use.
@@ -203,13 +199,12 @@ mod tests {
     async fn create_then_get_returns_the_same_session() {
         let manager = manager_with_fake_cache();
 
-        let created = manager.create(42, 7).await.expect("create should succeed");
+        let created = manager.create(42).await.expect("create should succeed");
         let fetched = manager.get(&created.id).await.expect("get should succeed");
 
         let fetched = fetched.expect("session should exist right after creation");
         assert_eq!(fetched.id, created.id);
         assert_eq!(fetched.member_id, 42);
-        assert_eq!(fetched.organization_id, 7);
     }
 
     #[tokio::test]
@@ -224,7 +219,7 @@ mod tests {
     async fn delete_then_get_returns_none() {
         let manager = manager_with_fake_cache();
 
-        let created = manager.create(1, 1).await.expect("create should succeed");
+        let created = manager.create(1).await.expect("create should succeed");
         manager.delete(&created.id).await.expect("delete should succeed");
 
         let result = manager.get(&created.id).await.expect("get should not error");
@@ -235,8 +230,8 @@ mod tests {
     async fn two_created_sessions_have_different_ids() {
         let manager = manager_with_fake_cache();
 
-        let a = manager.create(1, 1).await.expect("create should succeed");
-        let b = manager.create(1, 1).await.expect("create should succeed");
+        let a = manager.create(1).await.expect("create should succeed");
+        let b = manager.create(1).await.expect("create should succeed");
 
         assert_ne!(a.id, b.id);
     }
