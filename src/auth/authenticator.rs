@@ -29,8 +29,8 @@ impl Authenticator {
         Self { database, session_manager }
     }
 
-    pub async fn login_member(&self, member_id: i64, organization_id: i64, ) -> Result<Session, AuthenticationError> {
-        let session = self.session_manager.create(member_id, organization_id).await?;
+    pub async fn login_member(&self, member_id: i64) -> Result<Session, AuthenticationError> {
+        let session = self.session_manager.create(member_id).await?;
         Ok(session)
     }
     pub async fn login(&self, credentials: LoginCredentials) -> Result<Session, AuthenticationError> {
@@ -43,6 +43,6 @@ impl Authenticator {
             return Err(AuthenticationError::InvalidCredentials);
         }
         // login member using member id and return result
-        self.login_member(member.id, member.organization_id).await
+        self.login_member(member.id).await
     }
 }

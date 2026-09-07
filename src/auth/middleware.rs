@@ -130,28 +130,28 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     // Instead, resolve the organization referenced by the session and create
     // the application-level authentication context that handlers actually
     // need.
-    let organization = match context.database.find_organization_by_id(session.organization_id).await {
-        // The organization exists and was successfully loaded.
-        Ok(Some(organization)) => organization,
-
-        // The session references an organization that no longer exists.
+    let member_with_organization = match context.database.find_member_with_organization_by_member_id(session.member_id).await {
+        // The member and its organization both exist.
         //
-        // The session is technically valid, but the authenticated request
-        // cannot be given a valid organization context. Treat this as a
-        // server-side inconsistency rather than allowing the request to
-        // continue with incomplete authentication context.
+        // The INNER JOIN used by the database query guarantees that this
+        // represents a valid member-organization relationship.
+        Ok(Some(member_with_organization)) => member_with_organization,
+
+        // The session references a member that no longer exists.
+        //
+        // This can happen when the member was deleted, for example as a result
+        // of their organization being deleted. The session is therefore stale
+        // and cannot be used to construct an authenticated request context.
         Ok(None) => {
-            tracing::warn!(member_id = session.member_id, organization_id = session.organization_id, "authenticated session references a missing organization");
+            //TODO remove stale cookie and stale redis value as this session id is invalid
+            tracing::warn!(member_id = session.member_id,"authenticated session references a missing member");
             return Redirect::to("/login?error=server-error").into_response();
         }
 
-        // The organization lookup failed.
-        //
-        // We cannot construct a valid authenticated request context without
-        // knowing which organization the authenticated member belongs to.
+        // The database lookup failed, so we cannot determine whether the
+        // authenticated member still exists or which organization they belong to.
         Err(error) => {
-            tracing::error!(?error, member_id = session.member_id, organization_id = session.organization_id, "failed to load organization for authenticated request");
-
+            tracing::error!(?error, member_id = session.member_id,"failed to load member and organization for authenticated request");
             return Redirect::to("/login?error=server-error").into_response();
         }
     };
@@ -162,10 +162,10 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     // handlers receive `AuthenticatedUser` instead, which contains only the
     // identity and organization context they need.
     let authenticated_user = AuthenticatedUser {
-        member_id: session.member_id,
+        member_id: member_with_organization.member.id,
         organization: AssociatedOrganization {
-            id: organization.id,
-            name: organization.name,
+            id: member_with_organization.organization.id,
+            name: member_with_organization.organization.name,
         },
     };
 
