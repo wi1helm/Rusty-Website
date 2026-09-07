@@ -48,7 +48,7 @@ pub struct Image {
 
 
 pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
-    let organization = match context.database.find_organization_by_id(user.organization.id).await {
+    let organization = match context.database.find_organization_by_organization_id(user.organization.id).await {
         Ok(Some(organization)) => organization,
         Ok(None) => return not_found::get_page(),
         Err(error) => {
