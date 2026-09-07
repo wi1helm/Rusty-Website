@@ -25,7 +25,7 @@ CREATE TABLE profile_versions (
       display_name TEXT NOT NULL,
       about TEXT NOT NULL DEFAULT '',
 
-      created_by_member_id BIGINT
+      created_by_member_id BIGINT NOT NULL
       REFERENCES members(id),
 
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
