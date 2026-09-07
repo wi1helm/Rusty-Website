@@ -12,7 +12,7 @@ struct DashboardTemplate {
     organization_name: String,
 }
 
-pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
+pub async fn get_page(State(_context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
     //TODO add and load statistics seperatly and remkae template add them.
     DashboardTemplate {
         app_name: APP_NAME,
