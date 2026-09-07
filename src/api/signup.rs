@@ -6,7 +6,7 @@ use crate::{Context};
 use crate::api::validation::{ is_valid_email, is_valid_name, is_valid_password};
 use crate::auth::AuthenticationError;
 use crate::routes::redirect_with_session_cookie;
-use crate::storage::database::{DatabaseError, NewMember, NewOrganization, OrganizationRoles};
+use crate::storage::database::{CreateOrganizationError, NewMember, NewOrganization, OrganizationRoles};
 
 #[derive(Debug)]
 pub enum SignupValidationError {
@@ -83,12 +83,12 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
         role: OrganizationRoles::Owner,
     };
 
-    let (organization_id, owner_id) = match context.database.create_organization_with_owner_and_profile(organization, owner).await {
+    let (_organization_id, owner_id) = match context.database.create_organization_with_owner_and_profile(organization, owner).await {
         Ok(result) => result,
 
-        Err(DatabaseError::OrganizationSlugAlreadyExists) => return Redirect::to("/signup?error=invalid-slug").into_response(),
-        Err(DatabaseError::MemberAlreadyExists) => return Redirect::to("/signup?error=email-taken").into_response(),
-        Err(DatabaseError::Sqlx(_)) => return Redirect::to("/signup?error=server-error").into_response()
+        Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => return Redirect::to("/signup?error=invalid-slug").into_response(),
+        Err(CreateOrganizationError::MemberAlreadyExists) => return Redirect::to("/signup?error=email-taken").into_response(),
+        Err(CreateOrganizationError::Database(_error)) => return Redirect::to("/signup?error=server-error").into_response()
     };
 
     // The organization and owner member have now been successfully created
@@ -116,7 +116,7 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
     // In theory the database could be unavailable directly after creating the org + owner
     // and login could therefor not access the database(password hash)
     // todo handle all of the rest Authentication errors and remove Err(_)
-    match context.authenticator.login_member(owner_id, organization_id).await {
+    match context.authenticator.login_member(owner_id).await {
         Ok(session) => {
             redirect_with_session_cookie("/dashboard", &session.id)
         }
