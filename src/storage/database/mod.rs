@@ -108,6 +108,18 @@ pub struct DatabaseProfileVersion {
     pub created_by_member_id: i64,
 }
 
+pub struct DatabaseImage {
+    pub id: i64,
+    pub organization_id: i64,
+
+    pub storage_key: String,
+    pub content_type: String,
+
+    pub width: i32,
+    pub height: i32,
+    pub file_size: i64,
+}
+
 #[async_trait]
 pub trait Database: Send + Sync {
     /// The long name "create_organization_with_owner_and_profile" exists to communicate to implementations that both owner and profile
