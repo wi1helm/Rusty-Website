@@ -1,4 +1,4 @@
-FROM rust:1.97.1 AS builder
+FROM rust:1.97.1-trixie AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN cargo test --release
 
 RUN cargo build --release
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 WORKDIR /app
 # Askama templates are already compiled into the binary.
