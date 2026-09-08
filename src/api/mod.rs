@@ -1,7 +1,7 @@
 use axum::{routing::post, Router};
 use crate::Context;
 
-mod signup;
+mod creation;
 mod validation;
 mod login;
 mod protected;
@@ -16,7 +16,7 @@ pub fn router(context: Context) -> Router<Context> {
         // Public API routes.
         //
         // These do not require an authenticated session.
-        .route("/organizations/signup", post(signup::signup))
+        .route("/organizations/create", post(creation::signup))
         .route("/auth/login", post(login::login))
 
         // Protected API routes.

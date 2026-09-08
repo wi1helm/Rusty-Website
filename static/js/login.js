@@ -1,4 +1,4 @@
-// login/signup.js
+// login/creation.js
 
 const ERROR_MESSAGES = {
     "invalid-credentials": "Incorrect email or password.",

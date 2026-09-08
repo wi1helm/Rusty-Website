@@ -1,5 +1,5 @@
-/* signup.css */
-.signup {
+/* creation.css */
+.creation {
     flex: 1;
 
     display: flex;
@@ -9,7 +9,7 @@
     padding: 2rem;
 }
 
-.signup-card {
+.creation-card {
     width: 100%;
     max-width: 420px;
 
@@ -20,17 +20,17 @@
     border-radius: 12px;
 }
 
-.signup-card h1 {
+.creation-card h1 {
     margin-top: 0;
 }
 
-.signup-card form {
+.creation-card form {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.signup-card input {
+.creation-card input {
     margin-bottom: 1rem;
     padding: 0.75rem;
 
@@ -40,7 +40,7 @@
     font: inherit;
 }
 
-.signup-card button {
+.creation-card button {
     border: 0;
     cursor: pointer;
     font: inherit;

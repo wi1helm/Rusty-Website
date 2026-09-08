@@ -1,4 +1,4 @@
-// signup/signup.js
+// signup/creation.js
 
 const ERROR_MESSAGES = {
     "invalid-name": "Please enter a valid organization name.",
@@ -61,7 +61,7 @@ function validateClientSide(form) {
 document.addEventListener("DOMContentLoaded", () => {
     showServerErrorIfPresent();
 
-    const form = document.getElementById("signup-form");
+    const form = document.getElementById("creation-form");
     form.addEventListener("submit", (event) => {
         const error = validateClientSide(form);
         if (error) {

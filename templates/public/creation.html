@@ -3,13 +3,13 @@
 {% block title %}Create organization{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="/assets/css/signup.css">
+<link rel="stylesheet" href="/assets/css/creation.css">
 {% endblock %}
 
 {% block content %}
 
-<main class="signup">
-  <div class="signup-card">
+<main class="creation">
+  <div class="creation-card">
 
     <h1>Create your organization</h1>
 
@@ -19,7 +19,7 @@
 
     <div id="form-error" class="error-banner" hidden></div>
 
-    <form action="/api/organizations/signup" method="post" id="signup-form">
+    <form action="/api/organizations/create" method="post" id="creation-form">
 
       <label for="organization-name">
         Organization name
@@ -86,5 +86,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/assets/js/signup.js"></script>
+<script src="/assets/js/creation.js"></script>
 {% endblock %}
