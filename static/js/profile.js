@@ -14,9 +14,13 @@ document.addEventListener("DOMContentLoaded", () => {
  *   [data-edit="about"]
  *   [data-editor="about"]
  *   [data-content="about"]
+ *   [data-error="about"]     (optional, shown on save failure)
+ *   [data-count="about"]     (optional, live character count)
  *
  * Clicking the edit button hides the normal content and shows the editor.
  */
+
+let activeEditorField = null;
 
 function setupInlineEditors() {
     const editButtons = document.querySelectorAll("[data-edit]");
@@ -54,6 +58,24 @@ function setupInlineEditors() {
                 cancelEditor(field);
             });
         }
+
+        const textInput = editor.querySelector("input, textarea");
+        const counter = editor.querySelector(`[data-count="${field}"]`);
+
+        if (textInput && counter && textInput.maxLength > 0) {
+            const updateCount = () => {
+                counter.textContent = `${textInput.value.length} / ${textInput.maxLength}`;
+            };
+
+            textInput.addEventListener("input", updateCount);
+            updateCount();
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && activeEditorField) {
+            cancelEditor(activeEditorField);
+        }
     });
 }
 
@@ -76,6 +98,7 @@ function openEditor(field) {
     }
 
     editor.hidden = false;
+    activeEditorField = field;
 
     const input = editor.querySelector(
         "input, textarea"
@@ -111,6 +134,12 @@ function cancelEditor(field) {
     if (content) {
         content.hidden = false;
     }
+
+    setEditorError(editor, null);
+
+    if (activeEditorField === field) {
+        activeEditorField = null;
+    }
 }
 
 
@@ -144,10 +173,7 @@ async function saveEditor(field) {
         return;
     }
 
-    const saveButton = editor.querySelector(
-        "button"
-    );
-
+    setEditorError(editor, null);
     setEditorBusy(editor, true);
 
     try {
@@ -171,6 +197,7 @@ async function saveEditor(field) {
         updateProfileField(field, value);
 
         editor.hidden = true;
+        activeEditorField = null;
 
         const content = document.querySelector(
             `[data-content="${field}"]`
@@ -181,14 +208,7 @@ async function saveEditor(field) {
         }
     } catch (error) {
         console.error(error);
-
-        /*
-         * For now we keep the error handling deliberately simple.
-         *
-         * Later we can add an inline error message to the editor instead
-         * of using alert().
-         */
-        console.error("Unable to save profile changes.");
+        setEditorError(editor, "Couldn't save your changes. Try again.");
     } finally {
         setEditorBusy(editor, false);
     }
@@ -223,7 +243,7 @@ function updateProfileField(field, value) {
     if (!value) {
         content.innerHTML = `
             <p class="profile-empty">
-                No description yet.
+                Nothing written yet.
             </p>
         `;
 
@@ -252,6 +272,28 @@ function setEditorBusy(editor, busy) {
     buttons.forEach((button) => {
         button.disabled = busy;
     });
+}
+
+
+/*
+ * Show or clear an inline error message for an editor.
+ */
+
+function setEditorError(editor, message) {
+    const field = editor.dataset.editor;
+    const errorEl = document.querySelector(`[data-error="${field}"]`);
+
+    if (!errorEl) {
+        return;
+    }
+
+    if (message) {
+        errorEl.textContent = message;
+        errorEl.hidden = false;
+    } else {
+        errorEl.textContent = "";
+        errorEl.hidden = true;
+    }
 }
 
 

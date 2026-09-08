@@ -30,7 +30,7 @@ use crate::auth::{Authenticator, session::SessionManager};
 pub struct Context {
     pub database: Arc<dyn Database>,
     pub cache: Arc<dyn Cache>,
-    pub object_storage: Arc<dyn ObjectStorage>,
+    pub public_object_storage: Arc<dyn ObjectStorage>,
     pub authenticator: Arc<Authenticator>,
     pub session_manager: Arc<SessionManager>,
 }
@@ -71,7 +71,7 @@ async fn main() {
     );
     // Create the object storage using the S3 implementation
     // This is for image storing and based on url, endpoint etc could point to different places.
-    let object_storage: Arc<dyn ObjectStorage> = Arc::new(
+    let public_object_storage: Arc<dyn ObjectStorage> = Arc::new(
         S3ObjectStorage::new(s3_endpoint.as_str(), s3_bucket, s3_access_key.as_str(), s3_secret_key.as_str(), s3_public_url)
             .await
             .expect("failed to create storage object")
@@ -89,7 +89,7 @@ async fn main() {
         Authenticator::new(database.clone(), session_manager.clone())
     );
     // Create the application context.
-    let context = Context { database, cache, object_storage, authenticator, session_manager};
+    let context = Context { database, cache, public_object_storage, authenticator, session_manager};
 
     // Create the router for this application
     let app = routes::router(context);

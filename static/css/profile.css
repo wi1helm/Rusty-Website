@@ -4,30 +4,35 @@
     padding: 3rem 2rem;
 }
 
-.profile-box {
+.profile-card {
     width: 100%;
-    max-width: 1080px;
-    padding: 0;
-    overflow: hidden;
+    max-width: 1040px;
 }
 
 /* --------------------------------------------------------------------------
-   Banner
+   Hero: banner + overlapping identity
    -------------------------------------------------------------------------- */
+
+.profile-hero {
+    position: relative;
+}
 
 .profile-banner-wrapper {
     position: relative;
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
 }
 
 .profile-banner {
     width: 100%;
-    height: 320px;
+    height: 200px;
     display: block;
     object-fit: cover;
 }
 
 .profile-banner-empty {
-    background: linear-gradient(135deg, var(--surface), var(--border));
+    background:
+            linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, var(--surface)), var(--surface));
 }
 
 .profile-image-edit {
@@ -44,16 +49,17 @@
     border-radius: 8px;
 
     color: white;
-    background: rgba(0, 0, 0, 0.55);
+    background: rgba(0, 0, 0, 0.5);
 
     font-size: 1rem;
     cursor: pointer;
 
     backdrop-filter: blur(4px);
+    transition: background 0.15s ease;
 }
 
 .profile-image-edit:hover {
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.72);
 }
 
 .profile-banner-edit {
@@ -63,45 +69,33 @@
     z-index: 3;
 }
 
-/* --------------------------------------------------------------------------
-   Header / identity
-   -------------------------------------------------------------------------- */
-
-.profile-header {
-    padding: 0 2rem 1.5rem;
-}
-
-.profile-identity-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 1.5rem;
-
-    /* Pull the row up so the logo overlaps the bottom of the banner */
-    margin-top: -70px;
+.profile-identity {
     position: relative;
     z-index: 2;
+
+    display: flex;
+    align-items: flex-end;
+    gap: 1.25rem;
+
+    margin-top: -40px;
+    padding: 0 2rem;
 }
 
 .profile-logo-button {
-    position: relative;
-
     flex: 0 0 auto;
 
-    width: 152px;
-    height: 152px;
+    width: 96px;
+    height: 96px;
 
     padding: 0;
 
-    border: 0;
-    border-radius: 50%;
+    border: 4px solid var(var(--surface));
+    border-radius: 22%;
 
     background: transparent;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 
     cursor: pointer;
-
-    box-shadow: 0 0 0 5px var(--surface), 0 6px 16px rgba(0, 0, 0, 0.25);
-    border-radius: 50%;
-
     transition: transform 0.15s ease;
 }
 
@@ -110,14 +104,14 @@
 }
 
 .profile-logo {
-    width: 152px;
-    height: 152px;
+    width: 100%;
+    height: 100%;
 
     display: block;
 
     object-fit: cover;
 
-    border-radius: 50%;
+    border-radius: 18%;
     background: var(--surface);
 }
 
@@ -126,27 +120,17 @@
     align-items: center;
     justify-content: center;
 
-    width: 152px;
-    height: 152px;
-
-    border-radius: 50%;
+    border-radius: 18%;
 
     color: var(--muted);
     background: var(--surface);
 
-    font-size: 2.25rem;
+    font-size: 1.75rem;
 }
 
-.profile-logo-button:hover .profile-logo,
-.profile-logo-button:hover .profile-logo-empty {
-    opacity: 0.85;
-}
-
-.profile-identity {
+.profile-identity-text {
     min-width: 0;
-
-    /* Room to breathe above the name so it clears the banner edge */
-    padding-bottom: 0.35rem;
+    padding-bottom: 0.4rem;
 }
 
 .profile-display-name-row {
@@ -158,28 +142,42 @@
 .profile-display-name-row h1 {
     margin: 0;
 
-    font-size: 2rem;
-    line-height: 1.2;
+    font-family: 'Fraunces', ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 560;
+    font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
 
-    /* Keep the name legible if it ever sits over the banner on tiny screens */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.profile-legal-name {
-    margin: 0.35rem 0 0;
+/* --------------------------------------------------------------------------
+   Meta strip: legal name / public URL / version
+   -------------------------------------------------------------------------- */
+
+.profile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    margin-top: 1rem;
+    padding: 0 2rem;
 
     color: var(--muted);
     font-size: 0.9rem;
 }
 
-.profile-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
+.profile-meta > * {
+    padding: 0 0.85rem;
+}
 
-    margin-top: 0.75rem;
+.profile-meta > *:first-child {
+    padding-left: 0;
+}
 
-    font-size: 0.85rem;
+.profile-meta > *:not(:last-child) {
+    border-right: 1px solid var(--border);
 }
 
 .profile-url {
@@ -192,7 +190,14 @@
 }
 
 .profile-version {
-    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+
+    padding: 0.1rem 0.55rem !important;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    font-size: 0.75rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -203,6 +208,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 auto;
 
     width: 30px;
     height: 30px;
@@ -216,6 +222,7 @@
     background: transparent;
 
     cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .icon-button:hover {
@@ -224,11 +231,11 @@
 }
 
 /* --------------------------------------------------------------------------
-   Content
+   Body content
    -------------------------------------------------------------------------- */
 
-.profile-content {
-    padding: 0 2rem 2rem;
+.profile-body {
+    padding: 2rem 2rem 0;
 }
 
 .profile-section {
@@ -247,11 +254,12 @@
 .profile-section-header h2 {
     margin: 0;
 
-    font-size: 1.15rem;
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 .profile-about {
-    max-width: 760px;
+    max-width: 68ch;
 
     margin: 0;
 
@@ -266,30 +274,59 @@
     font-style: italic;
 }
 
-.profile-locations {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+.profile-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 3rem;
 }
 
-.profile-location {
+.profile-columns .profile-section:first-child {
+    border-right: 1px solid var(--border);
+    padding-right: 3rem;
+}
+
+.profile-columns .profile-section:last-child {
+    padding-left: 3rem;
+}
+
+.profile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-list-item {
+    padding-left: 0.85rem;
+    border-left: 2px solid var(--border);
+
     color: var(--text);
 }
 
-.profile-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+.profile-list-item:has(a) {
+    padding: 0;
+    border: 0;
 }
 
-.profile-links a {
-    color: var(--primary);
+.profile-list-item a {
+    display: block;
+
+    padding-left: 0.85rem;
+    border-left: 2px solid var(--border);
+
+    color: var(--text);
     font-weight: 600;
     text-decoration: none;
+
+    transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.profile-links a:hover {
-    text-decoration: underline;
+.profile-list-item a:hover {
+    border-left-color: var(--primary);
+    color: var(--primary);
 }
 
 /* --------------------------------------------------------------------------
@@ -297,7 +334,7 @@
    -------------------------------------------------------------------------- */
 
 .inline-editor {
-    max-width: 760px;
+    max-width: 68ch;
     margin-top: 1rem;
 }
 
@@ -307,6 +344,7 @@
     margin-bottom: 0.5rem;
 
     font-weight: 600;
+    font-size: 0.9rem;
 }
 
 .inline-editor input,
@@ -330,10 +368,20 @@
     resize: vertical;
 }
 
-.inline-editor input:focus,
-.inline-editor textarea:focus {
+.inline-editor input:focus-visible,
+.inline-editor textarea:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 1px;
+}
+
+.inline-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-top: 0.4rem;
+
+    color: var(--muted);
+    font-size: 0.8rem;
 }
 
 .inline-editor-controls,
@@ -345,12 +393,19 @@
     margin-top: 0.75rem;
 }
 
+.inline-editor-error {
+    margin: 0.6rem 0 0;
+
+    color: #c0392b;
+    font-size: 0.85rem;
+}
+
 /* --------------------------------------------------------------------------
    Actions
    -------------------------------------------------------------------------- */
 
 .profile-actions-section {
-    padding-top: 2rem;
+    padding: 2rem 0 2.5rem;
 }
 
 .profile-actions {
@@ -361,50 +416,71 @@
 }
 
 /* --------------------------------------------------------------------------
+   Accessibility
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-logo-button,
+    .profile-image-edit,
+    .profile-list-item a,
+    .icon-button {
+        transition: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
    Mobile
    -------------------------------------------------------------------------- */
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
 
     .profile {
         padding: 1rem;
     }
 
     .profile-banner {
-        height: 180px;
+        height: 140px;
     }
 
-    .profile-header {
-        padding: 0 1.5rem 1.25rem;
+    .profile-identity {
+        gap: 0.85rem;
+        margin-top: -28px;
+        padding: 0 1.25rem;
     }
 
-    .profile-identity-row {
-        align-items: flex-end;
-        gap: 1rem;
-        margin-top: -48px;
-    }
-
-    .profile-logo-button,
-    .profile-logo,
-    .profile-logo-empty {
-        width: 96px;
-        height: 96px;
-    }
-
-    .profile-logo-empty {
-        font-size: 1.5rem;
+    .profile-logo-button {
+        width: 68px;
+        height: 68px;
+        border-width: 3px;
     }
 
     .profile-display-name-row h1 {
-        font-size: 1.4rem;
+        font-size: 1.35rem;
     }
 
     .profile-meta {
-        flex-wrap: wrap;
+        padding: 0 1.25rem;
     }
 
-    .profile-content {
-        padding: 0 1.5rem 1.5rem;
+    .profile-body {
+        padding: 1.5rem 1.25rem 0;
+    }
+
+    .profile-columns {
+        grid-template-columns: 1fr;
+        row-gap: 0;
+    }
+
+    .profile-columns .profile-section:first-child {
+        border-right: 0;
+        padding-right: 0;
+        padding-bottom: 1.5rem;
+    }
+
+    .profile-columns .profile-section:last-child {
+        padding-left: 0;
+        border-top: 1px solid var(--border);
+        margin-top: -1px;
     }
 
     .profile-actions {

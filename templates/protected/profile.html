@@ -12,37 +12,36 @@
 
 <section class="profile">
 
-  <div class="box profile-box">
+  <div class="profile-card">
 
-    <!-- Banner -->
-    <div class="profile-banner-wrapper">
+    <!-- Hero: banner + overlapping identity -->
+    <header class="profile-hero">
 
-      {% if let Some(banner) = organization_profile.banner %}
-      <img
-              class="profile-banner"
-              src="{{ banner.url }}"
-              alt="{{ banner.alt }}"
-      >
-      {% else %}
-      <div class="profile-banner profile-banner-empty"></div>
-      {% endif %}
+      <div class="profile-banner-wrapper">
 
-      <button
-              type="button"
-              class="profile-image-edit profile-banner-edit"
-              data-image-type="banner"
-              aria-label="Change banner"
-              title="Change banner"
-      >
-        ✎
-      </button>
+        {% if let Some(banner) = organization_profile.banner %}
+        <img
+                class="profile-banner"
+                src="{{ banner.url }}"
+                alt="{{ banner.alt }}"
+        >
+        {% else %}
+        <div class="profile-banner profile-banner-empty"></div>
+        {% endif %}
 
-    </div>
+        <button
+                type="button"
+                class="profile-image-edit profile-banner-edit"
+                data-image-type="banner"
+                aria-label="Change banner"
+                title="Change banner"
+        >
+          ✎
+        </button>
 
-    <!-- Identity -->
-    <div class="profile-header">
+      </div>
 
-      <div class="profile-identity-row">
+      <div class="profile-identity">
 
         <button
                 type="button"
@@ -64,7 +63,7 @@
           {% endif %}
         </button>
 
-        <div class="profile-identity">
+        <div class="profile-identity-text">
 
           <div class="profile-display-name-row">
 
@@ -82,67 +81,70 @@
 
           </div>
 
-          <p class="profile-legal-name">
-            {{ organization_name }}
-          </p>
+          <!-- Display name editor -->
+          <div
+                  class="inline-editor"
+                  data-editor="display_name"
+                  hidden
+          >
+            <label for="display-name">
+              Display name
+            </label>
 
-          <div class="profile-meta">
+            <div class="inline-editor-controls">
 
-            <a
-                    href="/{{ organization_profile.slug }}"
-                    class="profile-url"
-                    target="_blank"
-                    rel="noopener"
-            >
-              Profile: /{{ organization_profile.slug }}
-            </a>
+              <input
+                      id="display-name"
+                      name="display_name"
+                      type="text"
+                      value="{{ organization_profile.display_name }}"
+                      maxlength="200"
+                      required
+              >
 
-            <span class="profile-version">
-              · v3
-            </span>
+              <button type="button" class="button primary">
+                Save
+              </button>
 
+              <button type="button" class="button secondary">
+                Cancel
+              </button>
+
+            </div>
+
+            <p class="inline-editor-error" data-error="display_name" hidden></p>
           </div>
 
         </div>
 
       </div>
 
+    </header>
+
+    <!-- Legal name / public URL / version -->
+    <div class="profile-meta">
+
+      <span class="profile-legal-name">
+        {{ organization_name }}
+      </span>
+
+      <a
+              href="/{{ organization_profile.slug }}"
+              class="profile-url"
+              target="_blank"
+              rel="noopener"
+      >
+        /{{ organization_profile.slug }}
+      </a>
+
+      <span class="profile-version">
+        v3
+      </span>
+
     </div>
 
     <!-- Profile content -->
-    <div class="profile-content">
-
-      <!-- Display name editor -->
-      <div
-              class="inline-editor"
-              data-editor="display_name"
-              hidden
-      >
-        <label for="display-name">
-          Display name
-        </label>
-
-        <div class="inline-editor-controls">
-
-          <input
-                  id="display-name"
-                  name="display_name"
-                  type="text"
-                  value="{{ organization_profile.display_name }}"
-                  maxlength="200"
-                  required
-          >
-
-          <button type="button" class="button primary">
-            Save
-          </button>
-
-          <button type="button" class="button secondary">
-            Cancel
-          </button>
-
-        </div>
-      </div>
+    <div class="profile-body">
 
       <!-- About -->
       <section class="profile-section">
@@ -169,7 +171,7 @@
         >
           {% if organization_profile.about.is_empty() %}
           <p class="profile-empty">
-            No description yet.
+            Nothing written yet.
           </p>
           {% else %}
           <p class="profile-about">
@@ -183,11 +185,20 @@
                 data-editor="about"
                 hidden
         >
+          <label for="about-field">
+            About
+          </label>
+
           <textarea
+                  id="about-field"
                   name="about"
                   rows="8"
                   maxlength="5000"
           >{{ organization_profile.about }}</textarea>
+
+          <div class="inline-editor-footer">
+            <span class="inline-editor-count" data-count="about"></span>
+          </div>
 
           <div class="inline-editor-actions">
 
@@ -200,93 +211,100 @@
             </button>
 
           </div>
+
+          <p class="inline-editor-error" data-error="about" hidden></p>
         </div>
 
       </section>
 
-      <!-- Locations -->
-      <section class="profile-section">
+      <!-- Locations + Links -->
+      <div class="profile-columns">
 
-        <div class="profile-section-header">
+        <section class="profile-section">
 
-          <h2>Locations</h2>
+          <div class="profile-section-header">
 
-          <button
-                  type="button"
-                  class="icon-button"
-                  aria-label="Edit locations"
-                  title="Edit locations"
-          >
-            ✎
-          </button>
+            <h2>Locations</h2>
 
-        </div>
+            <button
+                    type="button"
+                    class="icon-button"
+                    aria-label="Edit locations"
+                    title="Edit locations"
+            >
+              ✎
+            </button>
 
-        <div class="profile-locations">
+          </div>
 
           {% if organization_profile.locations.is_empty() %}
 
           <p class="profile-empty">
-            No locations added.
+            No locations added yet.
           </p>
 
           {% else %}
 
-          {% for location in organization_profile.locations %}
-          <div class="profile-location">
-            {{ location.city }}, {{ location.country }}
-          </div>
-          {% endfor %}
+          <ul class="profile-list">
+
+            {% for location in organization_profile.locations %}
+            <li class="profile-list-item">
+              {{ location.city }}, {{ location.country }}
+            </li>
+            {% endfor %}
+
+          </ul>
 
           {% endif %}
 
-        </div>
+        </section>
 
-      </section>
+        <section class="profile-section">
 
-      <!-- Links -->
-      <section class="profile-section">
+          <div class="profile-section-header">
 
-        <div class="profile-section-header">
+            <h2>Links</h2>
 
-          <h2>Links</h2>
+            <button
+                    type="button"
+                    class="icon-button"
+                    aria-label="Edit links"
+                    title="Edit links"
+            >
+              ✎
+            </button>
 
-          <button
-                  type="button"
-                  class="icon-button"
-                  aria-label="Edit links"
-                  title="Edit links"
-          >
-            ✎
-          </button>
+          </div>
 
-        </div>
+          {% if organization_profile.links.is_empty() %}
 
-        {% if organization_profile.links.is_empty() %}
+          <p class="profile-empty">
+            No links added yet.
+          </p>
 
-        <p class="profile-empty">
-          No links added.
-        </p>
+          {% else %}
 
-        {% else %}
+          <ul class="profile-list">
 
-        <div class="profile-links">
+            {% for link in organization_profile.links %}
+            <li class="profile-list-item">
+              <a
+                      href="{{ link.url }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+              >
+                {{ link.label }}
+              </a>
+            </li>
+            {% endfor %}
 
-          {% for link in organization_profile.links %}
-          <a
-                  href="{{ link.url }}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-          >
-            {{ link.label }}
-          </a>
-          {% endfor %}
+          </ul>
 
-        </div>
+          {% endif %}
 
-        {% endif %}
+        </section>
 
-      </section>
+      </div>
 
       <!-- Actions -->
       <section class="profile-actions-section">
