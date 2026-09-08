@@ -1,4 +1,4 @@
-// routes/pages/signup.rs
+// routes/pages/creation
 use serde::Deserialize;
 use axum::{extract::State, Form};
 use axum::response::{IntoResponse, Redirect};
@@ -9,7 +9,7 @@ use crate::routes::redirect_with_session_cookie;
 use crate::storage::database::{CreateOrganizationError, NewMember, NewOrganization, OrganizationRoles};
 
 #[derive(Debug)]
-pub enum SignupValidationError {
+pub enum CreationValidationError {
     InvalidName,
     InvalidEmail,
     InvalidPassword,
@@ -20,7 +20,7 @@ pub enum SignupValidationError {
 // This represents that the application does not deem trustworthy.
 // #derive means this struct is automaticly creates from form data.
 #[derive(Deserialize)]
-pub struct SignupRequest {
+pub struct CreationRequest {
     pub name: String,
     pub email: String,
     pub password: String,
@@ -28,32 +28,32 @@ pub struct SignupRequest {
 }
 // The output, removed confirm as if valid password and confirm is the same.
 // This represents data the application deems trustworthy
-pub struct ValidatedSignup {
+pub struct ValidatedCreation {
     pub name: String,
     pub email: String,
     pub password: String,
 }
 
-struct SignupValidator<'a> {
-    input: &'a SignupRequest,
+struct CreationValidator<'a> {
+    input: &'a CreationRequest,
 }
 
-impl SignupValidator<'_> {
-    fn validate(&self) -> Result<ValidatedSignup, SignupValidationError> {
+impl CreationValidator<'_> {
+    fn validate(&self) -> Result<ValidatedCreation, CreationValidationError> {
         if !is_valid_name(&self.input.name) {
-            return Err(SignupValidationError::InvalidName);
+            return Err(CreationValidationError::InvalidName);
         }
         if !is_valid_email(&self.input.email) {
-            return Err(SignupValidationError::InvalidEmail);
+            return Err(CreationValidationError::InvalidEmail);
         }
         if !is_valid_password(&self.input.password) || !is_valid_password(&self.input.confirm) {
-            return Err(SignupValidationError::InvalidPassword);
+            return Err(CreationValidationError::InvalidPassword);
         }
         if self.input.password != self.input.confirm {
-            return Err(SignupValidationError::PasswordMismatch);
+            return Err(CreationValidationError::PasswordMismatch);
         }
 
-        let validated = ValidatedSignup {
+        let validated = ValidatedCreation {
             name: self.input.name.clone(),
             email: self.input.email.clone(),
             password: self.input.password.clone(),
@@ -61,13 +61,13 @@ impl SignupValidator<'_> {
         Ok(validated)
     }
 }
-pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequest>) -> impl IntoResponse {
-    let validated = match (SignupValidator { input: &input }).validate() {
+pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRequest>) -> impl IntoResponse {
+    let validated = match (CreationValidator { input: &input }).validate() {
         Ok(v) => v,
-        Err(SignupValidationError::InvalidEmail) => return Redirect::to("/signup?error=invalid-email").into_response(),
-        Err(SignupValidationError::InvalidPassword) => return Redirect::to("/signup?error=invalid-password").into_response(),
-        Err(SignupValidationError::InvalidName) => return Redirect::to("/signup?error=invalid-name").into_response(),
-        Err(SignupValidationError::PasswordMismatch) => return Redirect::to("/signup?error=passwords-mismatch").into_response()
+        Err(CreationValidationError::InvalidEmail) => return Redirect::to("/create?error=invalid-email").into_response(),
+        Err(CreationValidationError::InvalidPassword) => return Redirect::to("/create?error=invalid-password").into_response(),
+        Err(CreationValidationError::InvalidName) => return Redirect::to("/create?error=invalid-name").into_response(),
+        Err(CreationValidationError::PasswordMismatch) => return Redirect::to("/create?error=passwords-mismatch").into_response()
     };
 
     let slug = create_slug(&validated.name);
@@ -86,9 +86,9 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
     let (_organization_id, owner_id) = match context.database.create_organization_with_owner_and_profile(organization, owner).await {
         Ok(result) => result,
 
-        Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => return Redirect::to("/signup?error=invalid-slug").into_response(),
-        Err(CreateOrganizationError::MemberAlreadyExists) => return Redirect::to("/signup?error=email-taken").into_response(),
-        Err(CreateOrganizationError::Database(_error)) => return Redirect::to("/signup?error=server-error").into_response()
+        Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => return Redirect::to("/create?error=invalid-slug").into_response(),
+        Err(CreateOrganizationError::MemberAlreadyExists) => return Redirect::to("/create?error=email-taken").into_response(),
+        Err(CreateOrganizationError::Database(_error)) => return Redirect::to("/create?error=server-error").into_response()
     };
 
     // The organization and owner member have now been successfully created
@@ -132,7 +132,7 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
 
         Err(_) => {
             // Unexpected authentication error.
-            Redirect::to("/signup?error=server-error").into_response()
+            Redirect::to("/create?error=server-error").into_response()
         }
     }
 
@@ -140,6 +140,7 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<SignupRequ
 /// Generates the slug for any company name used on signup
 ///TODO for now if the slug is taken we reject the signup
 /// later on add ways to generate new unique slug instead like slug-1, slug-2!!
+// TODO handle non ascii char better then replacing with - "w-jerrest-l-ab" is not a nice slug fro "W Jerrestål AB"
 fn create_slug(name: &str) -> String {
     name.to_lowercase()
         .chars()
