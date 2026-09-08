@@ -31,6 +31,15 @@ impl S3ObjectStorage {
     /// The endpoint can point to MinIO locally or an external
     /// S3-compatible provider in production.
     pub async fn new(endpoint: &str, bucket: String, access_key: &str, secret_key: &str, public_url: String) -> Result<Self, ObjectStorageError> {
+        //TODO SECURITY :
+        // Use a dedicated least-privilege object-storage identity for the
+        // application instead of MinIO root/admin credentials.
+        // The application should only have the permissions it actually needs
+        // for the application bucket (e.g. PutObject, GetObject, DeleteObject).
+        // Administrative operations such as creating buckets, users, or
+        // changing policies should remain restricted to the MinIO administrator.
+
+
         // Create credentials for authenticating with the S3 server.
         //
         // For local development these will be the MinIO credentials.
