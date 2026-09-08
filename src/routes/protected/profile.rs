@@ -118,12 +118,12 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         ],
 
         logo: Some(Image {
-            url: context.object_storage.url(DEFAULT_LOGO_KEY),
+            url: context.public_object_storage.url(DEFAULT_LOGO_KEY),
             alt: format!("{} logo", user.organization.name),
         }),
 
         banner: Some(Image {
-            url: context.object_storage.url(DEFAULT_BANNER_KEY),
+            url: context.public_object_storage.url(DEFAULT_BANNER_KEY),
             alt: format!("{} banner", user.organization.name),
         }),
     };
