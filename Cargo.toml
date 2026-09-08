@@ -31,6 +31,9 @@ sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "macros", "
 # ─────────────────────────────────────────────
 # Redis client using Tokio for async operations.
 redis = { version = "=1.6.0", features = ["tokio-comp"] }
+
+# Object storage using s3 api interface
+aws-sdk-s3 = { version = "=1.145", features = ["behavior-version-latest"] }
 # ─────────────────────────────────────────────
 # Serialization
 # ─────────────────────────────────────────────

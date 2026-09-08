@@ -147,3 +147,38 @@ fn create_slug(name: &str) -> String {
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect::<String>()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn creates_slug_from_simple_name() {
+        assert_eq!(create_slug("Acme"), "acme");
+    }
+
+    #[test]
+    fn converts_spaces_to_hyphens() {
+        assert_eq!(create_slug("Acme Corporation"), "acme-corporation");
+    }
+
+    #[test]
+    fn converts_special_characters_to_hyphens() {
+        assert_eq!(create_slug("Acme & Sons!"), "acme---sons-");
+    }
+
+    #[test]
+    fn converts_uppercase_to_lowercase() {
+        assert_eq!(create_slug("ACME CORPORATION"), "acme-corporation");
+    }
+
+    #[test]
+    fn non_ascii_characters_are_replaced() {
+        assert_eq!(create_slug("W Jerrestål AB"), "w-jerrest-l-ab");
+    }
+
+    #[test]
+    fn empty_name_produces_empty_slug() {
+        assert_eq!(create_slug(""), "");
+    }
+}
