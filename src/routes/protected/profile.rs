@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use crate::{auth::CurrentUser, Context};
-use crate::config::{APP_NAME, APP_YEAR};
+use crate::config::{APP_NAME, APP_YEAR, DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 use crate::routes::errors::not_found;
 
 #[derive(Template, WebTemplate)]
@@ -118,12 +118,12 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         ],
 
         logo: Some(Image {
-            url: "/assets/test/logo.png".to_string(),
+            url: context.object_storage.url(DEFAULT_LOGO_KEY),
             alt: format!("{} logo", user.organization.name),
         }),
 
         banner: Some(Image {
-            url: "/assets/test/banner.jpg".to_string(),
+            url: context.object_storage.url(DEFAULT_BANNER_KEY),
             alt: format!("{} banner", user.organization.name),
         }),
     };
