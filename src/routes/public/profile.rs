@@ -3,9 +3,10 @@ use askama_web::__askama_web_impl::axum_core_0_5::Response;
 use askama_web::WebTemplate;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
-use crate::config::{APP_NAME, APP_YEAR};
+use crate::config::{APP_NAME, APP_YEAR, DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 use crate::Context;
 use crate::routes::errors::not_found;
+use crate::storage::database::ProfileImageType;
 
 #[derive(Template, WebTemplate)]
 #[template(path = "public/profile.html")]
@@ -25,8 +26,8 @@ pub struct PublicProfile {
     pub locations: Vec<Location>,
     pub links: Vec<ExternalLink>,
 
-    pub logo: Option<Image>,
-    pub banner: Option<Image>,
+    pub logo: Image,
+    pub banner: Image,
 }
 
 pub struct Location {
@@ -86,6 +87,43 @@ pub async fn get_page(State(context): State<Context>, Path(slug): Path<String>) 
             return not_found::get_page();
         }
     };
+
+    let logo = match context.database.find_profile_image(profile.id, ProfileImageType::Logo).await {
+        Ok(Some(image)) => Image {
+            url: context.public_object_storage.url(&image.storage_key),
+            alt: format!("{} logo", organization.name),
+        },
+        Ok(None) => Image {
+            url: context.public_object_storage.url(DEFAULT_LOGO_KEY),
+            alt: format!("{} logo", organization.name),
+        },
+        Err(error) => {
+            tracing::error!(?error, profile_id = profile.id, image_type = "logo", "failed to load profile logo");
+            Image {
+                url: context.public_object_storage.url(DEFAULT_LOGO_KEY),
+                alt: format!("{} logo", organization.name),
+            }
+        }
+    };
+
+    let banner = match context.database.find_profile_image(profile.id, ProfileImageType::Banner).await {
+        Ok(Some(image)) => Image {
+            url: context.public_object_storage.url(&image.storage_key),
+            alt: format!("{} banner", organization.name),
+        },
+        Ok(None) => Image {
+            url: context.public_object_storage.url(DEFAULT_BANNER_KEY),
+            alt: format!("{} banner", organization.name),
+        },
+        Err(error) => {
+            tracing::error!(?error, profile_id = profile.id, image_type = "banner", "failed to load profile banner");
+            Image {
+                url: context.public_object_storage.url(DEFAULT_BANNER_KEY),
+                alt: format!("{} banner", organization.name),
+            }
+        }
+    };
+
     // TODO: Replace these placeholder values with data loaded from the
     // organization profile.
     let public_profile = PublicProfile {
@@ -113,15 +151,8 @@ pub async fn get_page(State(context): State<Context>, Path(slug): Path<String>) 
             },
         ],
 
-        logo: Some(Image {
-            url: "/assets/test/logo.png".to_string(),
-            alt: "banner".to_string(),
-        }),
-
-        banner: Some(Image {
-            url: "/assets/test/banner.jpg".to_string(),
-            alt: "banner".to_string(),
-        }),
+        logo,
+        banner
     };
 
     PublicProfileTemplate {

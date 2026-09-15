@@ -7,6 +7,7 @@ use axum::{
 use crate::{auth::CurrentUser, Context};
 use crate::config::{APP_NAME, APP_YEAR, DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 use crate::routes::errors::not_found;
+use crate::storage::database::ProfileImageType;
 
 #[derive(Template, WebTemplate)]
 #[template(path = "protected/profile.html")]
@@ -27,8 +28,8 @@ pub struct Profile {
     pub locations: Vec<Location>,
     pub links: Vec<ExternalLink>,
 
-    pub logo: Option<Image>,
-    pub banner: Option<Image>,
+    pub logo: Image,
+    pub banner: Image,
 }
 
 pub struct Location {
@@ -90,6 +91,44 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         }
     };
 
+    let logo = match context.database.find_profile_image(profile.id, ProfileImageType::Logo).await {
+        Ok(Some(image)) => Image {
+            url: context.public_object_storage.url(&image.storage_key),
+            alt: format!("{} logo", user.organization.name),
+        },
+        Ok(None) => Image {
+            url: context.public_object_storage.url(DEFAULT_LOGO_KEY),
+            alt: format!("{} logo", user.organization.name),
+        },
+        Err(error) => {
+            tracing::error!(?error, profile_id = profile.id, "failed to load profile logo");
+
+            Image {
+                url: context.public_object_storage.url(DEFAULT_LOGO_KEY),
+                alt: format!("{} logo", user.organization.name),
+            }
+        }
+    };
+
+    let banner = match context.database.find_profile_image(profile.id, ProfileImageType::Banner).await {
+        Ok(Some(image)) => Image {
+            url: context.public_object_storage.url(&image.storage_key),
+            alt: format!("{} banner", user.organization.name),
+        },
+        Ok(None) => Image {
+            url: context.public_object_storage.url(DEFAULT_BANNER_KEY),
+            alt: format!("{} logo", user.organization.name),
+        },
+        Err(error) => {
+            tracing::error!(?error,profile_id = profile.id,image_type = "banner","failed to load profile banner");
+            Image {
+                url: context.public_object_storage.url(DEFAULT_BANNER_KEY),
+                alt: format!("{} logo", user.organization.name),
+            }
+        }
+    };
+
+
     // TODO: Replace these placeholder values with data loaded from the
     // organization profile.
     let editable_profile = Profile {
@@ -117,15 +156,8 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
             },
         ],
 
-        logo: Some(Image {
-            url: context.public_object_storage.url(DEFAULT_LOGO_KEY),
-            alt: format!("{} logo", user.organization.name),
-        }),
-
-        banner: Some(Image {
-            url: context.public_object_storage.url(DEFAULT_BANNER_KEY),
-            alt: format!("{} banner", user.organization.name),
-        }),
+        logo,
+        banner,
     };
 
     ProfileTemplate {
