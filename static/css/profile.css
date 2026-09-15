@@ -1,4 +1,6 @@
-/* profile.css */
+/* =========================================================
+   Profile layout
+   ========================================================= */
 
 .profile {
     display: flex;
@@ -16,14 +18,35 @@
     overflow: hidden;
 }
 
-.profile-banner {
+
+/* =========================================================
+   Banner
+   ========================================================= */
+
+.profile-banner-editor {
+    position: relative;
+
     width: 100%;
     height: 260px;
+
+    overflow: hidden;
+
+    cursor: pointer;
+}
+
+.profile-banner {
+    width: 100%;
+    height: 100%;
 
     display: block;
 
     object-fit: cover;
 }
+
+
+/* =========================================================
+   Profile header
+   ========================================================= */
 
 .profile-header {
     position: relative;
@@ -38,18 +61,31 @@
     padding: 2rem;
 }
 
-.profile-logo {
+.profile-logo-editor {
+    position: relative;
+
     width: 96px;
     height: 96px;
 
     flex: 0 0 auto;
 
-    object-fit: cover;
+    overflow: hidden;
 
     border: 1px solid var(--border);
     border-radius: 12px;
 
     background: var(--surface);
+
+    cursor: pointer;
+}
+
+.profile-logo {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
 }
 
 .profile-identity {
@@ -70,11 +106,55 @@
     font-size: 0.9rem;
 }
 
-.profile-header .button {
-    flex: 0 0 auto;
+
+/* =========================================================
+   Public profile link
+   ========================================================= */
+
+.profile-public-link {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    gap: 0.5rem;
+
+    width: fit-content;
+
+    margin-top: -0.65rem;
+
+    padding: 0 0.75rem;
+
+    background: var(--surface);
+
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    z-index: 1;
 }
 
+.profile-public-link a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.profile-public-link a:hover {
+    text-decoration: underline;
+}
+
+.profile-version {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+
+/* =========================================================
+   Profile content
+   ========================================================= */
+
 .profile-content {
+    position: relative;
+
     padding: 0 2rem 2rem;
 }
 
@@ -90,11 +170,10 @@
     font-size: 1.2rem;
 }
 
-.profile-about {
-    max-width: 760px;
 
-    line-height: 1.7;
-}
+/* =========================================================
+   Locations
+   ========================================================= */
 
 .profile-locations {
     display: flex;
@@ -106,6 +185,11 @@
 .profile-location {
     color: var(--text);
 }
+
+
+/* =========================================================
+   Links
+   ========================================================= */
 
 .profile-links {
     display: flex;
@@ -123,6 +207,11 @@
 .profile-links a:hover {
     text-decoration: underline;
 }
+
+
+/* =========================================================
+   Form
+   ========================================================= */
 
 .form-group {
     display: flex;
@@ -145,20 +234,20 @@
 
     padding: 0.75rem 1rem;
 
-    font: inherit;
+    box-sizing: border-box;
 
+    font: inherit;
     color: var(--text);
 
     background: var(--surface);
 
     border: 1px solid var(--border);
     border-radius: 8px;
-
-    box-sizing: border-box;
 }
 
 .form-group textarea {
     resize: vertical;
+
     min-height: 160px;
 }
 
@@ -168,6 +257,11 @@
     outline-offset: 1px;
 }
 
+
+/* =========================================================
+   Actions
+   ========================================================= */
+
 .profile-actions {
     display: flex;
     align-items: center;
@@ -175,12 +269,18 @@
     gap: 1rem;
 }
 
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
 @media (max-width: 640px) {
+
     .profile {
         padding: 1rem;
     }
 
-    .profile-banner {
+    .profile-banner-editor {
         height: 180px;
     }
 
@@ -191,17 +291,13 @@
         padding: 1.5rem;
     }
 
-    .profile-logo {
+    .profile-logo-editor {
         width: 80px;
         height: 80px;
     }
 
     .profile-identity h1 {
         font-size: 1.5rem;
-    }
-
-    .profile-header .button {
-        align-self: flex-start;
     }
 
     .profile-content {

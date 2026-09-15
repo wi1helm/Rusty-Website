@@ -6,6 +6,7 @@
 
 {% block site_styles %}
 <link rel="stylesheet" href="/assets/css/profile.css">
+<link rel="stylesheet" href="/assets/css/profile_upload.css">
 {% endblock %}
 
 {% block protected_content %}
@@ -15,11 +16,21 @@
   <div class="box profile-box">
 
     {% if let Some(banner) = organization_profile.banner %}
-    <img
-            class="profile-banner"
-            src="{{ banner.url }}"
-            alt="{{ banner.alt }}"
+    <div
+            class="profile-image-editor profile-banner-editor"
+            data-image-type="banner"
+            data-upload-url="/api/profile/image"
     >
+      <img
+              class="profile-banner"
+              src="{{ banner.url }}"
+              alt="{{ banner.alt }}"
+      >
+
+      <div class="profile-image-overlay">
+        <span class="profile-image-edit-icon">✎</span>
+      </div>
+    </div>
     {% endif %}
 
     <div class="profile-header">
@@ -27,11 +38,21 @@
       <div class="profile-header-content">
 
         {% if let Some(logo) = organization_profile.logo %}
-        <img
-                class="profile-logo"
-                src="{{ logo.url }}"
-                alt="{{ logo.alt }}"
+        <div
+                class="profile-image-editor"
+                data-image-type="logo"
+                data-upload-url="/api/profile/image"
         >
+          <img
+                  class="profile-logo"
+                  src="{{ logo.url }}"
+                  alt="{{ logo.alt }}"
+          >
+
+          <div class="profile-image-overlay">
+            <span class="profile-image-edit-icon">✎</span>
+          </div>
+        </div>
         {% endif %}
 
         <div class="profile-identity">
@@ -50,6 +71,16 @@
 
 
     <div class="profile-content">
+
+      <div class="profile-public-link">
+        <a href="/{{ organization_profile.slug }}">
+          website.com/{{ organization_profile.slug }}
+        </a>
+
+        <span class="profile-version">
+          v{{ organization_profile.version }}
+        </span>
+      </div>
 
       <form method="post" action="/api/profile/edit">
 
@@ -157,5 +188,76 @@
   </div>
 
 </section>
+
+</div>
+
+</section>
+
+
+<div id="image-upload-modal" class="image-upload-modal" hidden>
+
+  <div class="image-upload-dialog" role="dialog" aria-modal="true">
+
+    <button
+            type="button"
+            class="image-upload-close"
+            aria-label="Close"
+    >
+      ×
+    </button>
+
+    <h2 id="image-upload-title">
+      Upload image
+    </h2>
+
+    <p id="image-upload-description" class="image-upload-description">
+      Choose an image or drag one here.
+    </p>
+
+    <label class="image-upload-dropzone" for="image-upload-input">
+
+      <input
+              id="image-upload-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+      >
+
+      <span class="image-upload-dropzone-text">
+        Drop image here or <strong>choose a file</strong>
+      </span>
+
+    </label>
+
+    <div id="image-upload-preview" class="image-upload-preview" hidden>
+      <img src="" alt="Selected image preview">
+    </div>
+
+    <div class="image-upload-actions">
+
+      <button
+              type="button"
+              class="button secondary"
+              id="image-upload-cancel"
+      >
+        Cancel
+      </button>
+
+      <button
+              type="button"
+              class="button primary"
+              id="image-upload-submit"
+      >
+        Upload
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script src="/assets/js/profile.js"></script>
 
 {% endblock %}
