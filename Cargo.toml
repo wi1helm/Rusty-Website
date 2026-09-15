@@ -65,6 +65,7 @@ rand = "=0.10.2"
 hex = "=0.4.3"
 # This crate provides native rust implementations of image encoding and decoding as well as some basic image manipulation functions.
 image = "=0.25.10"
+uuid = { version = "=1.26.0", features = ["v4"] }
 
 
 [dev-dependencies]

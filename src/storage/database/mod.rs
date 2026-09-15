@@ -66,6 +66,7 @@ pub enum ProfileImageType {
     Banner,
 }
 pub struct ImageRules {
+    // Validation
     pub min_width: u32,
     pub min_height: u32,
     pub max_width: u32,
@@ -73,6 +74,10 @@ pub struct ImageRules {
     pub max_pixels: u64,
     pub min_aspect_ratio: f64,
     pub max_aspect_ratio: f64,
+
+    // Normalization
+    pub output_max_width: u32,
+    pub output_max_height: u32,
 }
 impl ProfileImageType {
     pub fn as_str(&self) -> &'static str {
@@ -98,6 +103,8 @@ impl ProfileImageType {
                 max_pixels: 25_000_000,
                 min_aspect_ratio: 0.75,
                 max_aspect_ratio: 1.33,
+                output_max_width: 1024,
+                output_max_height: 1024,
             },
 
             Self::Banner => ImageRules {
@@ -108,6 +115,8 @@ impl ProfileImageType {
                 max_pixels: 25_000_000,
                 min_aspect_ratio: 2.0,
                 max_aspect_ratio: 5.0,
+                output_max_width: 2048,
+                output_max_height: 1024,
             },
         }
     }
@@ -131,7 +140,7 @@ pub struct NewProfileVersion {
     pub about: String,
     pub created_by_member_id: i64,
 }
-
+//TODO think if profiles images should be tied to profile versions as they are not cared by or interacting with versions.
 pub struct NewProfileImage {
     pub profile_id: i64,
     pub image_type: ProfileImageType,

@@ -13,24 +13,20 @@
 <section class="profile">
     <div class="box profile-box">
 
-        {% if let Some(banner) = organization_profile.banner %}
         <img
                 class="profile-banner"
-                src="{{ banner.url }}"
-                alt="{{ banner.alt }}"
+                src="{{ organization_profile.banner.url }}"
+                alt="{{ organization_profile.banner.alt }}"
         >
-        {% endif %}
 
         <div class="profile-header">
             <div class="profile-header-content">
 
-                {% if let Some(logo) = organization_profile.logo %}
                 <img
                         class="profile-logo"
-                        src="{{ logo.url }}"
-                        alt="{{ logo.alt }}"
+                        src="{{ organization_profile.logo.url }}"
+                        alt="{{ organization_profile.logo.alt }}"
                 >
-                {% endif %}
 
                 <div class="profile-identity">
                     <h1>{{ organization_profile.display_name }}</h1>
