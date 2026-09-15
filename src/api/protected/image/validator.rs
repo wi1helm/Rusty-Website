@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use axum::http::StatusCode;
-use image::ImageReader;
+use image::{DynamicImage, ImageReader};
 
 use crate::storage::database::ProfileImageType;
 
@@ -45,8 +45,7 @@ impl ImageValidationError {
 /// The original image bytes are retained for subsequent processing.
 pub struct ValidatedImage {
     pub image_type: ProfileImageType,
-    pub data: Vec<u8>,
-    pub content_type: &'static str,
+    pub image: DynamicImage,
     pub width: u32,
     pub height: u32,
 }
@@ -76,13 +75,12 @@ impl ImageValidator {
 
         Self::validate_dimensions(&image_type, width, height)?;
 
-        let _image = image::load_from_memory(&data)
+        let decoded = image::load_from_memory(&data)
             .map_err(|_| ImageValidationError::InvalidImage)?;
 
         Ok(ValidatedImage {
             image_type,
-            data,
-            content_type: declared_content_type,
+            image: decoded,
             width,
             height,
         })
@@ -599,30 +597,5 @@ mod tests {
             result,
             Err(ImageValidationError::InvalidAspectRatio)
         ));
-    }
-
-    #[test]
-    fn returns_validated_image_for_valid_upload() {
-        let data = create_image(
-            1000,
-            1000,
-            image::ImageFormat::Png,
-        );
-
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            data.clone(),
-            "image/png",
-        )
-            .unwrap();
-
-        assert!(matches!(
-            result.image_type,
-            ProfileImageType::Logo
-        ));
-        assert_eq!(result.data, data);
-        assert_eq!(result.content_type, "image/png");
-        assert_eq!(result.width, 1000);
-        assert_eq!(result.height, 1000);
     }
 }

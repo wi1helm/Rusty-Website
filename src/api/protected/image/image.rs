@@ -11,7 +11,9 @@ use crate::{
     storage::database::ProfileImageType,
     Context,
 };
-
+use crate::api::protected::get_profile;
+use crate::api::protected::image::normalizer::ImageNormalizer;
+use crate::storage::database::NewProfileImage;
 use super::validator::ImageValidator;
 use super::MAX_IMAGE_SIZE;
 
@@ -37,29 +39,74 @@ pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUs
         }
     };
 
-    tracing::debug!(
-        organization_id = user.organization.id,
-        image_type = validated.image_type.as_str(),
-        content_type = validated.content_type,
-        width = validated.width,
-        height = validated.height,
-        file_size = validated.data.len(),
-        "profile image passed validation"
+    let normalized = match ImageNormalizer::normalize(validated) {
+        Ok(image) => image,
+        Err(error) => {
+            tracing::error!(?error, organization_id = user.organization.id, "profile image normalization failed");
+            return error.status_code().into_response();
+        }
+    };
+
+
+
+    let profile = match get_profile(&context, user.organization.id).await {
+        Ok(profile) => profile,
+        Err(status) => return status.into_response(),
+    };
+
+    let storage_key = format!(
+        "organizations/{}/profile/{}/{}.webp",
+        user.organization.id,
+        normalized.image_type.as_str(),
+        uuid::Uuid::new_v4(),
     );
 
-    // TODO:
-    // Generate storage key.
+    let file_size = normalized.data.len() as i64;
 
-    // TODO:
-    // Upload to object storage.
+    match context.public_object_storage.put(&storage_key, normalized.data, normalized.content_type).await {
+        Ok(()) => {}
+        Err(error) => {
+            tracing::error!(?error,organization_id = user.organization.id,storage_key = %storage_key,"failed to upload profile image");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    }
 
-    // TODO:
-    // Save image to database.
+    let new_image = NewProfileImage {
+        profile_id: profile.id,
+        image_type: normalized.image_type,
+        storage_key: storage_key.clone(),
+        content_type: normalized.content_type.to_string(),
+        width: normalized.width as i32,
+        height: normalized.height as i32,
+        file_size,
+    };
 
-    // TODO:
-    // Delete old object after successful database update.
+    let old_image = match context.database.save_profile_image(new_image).await {
+        Ok(old_image) => old_image,
+        Err(error) => {
+            tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to save profile image to database");
 
-    let _ = context;
+            match context.public_object_storage.delete(&storage_key).await {
+                Ok(()) => {}
+                Err(cleanup_error) => {
+                    tracing::error!(?cleanup_error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to clean up profile image after database failure");
+                }
+            }
+
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+
+    match old_image {
+        Some(old_image) => match context.public_object_storage.delete(&old_image.storage_key).await {
+            Ok(()) => {}
+            Err(error) => {
+                tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %old_image.storage_key,"failed to delete old profile image");
+            }
+        },
+        None => {}
+    }
 
     Redirect::to("/profile").into_response()
 }
