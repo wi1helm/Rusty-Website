@@ -1,0 +1,238 @@
+/* =========================================================
+   Image hover editor
+   ========================================================= */
+
+.profile-image-editor {
+    position: relative;
+    overflow: hidden;
+
+    cursor: pointer;
+}
+
+.profile-image-editor img {
+    transition: filter 0.15s ease;
+}
+
+.profile-image-overlay {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.25);
+
+    opacity: 0;
+
+    transition: opacity 0.15s ease;
+
+    pointer-events: none;
+}
+
+.profile-image-editor:hover .profile-image-overlay {
+    opacity: 1;
+}
+
+.profile-image-editor:hover img {
+    filter: brightness(0.75);
+}
+
+.profile-image-edit-icon {
+    padding: 0.65rem 1rem;
+
+    color: white;
+
+    background: rgba(0, 0, 0, 0.75);
+
+    border-radius: 8px;
+
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   Upload modal
+   ========================================================= */
+
+.image-upload-modal {
+    position: fixed;
+
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 1.5rem;
+
+    box-sizing: border-box;
+
+    background: rgba(0, 0, 0, 0.55);
+
+    z-index: 1000;
+}
+
+.image-upload-modal[hidden] {
+    display: none !important;
+}
+
+
+/* =========================================================
+   Upload dialog
+   ========================================================= */
+
+.image-upload-dialog {
+    position: relative;
+
+    width: 100%;
+    max-width: 520px;
+
+    padding: 2rem;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.image-upload-dialog h2 {
+    margin: 0 0 0.5rem;
+}
+
+.image-upload-description {
+    margin: 0 0 1.5rem;
+
+    color: var(--muted);
+}
+
+
+/* =========================================================
+   Close button
+   ========================================================= */
+
+.image-upload-close {
+    position: absolute;
+
+    top: 0.75rem;
+    right: 0.75rem;
+
+    width: 36px;
+    height: 36px;
+
+    border: 0;
+    border-radius: 8px;
+
+    color: var(--text);
+    background: transparent;
+
+    font-size: 1.5rem;
+
+    cursor: pointer;
+}
+
+.image-upload-close:hover {
+    background: var(--border);
+}
+
+
+/* =========================================================
+   Dropzone
+   ========================================================= */
+
+.image-upload-dropzone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 180px;
+
+    padding: 2rem;
+
+    box-sizing: border-box;
+
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+
+    color: var(--muted);
+
+    text-align: center;
+
+    cursor: pointer;
+}
+
+.image-upload-dropzone:hover,
+.image-upload-dropzone.dragging {
+    border-color: var(--primary);
+
+    background: var(--background);
+}
+
+.image-upload-dropzone-text strong {
+    color: var(--primary);
+}
+
+
+/* =========================================================
+   Preview
+   ========================================================= */
+
+.image-upload-preview {
+    margin-top: 1rem;
+
+    text-align: center;
+}
+
+.image-upload-preview[hidden] {
+    display: none;
+}
+
+.image-upload-preview img {
+    display: block;
+
+    max-width: 100%;
+    max-height: 240px;
+
+    margin: 0 auto;
+
+    border-radius: 8px;
+}
+
+
+/* =========================================================
+   Modal actions
+   ========================================================= */
+
+.image-upload-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 1rem;
+
+    margin-top: 1.5rem;
+}
+
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 640px) {
+
+    .image-upload-dialog {
+        padding: 1.5rem;
+    }
+
+    .image-upload-actions {
+        flex-direction: column-reverse;
+    }
+
+    .image-upload-actions .button {
+        width: 100%;
+    }
+}

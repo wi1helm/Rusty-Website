@@ -21,7 +21,7 @@ pub struct Profile {
     pub display_name: String,
     // The name used in urls to represent this unique profile.
     pub slug: String,
-
+    pub version: i32,
     pub about: String,
 
     pub locations: Vec<Location>,
@@ -96,7 +96,7 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         display_name: profile_version.display_name.clone(),
 
         slug: organization.slug.clone(),
-
+        version: profile_version.version,
         about: profile_version.about.clone(),
 
         locations: vec![
