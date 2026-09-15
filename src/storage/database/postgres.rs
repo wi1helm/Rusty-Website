@@ -2,7 +2,7 @@
 use async_trait::async_trait;
 use sqlx::PgPool;
 use crate::config;
-use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfileVersion, DatabaseProfile, DatabaseMemberWithOrganization, NewProfileVersion, PublishProfileError, CreateOrganizationError};
+use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfileVersion, DatabaseProfile, DatabaseMemberWithOrganization, NewProfileVersion, PublishProfileError, CreateOrganizationError, NewProfileImage, DatabaseImage, ProfileImageType};
 
 
 #[derive(Clone)]
@@ -146,6 +146,8 @@ impl PostgresDatabase {
 
         Ok(())
     }
+
+
 }
 
 #[async_trait]
@@ -359,6 +361,169 @@ impl Database for PostgresDatabase {
 
         Ok(())
     }
+    async fn find_profile_image(&self, profile_id: i64, image_type: ProfileImageType, ) -> Result<Option<DatabaseImage>, DatabaseError> {
+        let image = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                profile_id,
+                image_type,
+                storage_key,
+                content_type,
+                width,
+                height,
+                file_size
+            FROM profile_images
+            WHERE profile_id = $1
+              AND image_type = $2
+            "#,
+            profile_id,
+            image_type.as_str()
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(image) = image else {
+            return Ok(None);
+        };
+
+        let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| {
+                DatabaseError::InvalidProfileImageType(image.image_type.clone())
+            })?;
+
+        Ok(Some(DatabaseImage {
+            id: image.id,
+            profile_id: image.profile_id,
+            image_type,
+            storage_key: image.storage_key,
+            content_type: image.content_type,
+            width: image.width,
+            height: image.height,
+            file_size: image.file_size,
+        }))
+    }
+
+    async fn save_profile_image(&self, image: NewProfileImage) -> Result<Option<DatabaseImage>, DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+
+        let old_image = sqlx::query!(
+            r#"
+            SELECT
+                id,
+                profile_id,
+                image_type,
+                storage_key,
+                content_type,
+                width,
+                height,
+                file_size
+            FROM profile_images
+            WHERE profile_id = $1
+              AND image_type = $2
+            FOR UPDATE
+            "#,
+            image.profile_id,
+            image.image_type.as_str()
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        sqlx::query!(
+            r#"
+            INSERT INTO profile_images (
+                profile_id,
+                image_type,
+                storage_key,
+                content_type,
+                width,
+                height,
+                file_size
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (profile_id, image_type)
+            DO UPDATE SET
+                storage_key = EXCLUDED.storage_key,
+                content_type = EXCLUDED.content_type,
+                width = EXCLUDED.width,
+                height = EXCLUDED.height,
+                file_size = EXCLUDED.file_size,
+                updated_at = NOW()
+            "#,
+            image.profile_id,
+            image.image_type.as_str(),
+            image.storage_key,
+            image.content_type,
+            image.width,
+            image.height,
+            image.file_size,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        let Some(old_image) = old_image else {
+            return Ok(None);
+        };
+
+        let image_type = ProfileImageType::from_str(&old_image.image_type).ok_or_else(|| {
+            DatabaseError::InvalidProfileImageType(old_image.image_type.clone())
+        })?;
+
+        Ok(Some(DatabaseImage {
+            id: old_image.id,
+            profile_id: old_image.profile_id,
+            image_type,
+            storage_key: old_image.storage_key,
+            content_type: old_image.content_type,
+            width: old_image.width,
+            height: old_image.height,
+            file_size: old_image.file_size,
+        }))
+    }
+
+    async fn delete_profile_image(&self, profile_id: i64, image_type: ProfileImageType) -> Result<Option<DatabaseImage>, DatabaseError> {
+        let image = sqlx::query!(
+            r#"
+            DELETE FROM profile_images
+            WHERE profile_id = $1
+              AND image_type = $2
+            RETURNING
+                id,
+                profile_id,
+                image_type,
+                storage_key,
+                content_type,
+                width,
+                height,
+                file_size
+            "#,
+            profile_id,
+            image_type.as_str()
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(image) = image else {
+            return Ok(None);
+        };
+
+        let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| {
+            DatabaseError::InvalidProfileImageType(image.image_type.clone())
+        })?;
+
+        Ok(Some(DatabaseImage {
+            id: image.id,
+            profile_id: image.profile_id,
+            image_type,
+            storage_key: image.storage_key,
+            content_type: image.content_type,
+            width: image.width,
+            height: image.height,
+            file_size: image.file_size,
+        }))
+    }
+
 }
 
 

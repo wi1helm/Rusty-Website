@@ -7,6 +7,9 @@ use async_trait::async_trait;
 pub enum DatabaseError {
     #[error("database error")]
     Sqlx(#[from] sqlx::Error),
+
+    #[error("invalid profile image type in database: {0}")]
+    InvalidProfileImageType(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -57,6 +60,59 @@ impl OrganizationRoles {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProfileImageType {
+    Logo,
+    Banner,
+}
+pub struct ImageRules {
+    pub min_width: u32,
+    pub min_height: u32,
+    pub max_width: u32,
+    pub max_height: u32,
+    pub max_pixels: u64,
+    pub min_aspect_ratio: f64,
+    pub max_aspect_ratio: f64,
+}
+impl ProfileImageType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ProfileImageType::Logo => "logo",
+            ProfileImageType::Banner => "banner",
+        }
+    }
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "logo" => Some(Self::Logo),
+            "banner" => Some(Self::Banner),
+            _ => None,
+        }
+    }
+    pub fn rules(&self) -> ImageRules {
+        match self {
+            Self::Logo => ImageRules {
+                min_width: 200,
+                min_height: 200,
+                max_width: 5000,
+                max_height: 5000,
+                max_pixels: 25_000_000,
+                min_aspect_ratio: 0.75,
+                max_aspect_ratio: 1.33,
+            },
+
+            Self::Banner => ImageRules {
+                min_width: 800,
+                min_height: 200,
+                max_width: 5000,
+                max_height: 2500,
+                max_pixels: 25_000_000,
+                min_aspect_ratio: 2.0,
+                max_aspect_ratio: 5.0,
+            },
+        }
+    }
+}
+
 pub struct NewOrganization {
     pub name: String,
     pub slug: String,
@@ -74,6 +130,16 @@ pub struct NewProfileVersion {
     pub display_name: String,
     pub about: String,
     pub created_by_member_id: i64,
+}
+
+pub struct NewProfileImage {
+    pub profile_id: i64,
+    pub image_type: ProfileImageType,
+    pub storage_key: String,
+    pub content_type: String,
+    pub width: i32,
+    pub height: i32,
+    pub file_size: i64,
 }
 
 pub struct DatabaseOrganization {
@@ -110,11 +176,10 @@ pub struct DatabaseProfileVersion {
 
 pub struct DatabaseImage {
     pub id: i64,
-    pub organization_id: i64,
-
+    pub profile_id: i64,
+    pub image_type: ProfileImageType,
     pub storage_key: String,
     pub content_type: String,
-
     pub width: i32,
     pub height: i32,
     pub file_size: i64,
@@ -134,9 +199,10 @@ pub trait Database: Send + Sync {
     async fn find_organization_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseOrganization>, DatabaseError>;
     async fn find_member_with_organization_by_member_id(&self, member_id: i64) -> Result<Option<DatabaseMemberWithOrganization>, DatabaseError>;
     async fn find_organization_by_slug(&self, slug: &str) -> Result<Option<DatabaseOrganization>, DatabaseError>;
-
     async fn find_profile_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseProfile>, DatabaseError>;
     async fn find_profile_version_by_version_id(&self, version_id: i64) -> Result<Option<DatabaseProfileVersion>, DatabaseError>;
-
     async fn publish_current_profile_version(&self, profile_id: i64) -> Result<(), PublishProfileError>;
+    async fn find_profile_image(&self, profile_id: i64, image_type: ProfileImageType) -> Result<Option<DatabaseImage>, DatabaseError>;
+    async fn save_profile_image(&self, image: NewProfileImage) -> Result<Option<DatabaseImage>, DatabaseError>;
+    async fn delete_profile_image(&self, profile_id: i64, image_type: ProfileImageType) -> Result<Option<DatabaseImage>, DatabaseError>;
 }
