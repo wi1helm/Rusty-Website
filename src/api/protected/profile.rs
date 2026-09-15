@@ -4,6 +4,7 @@ use axum::Form;
 use axum::http::StatusCode;
 use axum::response::Redirect;
 use serde::Deserialize;
+use crate::api::protected::get_profile;
 use crate::api::validation::is_valid_name;
 use crate::auth::CurrentUser;
 use crate::Context;
@@ -155,18 +156,3 @@ pub async fn publish(State(context): State<Context>, CurrentUser(user): CurrentU
 }
 
 
-async fn get_profile(context: &Context, organization_id: i64, ) -> Result<DatabaseProfile, StatusCode> {
-    match context.database.find_profile_by_organization_id(organization_id).await {
-        Ok(Some(profile)) => Ok(profile),
-
-        Ok(None) => {
-            tracing::error!(organization_id, "organization exists without a profile");
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-
-        Err(error) => {
-            tracing::error!(?error,organization_id,"failed to load organization profile");
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
