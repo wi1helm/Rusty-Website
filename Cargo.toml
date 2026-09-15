@@ -9,7 +9,7 @@ edition = "2024"
 # Web / HTTP
 # ─────────────────────────────────────────────
 # HTTP framework and routing.
-axum = "=0.8.9"
+axum = { version = "=0.8.9", features = ["multipart"] }
 # Additional Axum extractors, including cookie support.
 axum-extra = { version = "=0.12.6", features = ["cookie"] }
 # Static file serving via ServeDir.
@@ -55,6 +55,7 @@ askama_web = { version = "=0.16.0", features = ["axum-0.8"] }
 thiserror = "=2.0.20"
 # Structured application logging.
 tracing = "=0.1.44"
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 # ─────────────────────────────────────────────
 # Utilities
 # ─────────────────────────────────────────────
@@ -62,3 +63,9 @@ tracing = "=0.1.44"
 rand = "=0.10.2"
 # Encoding/decoding binary data as hexadecimal.
 hex = "=0.4.3"
+# This crate provides native rust implementations of image encoding and decoding as well as some basic image manipulation functions.
+image = "=0.25.10"
+
+
+[dev-dependencies]
+tower = { version = "0.5.3", features = ["util"] }

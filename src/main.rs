@@ -37,6 +37,10 @@ pub struct Context {
 
 #[tokio::main]
 async fn main() {
+
+    tracing_subscriber::fmt().with_env_filter(tracing_subscriber::EnvFilter::from_default_env()).init();
+
+
     // Get database and cache urls from environmental variables set in compose.yaml.
     // Panic if any is not present!
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
