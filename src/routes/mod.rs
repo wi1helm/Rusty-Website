@@ -7,6 +7,7 @@
 
 use axum::Router;
 use axum::response::{IntoResponse, Redirect, Response};
+use axum::routing::get;
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use tower_http::services::ServeDir;
 use crate::{api, Context};
@@ -14,6 +15,7 @@ use crate::{api, Context};
 mod public;
 mod protected;
 mod errors;
+mod images;
 
 /// Builds the complete application router.
 ///
@@ -31,6 +33,7 @@ pub fn router(context: Context) -> Router {
         .merge(public::router())
         .merge(protected::router(context.clone()))
         .nest("/api", api::router(context.clone()))
+        .route("/images/{*key}", get(images::get_image), )
         // Expose the local `static/` directory as `/assets/*` over HTTP.
         // The URL path is intentionally `/assets` rather than `/static` so the
         // filesystem layout stays an internal implementation detail.
