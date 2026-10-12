@@ -4,7 +4,7 @@ use aws_sdk_s3::{
     primitives::ByteStream,
     Client,
 };
-
+use aws_sdk_s3::error::ProvideErrorMetadata;
 use crate::config::{DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 
 use super::{ObjectStorage, ObjectStorageError};
@@ -102,7 +102,8 @@ impl S3ObjectStorage {
 
         // Profile images are public content, so allow browsers
         // to download objects from this bucket without authentication.
-        storage.ensure_public_access().await?;
+        //TODO removes due to images going trough rust application and not direcyly to database. could be bad for bandwith etc. check later on.
+        //storage.ensure_public_access().await?;
 
         // Make sure the default profile images exist.
         storage.ensure_default_objects().await?;
@@ -112,13 +113,7 @@ impl S3ObjectStorage {
 
     /// Makes sure the configured bucket exists.
     async fn ensure_bucket(&self) -> Result<(), ObjectStorageError> {
-        match self
-            .client
-            .head_bucket()
-            .bucket(&self.bucket)
-            .send()
-            .await
-        {
+        match self.client.head_bucket().bucket(&self.bucket).send().await {
             Ok(_) => {
                 // The bucket already exists.
                 Ok(())
@@ -261,16 +256,19 @@ impl ObjectStorage for S3ObjectStorage {
             .send()
             .await
             .map_err(|error| {
-                ObjectStorageError::Storage(error.to_string())
+                // Distinguish a missing object from other storage failures.
+                if error.as_service_error().and_then(|service_error| service_error.code()) == Some("NoSuchKey") {
+                    ObjectStorageError::NotFound
+                } else {
+                    ObjectStorageError::Storage(error.to_string())
+                }
             })?;
 
         let data = result
             .body
             .collect()
             .await
-            .map_err(|error| {
-                ObjectStorageError::Storage(error.to_string())
-            })?;
+            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(data.into_bytes().to_vec())
     }

@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - ./static:/app/static
     environment:
@@ -14,7 +14,7 @@ services:
       S3_BUCKET: app
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
-      S3_PUBLIC_URL: http://localhost:9000/app
+      S3_PUBLIC_URL: https://rust.wi1helm.dev/images
       RUST_LOG: debug
     depends_on:
       postgres:
@@ -23,6 +23,20 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server
 
   postgres:
     image: postgres:18
@@ -41,7 +55,7 @@ services:
   redis:
     image: redis:8
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -54,18 +68,15 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     volumes:
       - minio_data:/data
-    ports:
-      - "9000:9000"
     healthcheck:
-      test: [ "CMD", "mc", "ready", "local" ]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-
   sqlx-tools:
     image: rust:1.97.1
-    profiles: [ "tools" ]
+    profiles: ["tools"]
     working_dir: /app
     volumes:
       - .:/app
@@ -80,3 +91,5 @@ volumes:
   postgres_data:
   minio_data:
   cargo_registry:
+  caddy_data:
+  caddy_config:

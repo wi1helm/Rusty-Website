@@ -140,17 +140,11 @@ mod tests {
 
     use super::*;
 
-    fn create_image(
-        width: u32,
-        height: u32,
-        format: image::ImageFormat,
-    ) -> Vec<u8> {
+    fn create_image(width: u32, height: u32, format: image::ImageFormat) -> Vec<u8> {
         let image = image::DynamicImage::new_rgb8(width, height);
         let mut data = Vec::new();
 
-        image
-            .write_to(&mut Cursor::new(&mut data), format)
-            .unwrap();
+        image.write_to(&mut Cursor::new(&mut data), format).unwrap();
 
         data
     }
