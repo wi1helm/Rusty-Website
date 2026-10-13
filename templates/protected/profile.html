@@ -6,20 +6,27 @@
 
 {% block site_styles %}
 <link rel="stylesheet" href="/assets/css/profile.css">
+<link rel="stylesheet" href="/assets/css/profile_editor.css">
 <link rel="stylesheet" href="/assets/css/profile_upload.css">
 {% endblock %}
 
 {% block protected_content %}
 
-<section class="profile">
+<section class="profile-builder">
 
   <div class="box profile-box">
 
+    <!-- Banner -->
+
     <div
-            class="profile-image-editor profile-banner-editor"
+            class="profile-banner-wrap profile-image-editor"
             data-image-type="banner"
             data-upload-url="/api/profile/image"
+            role="button"
+            tabindex="0"
+            aria-label="Edit organization banner"
     >
+
       <img
               class="profile-banner"
               src="{{ organization_profile.banner.url }}"
@@ -27,19 +34,28 @@
       >
 
       <div class="profile-image-overlay">
-        <span class="profile-image-edit-icon">✎</span>
+        <span class="profile-image-edit-icon" aria-hidden="true">✎</span>
+        <span class="profile-image-overlay-label">Edit banner</span>
       </div>
+
     </div>
 
-    <div class="profile-header">
+
+    <!-- Organization identity -->
+
+    <header class="profile-header">
 
       <div class="profile-header-content">
 
         <div
-                class="profile-image-editor profile-logo-editor"
+                class="profile-logo-wrap profile-image-editor"
                 data-image-type="logo"
                 data-upload-url="/api/profile/image"
+                role="button"
+                tabindex="0"
+                aria-label="Edit organization logo"
         >
+
           <img
                   class="profile-logo"
                   src="{{ organization_profile.logo.url }}"
@@ -47,13 +63,42 @@
           >
 
           <div class="profile-image-overlay">
-            <span class="profile-image-edit-icon">✎</span>
+            <span class="profile-image-edit-icon" aria-hidden="true">✎</span>
           </div>
+
         </div>
+
 
         <div class="profile-identity">
 
-          <h1>{{ organization_profile.display_name }}</h1>
+          <div class="profile-name-row">
+
+            <h1 id="profile-display-name">{{ organization_profile.display_name }}</h1>
+
+            <button
+                    type="button"
+                    class="profile-edit-button"
+                    id="edit-display-name"
+                    aria-label="Edit organization display name"
+                    title="Edit display name"
+            >
+              <svg
+                      viewBox="0 0 24 24"
+                      width="17"
+                      height="17"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+              >
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+              </svg>
+            </button>
+
+          </div>
 
           <p class="profile-legal-name">
             {{ organization_name }}
@@ -63,136 +108,420 @@
 
       </div>
 
+    </header>
+
+
+    <!-- Initial link data: the server renders existing links here,
+         links.js reads them and builds the link bar. -->
+
+    <div id="initial-profile-links" hidden>
+
+      {% for link in organization_profile.links %}
+
+      <span
+              class="initial-profile-link"
+              data-label="{{ link.label }}"
+              data-url="{{ link.url }}"
+      ></span>
+
+      {% endfor %}
+
     </div>
 
 
-    <div class="profile-content">
+    <!-- Link bar: built by links.js. The "Public profile" shortcut
+         is generated there and only exists in the editor. -->
 
-      <div class="profile-public-link">
-        <a href="/{{ organization_profile.slug }}">
-          website.com/{{ organization_profile.slug }}
-        </a>
+    <nav
+            id="profile-link-bar"
+            class="profile-link-bar"
+            aria-label="Organization links"
+            data-profile-slug="{{ organization_profile.slug }}"
+    >
 
-        <span class="profile-version">
-          v{{ organization_profile.version }}
-        </span>
-      </div>
+      <span class="profile-links-loading">
+        Loading links...
+      </span>
 
-      <form method="post" action="/api/profile/edit">
+    </nav>
 
-        <section class="profile-section">
 
-          <h2>Profile information</h2>
+    <!-- Main content -->
 
-          <div class="form-group">
+    <main class="profile-content">
 
-            <label for="display-name">
-              Display name
-            </label>
 
-            <input
-                    id="display-name"
-                    name="display_name"
-                    type="text"
-                    value="{{ organization_profile.display_name }}"
-                    required
+      <!-- About -->
+
+      <section class="profile-section profile-about-section">
+
+        <div class="profile-section-heading">
+
+          <div>
+            <h2>About</h2>
+            <p class="profile-section-description">
+              Tell people about your organization.
+            </p>
+          </div>
+
+          <button
+                  type="button"
+                  class="profile-edit-button"
+                  id="edit-about"
+                  aria-label="Edit about section"
+                  title="Edit about"
+          >
+            <svg
+                    viewBox="0 0 24 24"
+                    width="17"
+                    height="17"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
             >
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+            </svg>
+          </button>
 
+        </div>
+
+        <div
+                id="profile-about-content"
+                class="profile-about-content"
+        >{{ organization_profile.about }}</div>
+
+      </section>
+
+
+      <!-- Organization graph placeholder
+           (later: org_graph.js viewer + org_graph_editor.js) -->
+
+      <section class="profile-section profile-graph-section">
+
+        <div class="profile-section-heading">
+
+          <div>
+            <h2>Organization graph</h2>
+            <p class="profile-section-description">
+              Visualize your organization's structure.
+            </p>
           </div>
 
+        </div>
 
-          <div class="form-group">
+        <div
+                id="organization-graph"
+                class="organization-graph"
+                aria-label="Organization graph workspace"
+        >
 
-            <label for="about">
-              About
-            </label>
+          <div class="organization-graph-placeholder">
+            <span class="organization-graph-placeholder-icon" aria-hidden="true">
+              <svg
+                      viewBox="0 0 24 24"
+                      width="30"
+                      height="30"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+              >
+                <rect x="8" y="2" width="8" height="6" rx="1"/>
+                <rect x="2" y="16" width="8" height="6" rx="1"/>
+                <rect x="14" y="16" width="8" height="6" rx="1"/>
+                <path d="M12 8v4"/>
+                <path d="M6 16v-4h12v4"/>
+              </svg>
+            </span>
 
-            <textarea
-                    id="about"
-                    name="about"
-                    rows="8"
-                    maxlength="5000"
-            >{{ organization_profile.about }}</textarea>
+            <p>Organization graph</p>
 
+            <span>
+              Your organization's structure will appear here.
+            </span>
           </div>
 
-        </section>
+        </div>
+
+      </section>
 
 
-        <section class="profile-section">
+      <!-- Save and publish -->
 
-          <h2>Locations</h2>
+      <footer class="profile-actions">
 
-          <div class="profile-locations">
+        <div
+                id="profile-editor-status"
+                class="profile-editor-status"
+                role="status"
+                aria-live="polite"
+        ></div>
 
-            {% for location in organization_profile.locations %}
-            <div class="profile-location">
-              {{ location.city }}, {{ location.country }}
-            </div>
-            {% endfor %}
+        <div class="profile-action-buttons">
 
-          </div>
+          <button
+                  type="button"
+                  class="button secondary"
+                  id="save-profile"
+          >
+            Save changes
+          </button>
 
-          <!-- TODO: Add location editing. -->
+          <button
+                  type="button"
+                  class="button primary"
+                  id="publish-profile"
+          >
+            Publish
+          </button>
 
-        </section>
+        </div>
 
+      </footer>
 
-        {% if !organization_profile.links.is_empty() %}
-
-        <section class="profile-section">
-
-          <h2>Links</h2>
-
-          <div class="profile-links">
-
-            {% for link in organization_profile.links %}
-            <a href="{{ link.url }}">
-              {{ link.label }}
-            </a>
-            {% endfor %}
-
-          </div>
-
-          <!-- TODO: Add link editing. -->
-
-        </section>
-
-        {% endif %}
-
-
-        <section class="profile-section">
-
-          <div class="profile-actions">
-
-            <button type="submit" class="button primary">
-              Save changes
-            </button>
-
-            <button type="submit" class="button secondary" formaction="/api/profile/publish" formmethod="post">
-              Publish
-            </button>
-
-          </div>
-
-        </section>
-
-      </form>
-
-    </div>
+    </main>
 
   </div>
 
 </section>
 
-</div>
 
-</section>
+<!-- Display name editor -->
 
+<dialog id="display-name-dialog" class="profile-dialog">
+
+  <form id="display-name-form" class="profile-dialog-content">
+
+    <div class="profile-dialog-header">
+
+      <div>
+        <h2>Edit organization name</h2>
+        <p>Choose how your organization appears on its public profile.</p>
+      </div>
+
+      <button
+              type="button"
+              class="profile-dialog-close"
+              data-close-dialog="display-name-dialog"
+              aria-label="Close"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="profile-form-group">
+
+      <label for="display-name-input">
+        Display name
+      </label>
+
+      <input
+              id="display-name-input"
+              name="display_name"
+              type="text"
+              maxlength="120"
+              required
+              autocomplete="organization"
+      >
+
+    </div>
+
+    <div class="profile-dialog-actions">
+
+      <button
+              type="button"
+              class="button secondary"
+              data-close-dialog="display-name-dialog"
+      >
+        Cancel
+      </button>
+
+      <button type="submit" class="button primary">
+        Apply changes
+      </button>
+
+    </div>
+
+  </form>
+
+</dialog>
+
+
+<!-- About editor -->
+
+<dialog id="about-dialog" class="profile-dialog">
+
+  <form id="about-form" class="profile-dialog-content">
+
+    <div class="profile-dialog-header">
+
+      <div>
+        <h2>Edit about</h2>
+        <p>Describe your organization and what it does.</p>
+      </div>
+
+      <button
+              type="button"
+              class="profile-dialog-close"
+              data-close-dialog="about-dialog"
+              aria-label="Close"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="profile-form-group">
+
+      <label for="about-input">
+        About your organization
+      </label>
+
+      <textarea
+              id="about-input"
+              name="about"
+              rows="10"
+              maxlength="5000"
+              placeholder="Tell people about your organization..."
+      ></textarea>
+
+      <div class="profile-character-count">
+        <span id="about-character-count">0</span> / 5000
+      </div>
+
+    </div>
+
+    <div class="profile-dialog-actions">
+
+      <button
+              type="button"
+              class="button secondary"
+              data-close-dialog="about-dialog"
+      >
+        Cancel
+      </button>
+
+      <button type="submit" class="button primary">
+        Apply changes
+      </button>
+
+    </div>
+
+  </form>
+
+</dialog>
+
+
+<!-- Add/edit link dialog -->
+
+<dialog id="link-dialog" class="profile-dialog">
+
+  <form id="link-form" class="profile-dialog-content">
+
+    <div class="profile-dialog-header">
+
+      <div>
+        <h2 id="link-dialog-title">Add a link</h2>
+        <p>Add a website or an external platform.</p>
+      </div>
+
+      <button
+              type="button"
+              class="profile-dialog-close"
+              data-close-dialog="link-dialog"
+              aria-label="Close"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="profile-form-group">
+
+      <label for="link-label-input">
+        Label
+      </label>
+
+      <input
+              id="link-label-input"
+              name="label"
+              type="text"
+              maxlength="60"
+              placeholder="e.g. LinkedIn"
+              required
+      >
+
+    </div>
+
+    <div class="profile-form-group">
+
+      <label for="link-url-input">
+        URL
+      </label>
+
+      <input
+              id="link-url-input"
+              name="url"
+              type="url"
+              maxlength="2048"
+              placeholder="https://example.com"
+              required
+      >
+
+      <p class="profile-field-hint">
+        Enter a complete URL starting with https:// or http://.
+      </p>
+
+    </div>
+
+    <div
+            id="link-form-error"
+            class="profile-form-error"
+            role="alert"
+            hidden
+    ></div>
+
+    <div class="profile-dialog-actions">
+
+      <button
+              type="button"
+              class="button secondary"
+              data-close-dialog="link-dialog"
+      >
+        Cancel
+      </button>
+
+      <button
+              type="submit"
+              class="button primary"
+              id="link-form-submit"
+      >
+        Add link
+      </button>
+
+    </div>
+
+  </form>
+
+</dialog>
+
+
+<!-- Image-upload modal -->
 
 <div id="image-upload-modal" class="image-upload-modal" hidden>
 
-  <div class="image-upload-dialog" role="dialog" aria-modal="true">
+  <div
+          class="image-upload-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="image-upload-title"
+  >
 
     <button
             type="button"
@@ -206,7 +535,10 @@
       Upload image
     </h2>
 
-    <p id="image-upload-description" class="image-upload-description">
+    <p
+            id="image-upload-description"
+            class="image-upload-description"
+    >
       Choose an image or drag one here.
     </p>
 
@@ -254,6 +586,6 @@
 </div>
 
 
-<script src="/assets/js/profile.js"></script>
+<script type="module" src="/assets/js/profile/main.js"></script>
 
 {% endblock %}

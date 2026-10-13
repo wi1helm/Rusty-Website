@@ -1,52 +1,49 @@
 /* =========================================================
-   Profile layout
-   ========================================================= */
+   profile.css  (SHARED: public + protected pages)
+   Display only. No editing controls in here.
+   Load this first; editor pages add profile_editor.css after.
+========================================================= */
 
-.profile {
+/* ---------- Layout ---------- */
+
+.profile-builder {
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     justify-content: center;
-
-    padding: 3rem 2rem;
+    align-items: flex-start;
+    padding: 3rem 1.5rem;
 }
 
 .profile-box {
     width: 100%;
     max-width: 1080px;
-
+    min-width: 0;
+    margin-inline: auto;
+    box-sizing: border-box;
     padding: 0;
-
     overflow: hidden;
 }
 
 
-/* =========================================================
-   Banner
-   ========================================================= */
+/* ---------- Banner ---------- */
 
-.profile-banner-editor {
+.profile-banner-wrap {
     position: relative;
-
     width: 100%;
     height: 260px;
-
     overflow: hidden;
-
-    cursor: pointer;
 }
 
 .profile-banner {
-    width: 100%;
-    height: 260px;
-
     display: block;
-
+    width: 100%;
+    height: 100%;
     object-fit: cover;
 }
 
 
-/* =========================================================
-   Profile header
-   ========================================================= */
+/* ---------- Header ---------- */
 
 .profile-header {
     position: relative;
@@ -55,258 +52,314 @@
 .profile-header-content {
     display: flex;
     align-items: center;
-
     gap: 1.5rem;
-
     padding: 2rem;
 }
 
-.profile-logo-editor {
-    width: 96px;
-    height: 96px;
-
+.profile-logo-wrap {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-
+    width: 96px;
+    height: 96px;
     flex: 0 0 auto;
-
     overflow: hidden;
-
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-
-    background: var(--surface);
 }
 
 .profile-logo {
-    width: 96px;
-    height: 96px;
-
     display: block;
-
+    width: 100%;
+    height: 100%;
     object-fit: contain;
 }
 
 .profile-identity {
+    min-width: 0;
     flex: 1;
 }
 
-.profile-identity h1 {
-    margin: 0;
+.profile-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
 
+.profile-name-row h1 {
+    min-width: 0;
+    margin: 0;
     font-size: 2rem;
     line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .profile-legal-name {
-    margin: 0.35rem 0 0;
-
+    margin: 0.4rem 0 0;
     color: var(--muted);
     font-size: 0.9rem;
+    overflow-wrap: anywhere;
 }
 
 
-/* =========================================================
-   Public profile link
-   ========================================================= */
+/* ---------- Link bar ---------- */
 
-.profile-public-link {
-    position: relative;
-
+.profile-link-bar {
     display: flex;
     align-items: center;
-
-    gap: 0.5rem;
-
-    width: fit-content;
-
-    margin-top: -0.65rem;
-
-    padding: 0 0.75rem;
-
-    background: var(--surface);
-
-    font-size: 0.85rem;
-    font-weight: 600;
-
-    z-index: 1;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0 2rem 2rem;
 }
 
-.profile-public-link a {
-    color: var(--primary);
+.profile-link-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 44px;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.85rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition:
+            background 150ms ease,
+            border-color 150ms ease,
+            box-shadow 150ms ease;
+}
+
+.profile-link-item:hover {
+    border-color: var(--primary);
+}
+
+.profile-link-item:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.profile-link-anchor {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+    color: inherit;
     text-decoration: none;
 }
 
-.profile-public-link a:hover {
-    text-decoration: underline;
+.profile-link-anchor:hover .profile-link-label {
+    color: var(--primary);
 }
 
-.profile-version {
+.profile-link-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
     color: var(--muted);
-    font-weight: 500;
+}
+
+.profile-link-icon img {
+    display: block;
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.profile-link-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
 
-/* =========================================================
-   Profile content
-   ========================================================= */
+/* ---------- Content sections ---------- */
 
 .profile-content {
     position: relative;
-
     padding: 0 2rem 2rem;
 }
 
 .profile-section {
     padding: 2rem 0;
-
     border-top: 1px solid var(--border);
 }
 
 .profile-section h2 {
-    margin: 0 0 1rem;
-
+    margin: 0;
     font-size: 1.2rem;
+    line-height: 1.4;
 }
 
-
-/* =========================================================
-   Locations
-   ========================================================= */
-
-.profile-locations {
-    display: flex;
-    flex-direction: column;
-
-    gap: 0.75rem;
+.profile-section-description {
+    margin: 0.3rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
-.profile-location {
-    color: var(--text);
-}
-
-
-/* =========================================================
-   Links
-   ========================================================= */
-
-.profile-links {
-    display: flex;
-    flex-wrap: wrap;
-
-    gap: 1rem;
-}
-
-.profile-links a {
-    color: var(--primary);
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.profile-links a:hover {
-    text-decoration: underline;
-}
-
-
-/* =========================================================
-   Form
-   ========================================================= */
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-
-    gap: 0.5rem;
-
-    max-width: 760px;
-
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    font-weight: 600;
-}
-
-.form-group input,
-.form-group textarea {
-    width: 100%;
-
-    padding: 0.75rem 1rem;
-
-    box-sizing: border-box;
-
-    font: inherit;
-    color: var(--text);
-
-    background: var(--surface);
-
-    border: 1px solid var(--border);
-    border-radius: 8px;
-}
-
-.form-group textarea {
-    resize: vertical;
-
-    min-height: 160px;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-    outline: 2px solid var(--primary);
-    outline-offset: 1px;
-}
-
-
-/* =========================================================
-   Actions
-   ========================================================= */
-
-.profile-actions {
+.profile-section-heading {
     display: flex;
     align-items: center;
-
+    justify-content: space-between;
     gap: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 
-/* =========================================================
-   Responsive
-   ========================================================= */
+/* ---------- About ---------- */
+
+.profile-about-section {
+    width: 100%;
+}
+
+.profile-about-content {
+    width: 100%;
+    min-height: 2rem;
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+
+/* ---------- Organization graph (container) ----------
+   Move to org_graph.css once the graph viewer exists. */
+
+.profile-graph-section {
+    width: 100%;
+}
+
+.organization-graph {
+    position: relative;
+    width: 100%;
+    min-height: 420px;
+    box-sizing: border-box;
+    overflow: hidden;
+    background-color: var(--surface);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 22px 22px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.organization-graph-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    color: var(--muted);
+    text-align: center;
+    pointer-events: none;
+}
+
+.organization-graph-placeholder-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 0.25rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.organization-graph-placeholder p {
+    margin: 0;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.organization-graph-placeholder > span:last-child {
+    max-width: 320px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+
+/* ---------- Responsive ---------- */
 
 @media (max-width: 640px) {
 
-    .profile {
+    .profile-builder {
         padding: 1rem;
     }
 
-    .profile-banner,
-    .profile-banner-editor {
+    .profile-banner-wrap {
         height: 180px;
     }
 
     .profile-header-content {
-        flex-direction: column;
-        align-items: stretch;
-
+        align-items: flex-start;
+        gap: 1rem;
         padding: 1.5rem;
     }
 
-    .profile-logo-editor {
-        width: 80px;
-        height: 80px;
+    .profile-logo-wrap {
+        width: 76px;
+        height: 76px;
     }
 
-    .profile-identity h1 {
+    .profile-name-row {
+        align-items: flex-start;
+    }
+
+    .profile-name-row h1 {
         font-size: 1.5rem;
+    }
+
+    .profile-identity {
+        padding-top: 0.1rem;
+    }
+
+    .profile-link-bar {
+        justify-content: flex-start;
+        gap: 0.5rem;
+        padding: 0 1.5rem 1.5rem;
+    }
+
+    .profile-link-item {
+        gap: 0.4rem;
+        padding: 0.55rem 0.65rem;
+    }
+
+    .profile-link-anchor {
+        gap: 0.4rem;
+    }
+
+    .profile-link-label {
+        font-size: 0.82rem;
     }
 
     .profile-content {
         padding: 0 1.5rem 1.5rem;
     }
 
-    .profile-actions {
-        flex-direction: column;
-        align-items: stretch;
+    .profile-section {
+        padding: 1.5rem 0;
+    }
+
+    .organization-graph {
+        min-height: 300px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-link-item {
+        transition: none;
     }
 }

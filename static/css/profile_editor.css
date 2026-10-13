@@ -1,0 +1,388 @@
+/* =========================================================
+   profile_editor.css  (PROTECTED page only)
+   Everything that exists only because the profile is editable.
+   Load AFTER profile.css.
+========================================================= */
+
+/* ---------- Image hover editor ----------
+   Added on top of .profile-banner-wrap / .profile-logo-wrap */
+
+.profile-image-editor {
+    cursor: pointer;
+}
+
+.profile-image-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: white;
+    background: rgb(0 0 0 / 0%);
+    opacity: 0;
+    transition:
+            opacity 160ms ease,
+            background 160ms ease;
+    pointer-events: none;
+}
+
+.profile-image-editor:hover .profile-image-overlay,
+.profile-image-editor:focus-visible .profile-image-overlay {
+    opacity: 1;
+    background: rgb(0 0 0 / 35%);
+}
+
+.profile-image-edit-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.profile-image-overlay-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.profile-image-editor:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -3px;
+}
+
+
+/* ---------- Small edit buttons ---------- */
+
+.profile-edit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    flex: 0 0 auto;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+            color 150ms ease,
+            background 150ms ease,
+            border-color 150ms ease;
+}
+
+.profile-edit-button:hover {
+    color: var(--text);
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+.profile-edit-button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+
+/* ---------- Link bar editing ---------- */
+
+.profile-links-loading {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.profile-link-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    margin-left: 0.15rem;
+}
+
+.profile-link-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+            opacity 150ms ease,
+            color 150ms ease,
+            background 150ms ease;
+}
+
+.profile-link-item:hover .profile-link-action,
+.profile-link-item:focus-within .profile-link-action {
+    opacity: 1;
+}
+
+.profile-link-action:hover {
+    color: var(--text);
+    background: var(--border);
+}
+
+.profile-link-action:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.profile-add-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    flex: 0 0 auto;
+    color: var(--muted);
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+            color 150ms ease,
+            background 150ms ease,
+            border-color 150ms ease;
+}
+
+.profile-add-link:hover {
+    color: var(--primary);
+    background: var(--surface);
+    border-color: var(--primary);
+}
+
+.profile-add-link:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+
+/* ---------- About: empty state while editing ---------- */
+
+.profile-about-content.is-empty {
+    color: var(--muted);
+}
+
+.profile-about-content.is-empty::after {
+    content: "Tell visitors about your organization...";
+    display: block;
+    padding: 0.75rem 0;
+    font-style: italic;
+}
+
+
+/* ---------- Save and publish ---------- */
+
+.profile-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+.profile-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.profile-editor-status {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.profile-editor-status:empty {
+    display: none;
+}
+
+
+/* ---------- Dialogs ---------- */
+
+.profile-dialog {
+    width: min(520px, calc(100% - 2rem));
+    max-width: 520px;
+    max-height: calc(100% - 2rem);
+    padding: 0;
+    overflow: auto;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgb(0 0 0 / 20%);
+}
+
+.profile-dialog::backdrop {
+    background: rgb(0 0 0 / 50%);
+    backdrop-filter: blur(3px);
+}
+
+.profile-dialog-content {
+    padding: 1.5rem;
+}
+
+.profile-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.profile-dialog-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.4;
+}
+
+.profile-dialog-header p {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.profile-dialog-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    flex: 0 0 auto;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.profile-dialog-close:hover {
+    color: var(--text);
+    background: var(--border);
+}
+
+.profile-dialog-close:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.profile-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.profile-form-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.profile-form-group input,
+.profile-form-group textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.8rem 0.9rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+}
+
+.profile-form-group textarea {
+    min-height: 180px;
+    resize: vertical;
+    line-height: 1.7;
+}
+
+.profile-form-group input:focus,
+.profile-form-group textarea:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.profile-field-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.profile-character-count {
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: right;
+}
+
+.profile-form-error {
+    margin-bottom: 1rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.profile-dialog-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+
+    /* No hover on touch: always show link actions */
+    .profile-link-action {
+        opacity: 1;
+    }
+
+    .profile-actions {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .profile-action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .profile-dialog-content {
+        padding: 1.25rem;
+    }
+
+    .profile-dialog-actions {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .profile-image-overlay,
+    .profile-edit-button,
+    .profile-link-action,
+    .profile-add-link {
+        transition: none;
+    }
+}
