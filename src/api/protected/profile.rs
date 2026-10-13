@@ -1,31 +1,46 @@
 use askama_web::__askama_web_impl::axum_core_0_5::IntoResponse;
 use axum::extract::State;
-use axum::Form;
+use axum::{Json};
 use axum::http::StatusCode;
 use axum::response::Redirect;
 use serde::Deserialize;
 use crate::api::protected::get_profile;
-use crate::api::validation::is_valid_name;
+use crate::api::validation::{is_valid_name, is_valid_url};
 use crate::auth::CurrentUser;
 use crate::Context;
-use crate::storage::database::{DatabaseProfile, NewProfileVersion, PublishProfileError};
+use crate::storage::database::{DatabaseProfile, NewProfileLink, NewProfileVersion, PublishProfileError};
 
 #[derive(Debug)]
 pub enum EditValidationError {
     InvalidDisplayName,
     InvalidAbout,
+    InvalidLink,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct EditRequest {
     pub display_name: String,
     pub about: String,
+    pub links: Vec<EditLinkRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EditLinkRequest {
+    pub label: String,
+    pub url: String,
 }
 
 pub struct ValidatedEdit {
     pub display_name: String,
     pub about: String,
+    pub links: Vec<ValidatedEditLink>,
 }
+
+pub struct ValidatedEditLink {
+    pub label: String,
+    pub url: String,
+}
+
 
 struct EditValidator<'a> {
     input: &'a EditRequest,
@@ -41,14 +56,35 @@ impl EditValidator<'_> {
         if self.input.about.len() > 5000 {
             return Err(EditValidationError::InvalidAbout);
         }
+        // Validate each link and collect the validated results.
+        let mut links = Vec::with_capacity(self.input.links.len());
+
+        for link in &self.input.links {
+            // A link label must be a valid name.
+            if !is_valid_name(&link.label) {
+                return Err(EditValidationError::InvalidLink);
+            }
+
+            // A link URL must be a valid HTTP or HTTPS URL.
+            if !is_valid_url(&link.url) {
+                return Err(EditValidationError::InvalidLink);
+            }
+
+            // Store the link only after both fields pass validation.
+            links.push(ValidatedEditLink {
+                label: link.label.clone(),
+                url: link.url.clone(),
+            });
+        }
 
         Ok(ValidatedEdit {
             display_name: self.input.display_name.clone(),
             about: self.input.about.clone(),
+            links,
         })
     }
 }
-pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser, Form(input): Form<EditRequest>) -> impl IntoResponse {
+pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser, Json(input): Json<EditRequest>) -> impl IntoResponse {
     let validated = match (EditValidator { input: &input }).validate() {
         Ok(v) => v,
         Err(EditValidationError::InvalidDisplayName) => {
@@ -56,6 +92,9 @@ pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser
         }
         Err(EditValidationError::InvalidAbout) => {
             return Redirect::to("/profile?error=invalid-about").into_response();
+        }
+        Err(EditValidationError::InvalidLink) => {
+            return Redirect::to("/profile?error=invalid-link").into_response();
         }
     };
 
@@ -89,12 +128,23 @@ pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser
 
     let next_version = current_version.version + 1;
 
+    let links = validated.links
+        .into_iter()
+        .enumerate()
+        .map(|(position, link)| NewProfileLink {
+            label: link.label,
+            url: link.url,
+            position: position as i32,
+        })
+        .collect();
+
     let new_profile_version = NewProfileVersion {
         profile_id: profile.id,
         version: next_version,
         display_name: validated.display_name,
         about: validated.about,
         created_by_member_id: user.member_id,
+        links,
     };
 
     let _version_id = match context.database.create_new_profile_version(new_profile_version).await {

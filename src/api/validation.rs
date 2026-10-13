@@ -157,6 +157,101 @@ pub fn is_valid_password(password: &str) -> bool {
 
     true
 }
+/// Checks whether a URL is suitable for use as an external profile link.
+///
+/// This validates the URL's structure and permitted scheme. It does not
+/// verify that the website exists or that the URL is safe to visit.
+pub fn is_valid_url(url: &str) -> bool {
+    // Set a reasonable URL length range.
+    //
+    // URLs can be considerably longer than names, so allow up to 2048
+    // bytes. The length is measured in bytes, not characters.
+    const MIN_URL_LENGTH: usize = 1;
+    const MAX_URL_LENGTH: usize = 2048;
+
+    if url.len() < MIN_URL_LENGTH || url.len() > MAX_URL_LENGTH {
+        return false;
+    }
+
+    // Leading and trailing whitespace is not allowed.
+    //
+    // For example:
+    // "https://example.com"  -> valid
+    // " https://example.com" -> invalid
+    // "https://example.com " -> invalid
+    //
+    // We reject rather than silently modifying the submitted URL.
+    if url != url.trim() {
+        return false;
+    }
+
+    // Whitespace is not allowed anywhere in the URL.
+    //
+    // For example:
+    // "https://example.com/my page" -> invalid
+    // "https://example.com/my%20page" -> valid
+    //
+    // Spaces inside URL components should be percent-encoded as %20.
+    //
+    // Control characters, such as newlines, tabs, and null characters,
+    // are also rejected because they are not appropriate in this input.
+    if url.chars().any(char::is_whitespace)
+        || url.chars().any(char::is_control)
+    {
+        return false;
+    }
+
+    // Parse the URL instead of trying to validate its syntax manually.
+    //
+    // The URL parser checks the URL's structure and lets us inspect
+    // individual components, such as its scheme and host.
+    //
+    // If parsing fails, the input is not an acceptable URL.
+    let parsed = match url::Url::parse(url) {
+        Ok(parsed) => parsed,
+        Err(_) => return false,
+    };
+
+    // Only HTTP and HTTPS URLs are allowed.
+    //
+    // These are the schemes used for ordinary web links.
+    // Other schemes, such as "javascript:", "data:", "file:", and
+    // "mailto:", are not accepted as external website links.
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return false;
+    }
+
+    // A host identifies the website's server.
+    //
+    // For example, the host in "https://github.com/example" is
+    // "github.com".
+    //
+    // Require a host because this function validates website links,
+    // not URLs referring to other kinds of resources.
+    if parsed.host_str().is_none() {
+        return false;
+    }
+
+    // Reject URLs containing embedded credentials.
+    //
+    // A URL can contain a username and password before the host:
+    // "https://username:password@example.com"
+    //
+    // These credentials are unnecessary for ordinary profile links
+    // and could mislead users about which website they are visiting.
+    //
+    // An empty username and no password are acceptable.
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return false;
+    }
+
+    // The URL has passed our structural and scheme checks.
+    //
+    // This does not guarantee that the destination exists, is trustworthy,
+    // or will remain safe. It only validates the URL's accepted format.
+    //TODO check if there is more to reject here.
+    true
+}
 
 #[cfg(test)]
 mod tests {
@@ -324,5 +419,136 @@ mod tests {
     #[test]
     fn accepts_password_with_special_characters() {
         assert!(is_valid_password("p@ssw0rd!#$"));
+    }
+
+    // ---- is_valid_url ----
+
+    #[test]
+    fn accepts_a_normal_https_url() {
+        assert!(is_valid_url("https://example.com"));
+    }
+
+    #[test]
+    fn accepts_a_normal_http_url() {
+        assert!(is_valid_url("http://example.com"));
+    }
+
+    #[test]
+    fn accepts_url_with_path() {
+        assert!(is_valid_url("https://example.com/about"));
+    }
+
+    #[test]
+    fn accepts_url_with_query_parameters() {
+        assert!(is_valid_url(
+            "https://example.com/about?source=profile"
+        ));
+    }
+
+    #[test]
+    fn accepts_url_with_fragment() {
+        assert!(is_valid_url("https://example.com/about#team"));
+    }
+
+    #[test]
+    fn accepts_url_with_percent_encoded_space() {
+        assert!(is_valid_url("https://example.com/my%20page"));
+    }
+
+    #[test]
+    fn rejects_empty_url() {
+        assert!(!is_valid_url(""));
+    }
+
+    #[test]
+    fn rejects_url_without_scheme() {
+        assert!(!is_valid_url("example.com"));
+    }
+
+    #[test]
+    fn rejects_url_without_host() {
+        assert!(!is_valid_url("https://"));
+    }
+
+    #[test]
+    fn rejects_malformed_url() {
+        assert!(!is_valid_url("not a url"));
+    }
+
+    #[test]
+    fn rejects_leading_whitespace_url() {
+        assert!(!is_valid_url(" https://example.com"));
+    }
+
+    #[test]
+    fn rejects_trailing_whitespace_url() {
+        assert!(!is_valid_url("https://example.com "));
+    }
+
+    #[test]
+    fn rejects_whitespace_inside_url() {
+        assert!(!is_valid_url("https://example.com/my page"));
+    }
+
+    #[test]
+    fn rejects_newline_inside_url() {
+        assert!(!is_valid_url("https://example.com/\nabout"));
+    }
+
+    #[test]
+    fn rejects_null_character_inside_url() {
+        assert!(!is_valid_url("https://example.com/\0about"));
+    }
+
+    #[test]
+    fn rejects_javascript_scheme() {
+        assert!(!is_valid_url("javascript:alert(1)"));
+    }
+
+    #[test]
+    fn rejects_data_scheme() {
+        assert!(!is_valid_url("data:text/html,something"));
+    }
+
+    #[test]
+    fn rejects_file_scheme() {
+        assert!(!is_valid_url("file:///etc/passwd"));
+    }
+
+    #[test]
+    fn rejects_mailto_scheme() {
+        assert!(!is_valid_url("mailto:hello@example.com"));
+    }
+
+    #[test]
+    fn rejects_url_with_embedded_username() {
+        assert!(!is_valid_url("https://username@example.com"));
+    }
+
+    #[test]
+    fn rejects_url_with_embedded_username_and_password() {
+        assert!(!is_valid_url(
+            "https://username:password@example.com"
+        ));
+    }
+
+    #[test]
+    fn rejects_url_above_maximum_length() {
+        // The scheme and host are valid, but the complete URL exceeds
+        // the maximum allowed length of 2048 bytes.
+        let url = format!("https://example.com/{}", "a".repeat(2048));
+
+        assert!(!is_valid_url(&url));
+    }
+
+    #[test]
+    fn accepts_url_at_maximum_length() {
+        // Construct a valid URL whose total length is exactly 2048 bytes.
+        let prefix = "https://example.com/";
+        let remaining_length = 2048 - prefix.len();
+        let url = format!("{prefix}{}", "a".repeat(remaining_length));
+
+        assert_eq!(url.len(), 2048);
+        assert!(is_valid_url(&url));
     }
 }
