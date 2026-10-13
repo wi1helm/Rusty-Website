@@ -14,6 +14,9 @@ axum = { version = "=0.8.9", features = ["multipart"] }
 axum-extra = { version = "=0.12.6", features = ["cookie"] }
 # Static file serving via ServeDir.
 tower-http = { version = "=0.7.0", features = ["fs"] }
+# URL standards
+url = "2.5.8"
+
 # ─────────────────────────────────────────────
 # Async runtime
 # ─────────────────────────────────────────────
