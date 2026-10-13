@@ -28,7 +28,7 @@ export function getLinkIconType(url) {
     if (hostMatches(hostname, "facebook.com") || hostname === "fb.com") return "facebook";
     if (hostMatches(hostname, "youtube.com") || hostname === "youtu.be") return "youtube";
     if (hostMatches(hostname, "x.com") || hostMatches(hostname, "twitter.com")) return "x";
-
+    /*TODO check if this is bad downloadig favicon etc. could make own website with favicon etc bad stuff maby*/
     return "favicon";
 }
 
