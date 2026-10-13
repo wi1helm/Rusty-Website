@@ -10,70 +10,188 @@
 
 {% block content %}
 
-<section class="profile">
+<section class="profile-builder">
+
     <div class="box profile-box">
 
-        <img
-                class="profile-banner"
-                src="{{ organization_profile.banner.url }}"
-                alt="{{ organization_profile.banner.alt }}"
-        >
+        <!-- Banner -->
 
-        <div class="profile-header">
+        <div class="profile-banner-wrap">
+            <img
+                    class="profile-banner"
+                    src="{{ organization_profile.banner.url }}"
+                    alt="{{ organization_profile.banner.alt }}"
+            >
+        </div>
+
+        <!-- Organization identity -->
+
+        <header class="profile-header">
+
             <div class="profile-header-content">
 
-                <img
-                        class="profile-logo"
-                        src="{{ organization_profile.logo.url }}"
-                        alt="{{ organization_profile.logo.alt }}"
-                >
+                <div class="profile-logo-wrap">
+                    <img
+                            class="profile-logo"
+                            src="{{ organization_profile.logo.url }}"
+                            alt="{{ organization_profile.logo.alt }}"
+                    >
+                </div>
 
                 <div class="profile-identity">
-                    <h1>{{ organization_profile.display_name }}</h1>
+
+                    <div class="profile-name-row">
+                        <h1 id="profile-display-name">
+                            {{ organization_profile.display_name }}
+                        </h1>
+                    </div>
+
+                    <p class="profile-legal-name">
+                        {{ organization_name }}
+                    </p>
+
                 </div>
 
             </div>
-        </div>
 
-        <div class="profile-content">
+        </header>
 
-            <section class="profile-section">
-                <h2>About</h2>
+        <!-- Organization links (no "Public profile" link here) -->
 
-                <div class="profile-about">
-                    {{ organization_profile.about }}
-                </div>
-            </section>
+        {% if !organization_profile.links.is_empty() %}
 
-            <section class="profile-section">
-                <h2>Locations</h2>
+        <nav class="profile-link-bar" aria-label="Organization links">
 
-                <div class="profile-locations">
-                    {% for location in organization_profile.locations %}
-                    <div class="profile-location">
-                        {{ location.city }}, {{ location.country }}
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
+            {% for link in organization_profile.links %}
 
-            {% if !organization_profile.links.is_empty() %}
-            <section class="profile-section">
-                <h2>Links</h2>
+            <div class="profile-link-item">
 
-                <div class="profile-links">
-                    {% for link in organization_profile.links %}
-                    <a href="{{ link.url }}">
+                <a
+                        class="profile-link-anchor"
+                        href="{{ link.url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+
+                    <!-- Generic icon works without JS.
+                         profile_public.js swaps in the favicon / brand icon. -->
+                    <span
+                            class="profile-link-icon"
+                            data-url="{{ link.url }}"
+                            aria-hidden="true"
+                    >
+                        <svg
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                        >
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </span>
+
+                    <span class="profile-link-label">
                         {{ link.label }}
-                    </a>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
+                    </span>
 
-        </div>
+                </a>
+
+            </div>
+
+            {% endfor %}
+
+        </nav>
+
+        {% endif %}
+
+        <!-- Main content -->
+
+        <main class="profile-content">
+
+            <!-- About -->
+
+            <section class="profile-section profile-about-section">
+
+                <div class="profile-section-heading">
+                    <div>
+                        <h2>About</h2>
+                    </div>
+                </div>
+
+                <div
+                        id="profile-about-content"
+                        class="profile-about-content"
+                >{{ organization_profile.about }}</div>
+
+            </section>
+
+            <!-- Organization graph
+                 (later: same org_graph.js viewer as the editor, read-only) -->
+
+            <section class="profile-section profile-graph-section">
+
+                <div class="profile-section-heading">
+                    <div>
+                        <h2>Organization graph</h2>
+                        <p class="profile-section-description">
+                            Visualize this organization's structure.
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                        id="organization-graph"
+                        class="organization-graph"
+                        aria-label="Organization graph"
+                >
+
+                    <div class="organization-graph-placeholder">
+
+                        <span
+                                class="organization-graph-placeholder-icon"
+                                aria-hidden="true"
+                        >
+                            <svg
+                                    viewBox="0 0 24 24"
+                                    width="30"
+                                    height="30"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                            >
+                                <rect x="8" y="2" width="8" height="6" rx="1"/>
+                                <rect x="2" y="16" width="8" height="6" rx="1"/>
+                                <rect x="14" y="16" width="8" height="6" rx="1"/>
+                                <path d="M12 8v4"/>
+                                <path d="M6 16v-4h12v4"/>
+                            </svg>
+                        </span>
+
+                        <p>Organization graph</p>
+
+                        <span>
+                            This organization's structure will appear here.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
 
     </div>
+
 </section>
+
+<script type="module" src="/assets/js/profile_public.js"></script>
 
 {% endblock %}

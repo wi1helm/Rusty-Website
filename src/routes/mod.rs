@@ -16,6 +16,7 @@ mod public;
 mod protected;
 mod errors;
 mod images;
+mod profile;
 
 /// Builds the complete application router.
 ///
