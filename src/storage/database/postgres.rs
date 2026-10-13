@@ -2,7 +2,7 @@
 use async_trait::async_trait;
 use sqlx::PgPool;
 use crate::config;
-use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfileVersion, DatabaseProfile, DatabaseMemberWithOrganization, NewProfileVersion, PublishProfileError, CreateOrganizationError, NewProfileImage, DatabaseImage, ProfileImageType};
+use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfileVersion, DatabaseProfile, DatabaseMemberWithOrganization, NewProfileVersion, PublishProfileError, CreateOrganizationError, NewProfileImage, DatabaseImage, ProfileImageType, DatabaseProfileLink, NewProfileLink};
 
 
 #[derive(Clone)]
@@ -112,6 +112,33 @@ impl PostgresDatabase {
         Ok(profile_version.id)
     }
 
+    /// Creates a link belonging to a specific profile version.
+    ///
+    /// Links are associated with a version rather than the profile itself.
+    /// This ensures that publishing an older version also displays its
+    /// original links.
+    async fn create_profile_version_link(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, profile_version_id: i64, link: NewProfileLink) -> Result<(), DatabaseError> {
+        sqlx::query!(
+        r#"
+        INSERT INTO profile_version_links (
+            profile_version_id,
+            label,
+            url,
+            position
+        )
+        VALUES ($1, $2, $3, $4)
+        "#,
+        profile_version_id,
+        link.label,
+        link.url,
+        link.position
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
     async fn set_current_version(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, profile_id: i64, version_id: i64) -> Result<(), DatabaseError> {
         sqlx::query!(
         r#"
@@ -181,6 +208,11 @@ impl Database for PostgresDatabase {
             profile_version.about,
             profile_version.created_by_member_id,
         ).await?;
+
+        // Insert every link belonging to this version.
+        for link in profile_version.links {
+            self.create_profile_version_link(&mut tx, version_id, link, ).await?;
+        }
 
         self.set_current_version(&mut tx, profile_version.profile_id, version_id).await?;
 
@@ -524,6 +556,27 @@ impl Database for PostgresDatabase {
         }))
     }
 
+    async fn find_profile_links_by_version_id(&self, version_id: i64) -> Result<Vec<DatabaseProfileLink>, DatabaseError> {
+        let links = sqlx::query_as!(
+            DatabaseProfileLink,
+            r#"
+            SELECT
+                id,
+                profile_version_id,
+                label,
+                url,
+                position
+            FROM profile_version_links
+            WHERE profile_version_id = $1
+            ORDER BY position ASC, id ASC
+            "#,
+            version_id
+            )
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(links)
+    }
 }
 
 

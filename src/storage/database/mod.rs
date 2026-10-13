@@ -139,6 +139,8 @@ pub struct NewProfileVersion {
     pub display_name: String,
     pub about: String,
     pub created_by_member_id: i64,
+
+    pub links: Vec<NewProfileLink>,
 }
 //TODO think if profiles images should be tied to profile versions as they are not cared by or interacting with versions.
 pub struct NewProfileImage {
@@ -149,6 +151,11 @@ pub struct NewProfileImage {
     pub width: i32,
     pub height: i32,
     pub file_size: i64,
+}
+pub struct NewProfileLink {
+    pub label: String,
+    pub url: String,
+    pub position: i32,
 }
 
 pub struct DatabaseOrganization {
@@ -193,6 +200,13 @@ pub struct DatabaseImage {
     pub height: i32,
     pub file_size: i64,
 }
+pub struct DatabaseProfileLink {
+    pub id: i64,
+    pub profile_version_id: i64,
+    pub label: String,
+    pub url: String,
+    pub position: i32,
+}
 
 #[async_trait]
 pub trait Database: Send + Sync {
@@ -214,4 +228,6 @@ pub trait Database: Send + Sync {
     async fn find_profile_image(&self, profile_id: i64, image_type: ProfileImageType) -> Result<Option<DatabaseImage>, DatabaseError>;
     async fn save_profile_image(&self, image: NewProfileImage) -> Result<Option<DatabaseImage>, DatabaseError>;
     async fn delete_profile_image(&self, profile_id: i64, image_type: ProfileImageType) -> Result<Option<DatabaseImage>, DatabaseError>;
+
+    async fn find_profile_links_by_version_id(&self, version_id: i64) -> Result<Vec<DatabaseProfileLink>, DatabaseError>;
 }

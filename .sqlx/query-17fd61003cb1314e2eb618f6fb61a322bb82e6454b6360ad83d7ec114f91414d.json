@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO profile_version_links (\n            profile_version_id,\n            label,\n            url,\n            position\n        )\n        VALUES ($1, $2, $3, $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17fd61003cb1314e2eb618f6fb61a322bb82e6454b6360ad83d7ec114f91414d"
+}
