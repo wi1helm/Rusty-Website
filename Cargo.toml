@@ -15,7 +15,7 @@ axum-extra = { version = "=0.12.6", features = ["cookie"] }
 # Static file serving via ServeDir.
 tower-http = { version = "=0.7.0", features = ["fs"] }
 # URL standards
-url = "2.5.8"
+url = "=2.5.8"
 
 # ─────────────────────────────────────────────
 # Async runtime
@@ -28,7 +28,7 @@ async-trait = "=0.1.92"
 # Database
 # ─────────────────────────────────────────────
 # PostgreSQL database access, migrations, and compile-time query support.
-sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "macros", "migrate"] }
+sqlx = { version = "=0.9.0", features = ["runtime-tokio", "postgres", "macros", "migrate", "chrono"] }
 # ─────────────────────────────────────────────
 # Caching
 # ─────────────────────────────────────────────
@@ -72,4 +72,4 @@ uuid = { version = "=1.26.0", features = ["v4"] }
 
 
 [dev-dependencies]
-tower = { version = "0.5.3", features = ["util"] }
+tower = { version = "=0.5.3", features = ["util"] }

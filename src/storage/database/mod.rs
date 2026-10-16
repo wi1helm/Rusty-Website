@@ -2,6 +2,7 @@
 pub mod postgres;
 
 use async_trait::async_trait;
+use sqlx::types::chrono::{DateTime, Utc};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DatabaseError {
@@ -35,7 +36,7 @@ pub enum PublishProfileError {
 
     #[error("profile has no current version")]
     ProfileHasNoCurrentVersion,
-
+    
     #[error("database error")]
     Database(#[from] DatabaseError),
 }
@@ -162,12 +163,14 @@ pub struct DatabaseOrganization {
     pub id: i64,
     pub name: String,
     pub slug: String,
+    pub created_at: DateTime<Utc>,
 }
 pub struct DatabaseMember {
     pub id: i64,
     pub organization_id: i64,
     pub email: String,
     pub password_hash: String,
+    pub created_at: DateTime<Utc>,
 }
 pub struct DatabaseMemberWithOrganization {
     pub member: DatabaseMember,
@@ -178,6 +181,8 @@ pub struct DatabaseProfile {
     pub organization_id: i64,
     pub current_version_id: Option<i64>,
     pub published_version_id: Option<i64>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 /// DatabaseProfileVersion contains the content of the a verison of the profile what version is valid
 /// given by the DatabaseProfile struct.
@@ -188,6 +193,8 @@ pub struct DatabaseProfileVersion {
     pub display_name: String,
     pub about: String,
     pub created_by_member_id: i64,
+    pub created_at: DateTime<Utc>,
+    pub published_at: Option<DateTime<Utc>>,
 }
 
 pub struct DatabaseImage {
@@ -199,6 +206,8 @@ pub struct DatabaseImage {
     pub width: i32,
     pub height: i32,
     pub file_size: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 pub struct DatabaseProfileLink {
     pub id: i64,
@@ -206,6 +215,7 @@ pub struct DatabaseProfileLink {
     pub label: String,
     pub url: String,
     pub position: i32,
+    pub created_at: DateTime<Utc>,
 }
 
 #[async_trait]

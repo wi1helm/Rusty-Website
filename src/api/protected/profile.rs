@@ -8,7 +8,7 @@ use crate::api::protected::get_profile;
 use crate::api::validation::{is_valid_name, is_valid_url};
 use crate::auth::CurrentUser;
 use crate::Context;
-use crate::storage::database::{DatabaseProfile, NewProfileLink, NewProfileVersion, PublishProfileError};
+use crate::storage::database::{NewProfileLink, NewProfileVersion, PublishProfileError};
 
 #[derive(Debug)]
 pub enum EditValidationError {
@@ -58,7 +58,10 @@ impl EditValidator<'_> {
         }
         // Validate each link and collect the validated results.
         let mut links = Vec::with_capacity(self.input.links.len());
-
+        //TODO idk check / look if there is problme here. i
+        // can think that sending idk wierd requests here will cause problems.
+        // also can a desyncs between current version_id and the links stored version id meaning we find
+        // no links in the current version causing them to dissapear from the sites.
         for link in &self.input.links {
             // A link label must be a valid name.
             if !is_valid_name(&link.label) {
@@ -84,6 +87,7 @@ impl EditValidator<'_> {
         })
     }
 }
+//TODO make so edit does not do stuff if new data is same as old data. no reason to edit if no change been made
 pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser, Json(input): Json<EditRequest>) -> impl IntoResponse {
     let validated = match (EditValidator { input: &input }).validate() {
         Ok(v) => v,
@@ -111,20 +115,19 @@ pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser
         }
     };
 
-    let current_version =
-        match context.database.find_profile_version_by_version_id(current_version_id).await {
-            Ok(Some(version)) => version,
+    let current_version = match context.database.find_profile_version_by_version_id(current_version_id).await {
+        Ok(Some(version)) => version,
 
-            Ok(None) => {
-                tracing::error!(profile_id = profile.id, current_version_id, "profile references a version that does not exist");
-                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
+        Ok(None) => {
+            tracing::error!(profile_id = profile.id, current_version_id, "profile references a version that does not exist");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
 
-            Err(error) => {
-                tracing::error!(?error, profile_id = profile.id, current_version_id, "failed to load current profile version");
-                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
-        };
+        Err(error) => {
+            tracing::error!(?error, profile_id = profile.id, current_version_id, "failed to load current profile version");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
 
     let next_version = current_version.version + 1;
 
@@ -157,7 +160,10 @@ pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser
     //TODO something i toughtr of cant this redirect still use old info, if we somewhere cache data in future instead of fetching diretly.
     Redirect::to("/profile").into_response()
 }
-
+//TODO One additional safeguard: your foreign keys currently allow a profile to point
+// to a version belonging to a different profile. Eventually, consider enforcing that
+// both pointers reference versions belonging to the same profile, so a publishing
+// bug can't accidentally expose another organization's profile version.
 pub async fn publish(State(context): State<Context>, CurrentUser(user): CurrentUser) -> impl IntoResponse {
     // Publishing does not create a new version.
     // It simply makes the current version visible publicly.
@@ -197,7 +203,6 @@ pub async fn publish(State(context): State<Context>, CurrentUser(user): CurrentU
                 organization_id = user.organization.id,
                 "failed to publish profile"
             );
-
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     }
