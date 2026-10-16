@@ -12,7 +12,7 @@ export function showStatus(message) {
     if (!statusElement) {
         return;
     }
-
+    //TODO think if this should be displayed bigger and in color? hard to see?
     statusElement.textContent = message;
 
     clearTimeout(statusTimeout);

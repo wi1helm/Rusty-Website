@@ -29,6 +29,7 @@ CREATE TABLE profile_versions (
       REFERENCES members(id),
 
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      published_at TIMESTAMPTZ,
 
       UNIQUE (profile_id, version)
 );

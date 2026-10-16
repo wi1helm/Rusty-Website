@@ -30,7 +30,7 @@ impl PostgresDatabase {
             r#"
             INSERT INTO organizations (name, slug)
             VALUES ($1, $2)
-            RETURNING id, name, slug
+            RETURNING id, name, slug, created_at
             "#,
             organization.name,
             organization.slug
@@ -157,19 +157,37 @@ impl PostgresDatabase {
         Ok(())
     }
     async fn set_published_version(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, profile_id: i64, version_id: i64) -> Result<(), DatabaseError> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE profile_versions
+            SET published_at = COALESCE(published_at, NOW())
+            WHERE id = $2
+              AND profile_id = $1
+            "#,
+            profile_id,
+            version_id
+            )
+            .execute(&mut **tx)
+            .await?;
+
+        if result.rows_affected() != 1 {
+            //TODO
+            // Return an appropriate database/domain error here.
+            // The version may not exist or may belong to another profile.
+        }
+
         sqlx::query!(
-        r#"
-        UPDATE profiles
-        SET
-            published_version_id = $2,
-            updated_at = NOW()
-        WHERE id = $1
-        "#,
-        profile_id,
-        version_id
-        )
-        .execute(&mut **tx)
-        .await?;
+            r#"
+            UPDATE profiles
+            SET published_version_id = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+            profile_id,
+            version_id
+            )
+            .execute(&mut **tx)
+            .await?;
 
         Ok(())
     }
@@ -211,6 +229,9 @@ impl Database for PostgresDatabase {
 
         // Insert every link belonging to this version.
         for link in profile_version.links {
+            //TODO links are now never removed from db even if the links are removed from the site. maby unique in url field?.
+            //TODO dont remember how it works but does it create 1 link entry for every version? or 1 for all versions. sure name will not be same hmm.
+            // wierd to need to store multiple version of same URL but i guess.
             self.create_profile_version_link(&mut tx, version_id, link, ).await?;
         }
 
@@ -225,7 +246,7 @@ impl Database for PostgresDatabase {
         let member = sqlx::query_as!(
             DatabaseMember,
             r#"
-            SELECT id, organization_id, email, password_hash
+            SELECT id, organization_id, email, password_hash, created_at
             FROM members
             WHERE email = $1
             "#,
@@ -242,7 +263,7 @@ impl Database for PostgresDatabase {
         let organization = sqlx::query_as!(
             DatabaseOrganization,
             r#"
-            SELECT id, name, slug
+            SELECT id, name, slug, created_at
             FROM organizations
             WHERE id = $1
             "#,
@@ -258,7 +279,7 @@ impl Database for PostgresDatabase {
         let organization = sqlx::query_as!(
             DatabaseOrganization,
             r#"
-            SELECT id, name, slug
+            SELECT id, name, slug, created_at
             FROM organizations
             WHERE slug = $1
             "#,
@@ -284,11 +305,13 @@ impl Database for PostgresDatabase {
             id,
             organization_id,
             current_version_id,
-            published_version_id
+            published_version_id,
+            created_at,
+            updated_at
             FROM profiles
             WHERE organization_id = $1
             "#,
-           organization_id
+            organization_id
             )
             .fetch_optional(&self.pool)
             .await?;
@@ -310,10 +333,12 @@ impl Database for PostgresDatabase {
                 m.organization_id AS member_organization_id,
                 m.email AS member_email,
                 m.password_hash AS member_password_hash,
+                m.created_at AS member_created_at,
 
                 o.id AS organization_id,
                 o.name AS organization_name,
-                o.slug AS organization_slug
+                o.slug AS organization_slug,
+                o.created_at AS organization_created_at
             FROM members m
             INNER JOIN organizations o
                 ON o.id = m.organization_id
@@ -330,11 +355,13 @@ impl Database for PostgresDatabase {
                 organization_id: row.member_organization_id,
                 email: row.member_email,
                 password_hash: row.member_password_hash,
+                created_at: row.member_created_at,
             },
             organization: DatabaseOrganization {
                 id: row.organization_id,
                 name: row.organization_name,
                 slug: row.organization_slug,
+                created_at: row.organization_created_at,
             },
         }))
     }
@@ -353,7 +380,9 @@ impl Database for PostgresDatabase {
             version,
             display_name,
             about,
-            created_by_member_id
+            created_by_member_id,
+            created_at,
+            published_at
             FROM profile_versions
             WHERE id = $1
             "#,
@@ -370,7 +399,7 @@ impl Database for PostgresDatabase {
 
         let profile = sqlx::query!(
             r#"
-            SELECT current_version_id
+            SELECT current_version_id, published_version_id
             FROM profiles
             WHERE id = $1
             "#,
@@ -386,6 +415,11 @@ impl Database for PostgresDatabase {
         let Some(current_version_id) = profile.current_version_id else {
             return Err(PublishProfileError::ProfileHasNoCurrentVersion);
         };
+        //skipt the set version as they are already the same.
+        if Some(current_version_id) == profile.published_version_id {
+            tx.commit().await?;
+            return Ok(())
+        }
 
         self.set_published_version(&mut tx, profile_id, current_version_id).await?;
 
@@ -404,7 +438,9 @@ impl Database for PostgresDatabase {
                 content_type,
                 width,
                 height,
-                file_size
+                file_size,
+                created_at,
+                updated_at
             FROM profile_images
             WHERE profile_id = $1
               AND image_type = $2
@@ -432,9 +468,11 @@ impl Database for PostgresDatabase {
             width: image.width,
             height: image.height,
             file_size: image.file_size,
+            created_at: image.created_at,
+            updated_at: image.updated_at,
         }))
     }
-
+    /// Saved the new image in database and returns the old image
     async fn save_profile_image(&self, image: NewProfileImage) -> Result<Option<DatabaseImage>, DatabaseError> {
         let mut tx = self.pool.begin().await?;
 
@@ -448,7 +486,9 @@ impl Database for PostgresDatabase {
                 content_type,
                 width,
                 height,
-                file_size
+                file_size,
+                created_at,
+                updated_at
             FROM profile_images
             WHERE profile_id = $1
               AND image_type = $2
@@ -487,7 +527,7 @@ impl Database for PostgresDatabase {
             image.content_type,
             image.width,
             image.height,
-            image.file_size,
+            image.file_size
         )
         .execute(&mut *tx)
         .await?;
@@ -501,7 +541,7 @@ impl Database for PostgresDatabase {
         let image_type = ProfileImageType::from_str(&old_image.image_type).ok_or_else(|| {
             DatabaseError::InvalidProfileImageType(old_image.image_type.clone())
         })?;
-
+        // return the old image we saved over.
         Ok(Some(DatabaseImage {
             id: old_image.id,
             profile_id: old_image.profile_id,
@@ -511,6 +551,8 @@ impl Database for PostgresDatabase {
             width: old_image.width,
             height: old_image.height,
             file_size: old_image.file_size,
+            created_at: old_image.created_at,
+            updated_at: old_image.updated_at,
         }))
     }
 
@@ -528,7 +570,9 @@ impl Database for PostgresDatabase {
                 content_type,
                 width,
                 height,
-                file_size
+                file_size,
+                created_at,
+                updated_at
             "#,
             profile_id,
             image_type.as_str()
@@ -553,6 +597,8 @@ impl Database for PostgresDatabase {
             width: image.width,
             height: image.height,
             file_size: image.file_size,
+            created_at: image.created_at,
+            updated_at: image.updated_at,
         }))
     }
 
@@ -565,7 +611,8 @@ impl Database for PostgresDatabase {
                 profile_version_id,
                 label,
                 url,
-                position
+                position,
+                created_at
             FROM profile_version_links
             WHERE profile_version_id = $1
             ORDER BY position ASC, id ASC
