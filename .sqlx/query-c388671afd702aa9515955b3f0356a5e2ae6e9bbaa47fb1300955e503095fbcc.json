@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT current_version_id, published_version_id\n            FROM profiles\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "current_version_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "current_version_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "published_version_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "published_version_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "c388671afd702aa9515955b3f0356a5e2ae6e9bbaa47fb1300955e503095fbcc"
+}

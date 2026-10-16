@@ -1,0 +1,137 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                profile_id,\n                image_type,\n                storage_key,\n                content_type,\n                width,\n                height,\n                file_size,\n                created_at,\n                updated_at\n            FROM profile_images\n            WHERE profile_id = $1\n              AND image_type = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "profile_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "profile_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "image_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "image_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "storage_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "storage_key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "content_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "width",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "width"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "height",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "height"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "file_size",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "file_size"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "profile_images",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8b4cddd1ea49f0eb66f8c2089850288e913ab04b8ec9eef1aa72573b086989c2"
+}
