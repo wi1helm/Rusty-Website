@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE profile_versions\n            SET published_at = COALESCE(published_at, NOW())\n            WHERE id = $2\n              AND profile_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d90dfc5040900d71a33956d6b39f0bd2512593fb7ff6173cbd30a201fec73a4f"
+}
