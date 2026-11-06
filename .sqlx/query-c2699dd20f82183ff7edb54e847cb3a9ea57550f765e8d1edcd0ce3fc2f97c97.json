@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n            id,\n            profile_id,\n            version,\n            display_name,\n            about,\n            created_by_member_id,\n            created_at,\n            published_at\n            FROM profile_versions\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT\n                id,\n                organization_id,\n                display_name,\n                about,\n                updated_by_member_id,\n                created_at AS \"created_at: DateTime<Utc>\",\n                updated_at AS \"updated_at: DateTime<Utc>\"\n            FROM organization_profiles\n            WHERE organization_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -9,85 +9,74 @@
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "profile_versions",
+            "table": "organization_profiles",
             "name": "id"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "profile_id",
+        "name": "organization_id",
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "profile_versions",
-            "name": "profile_id"
+            "table": "organization_profiles",
+            "name": "organization_id"
           }
         }
       },
       {
         "ordinal": 2,
-        "name": "version",
-        "type_info": "Int4",
-        "origin": {
-          "Table": {
-            "table": "profile_versions",
-            "name": "version"
-          }
-        }
-      },
-      {
-        "ordinal": 3,
         "name": "display_name",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "profile_versions",
+            "table": "organization_profiles",
             "name": "display_name"
           }
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "about",
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "profile_versions",
+            "table": "organization_profiles",
             "name": "about"
           }
         }
       },
       {
-        "ordinal": 5,
-        "name": "created_by_member_id",
+        "ordinal": 4,
+        "name": "updated_by_member_id",
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "profile_versions",
-            "name": "created_by_member_id"
+            "table": "organization_profiles",
+            "name": "updated_by_member_id"
           }
         }
       },
       {
-        "ordinal": 6,
-        "name": "created_at",
+        "ordinal": 5,
+        "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
-            "table": "profile_versions",
+            "table": "organization_profiles",
             "name": "created_at"
           }
         }
       },
       {
-        "ordinal": 7,
-        "name": "published_at",
+        "ordinal": 6,
+        "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
-            "table": "profile_versions",
-            "name": "published_at"
+            "table": "organization_profiles",
+            "name": "updated_at"
           }
         }
       }
@@ -104,9 +93,8 @@
       false,
       false,
       false,
-      false,
-      true
+      false
     ]
   },
-  "hash": "5a134e5d1f7dfa4d6ddf7fde26dfd7bdeb9bdb9c18c57ea46835c2944a394510"
+  "hash": "c2699dd20f82183ff7edb54e847cb3a9ea57550f765e8d1edcd0ce3fc2f97c97"
 }

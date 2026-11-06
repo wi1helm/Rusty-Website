@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO members (organization_id, email, password_hash, role)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id\n            ",
+  "query": "\n            INSERT INTO organization_members (\n                organization_id,\n                email,\n                password_hash,\n                role\n            )\n            VALUES ($1, $2, $3, $4)\n            RETURNING id\n            ",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "members",
+            "table": "organization_members",
             "name": "id"
           }
         }
@@ -27,5 +27,5 @@
       false
     ]
   },
-  "hash": "bcfd9d93ca2e0d7f110d94c73f63ca4276b46f15e132aac6c2c3130a7d2b4a68"
+  "hash": "2b105b91f53b4d0736126bcbfd40ff9a22b685cdb5fd29d939e4f672f2002e20"
 }

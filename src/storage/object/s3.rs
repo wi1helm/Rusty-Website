@@ -6,7 +6,6 @@ use aws_sdk_s3::{
 };
 use aws_sdk_s3::error::ProvideErrorMetadata;
 use crate::config::{DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
-
 use super::{ObjectStorage, ObjectStorageError};
 
 /// S3-compatible object storage implementation.

@@ -1,7 +1,7 @@
 {% extends "../base.html" %}
 
 {% block title %}
-{{ organization_profile.display_name }} - Profile
+{{ profile_view.display_name }} - Profile
 {% endblock %}
 
 {% block styles %}
@@ -19,8 +19,8 @@
         <div class="profile-banner-wrap">
             <img
                     class="profile-banner"
-                    src="{{ organization_profile.banner.url }}"
-                    alt="{{ organization_profile.banner.alt }}"
+                    src="{{ profile_view.banner.url }}"
+                    alt="{{ profile_view.banner.alt }}"
             >
         </div>
 
@@ -33,8 +33,8 @@
                 <div class="profile-logo-wrap">
                     <img
                             class="profile-logo"
-                            src="{{ organization_profile.logo.url }}"
-                            alt="{{ organization_profile.logo.alt }}"
+                            src="{{ profile_view.logo.url }}"
+                            alt="{{ profile_view.logo.alt }}"
                     >
                 </div>
 
@@ -42,12 +42,12 @@
 
                     <div class="profile-name-row">
                         <h1 id="profile-display-name">
-                            {{ organization_profile.display_name }}
+                            {{ profile_view.display_name }}
                         </h1>
                     </div>
 
                     <p class="profile-legal-name">
-                        {{ organization_name }}
+                        {{ profile_view.organization.name }}
                     </p>
 
                 </div>
@@ -58,11 +58,11 @@
 
         <!-- Organization links (no "Public profile" link here) -->
 
-        {% if !organization_profile.links.is_empty() %}
+        {% if !profile_view.links.is_empty() %}
 
         <nav class="profile-link-bar" aria-label="Organization links">
 
-            {% for link in organization_profile.links %}
+            {% for link in profile_view.links %}
 
             <div class="profile-link-item">
 
@@ -126,7 +126,7 @@
                 <div
                         id="profile-about-content"
                         class="profile-about-content"
-                >{{ organization_profile.about }}</div>
+                >{{ profile_view.about }}</div>
 
             </section>
 

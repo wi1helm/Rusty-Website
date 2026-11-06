@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO organization_profile_links (\n                    organization_id,\n                    label,\n                    url,\n                    position\n                )\n                VALUES ($1, $2, $3, $4)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d67536bf4062d94cb29b0caadf075607f92b0f8264af8fd5147d5988013eae4d"
+}

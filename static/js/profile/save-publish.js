@@ -35,7 +35,7 @@ export function initSavePublish(state) {
             saveButton.textContent = "Saving…";
 
             try {
-                const response = await postJson("/api/profile/edit", {
+                const response = await postJson("/api/profile/update", {
                     display_name: state.displayName,
                     about: state.about,
                     links: state.links.map(link => ({

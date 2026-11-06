@@ -1,2 +1,0 @@
-ALTER TABLE organizations
-ADD COLUMN slug TEXT NOT NULL UNIQUE;

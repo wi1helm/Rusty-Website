@@ -1,137 +1,116 @@
 use askama_web::__askama_web_impl::axum_core_0_5::IntoResponse;
 use axum::extract::State;
-use axum::{Json};
+use axum::Json;
 use axum::http::StatusCode;
 use axum::response::Redirect;
 use serde::Deserialize;
+
 use crate::api::protected::get_profile;
 use crate::api::validation::{is_valid_name, is_valid_url};
 use crate::auth::CurrentUser;
+use crate::storage::database::{DatabaseProfile, NewProfileLink, UpdateProfile};
 use crate::Context;
-use crate::storage::database::{NewProfileLink, NewProfileVersion, PublishProfileError};
 
 #[derive(Debug)]
-pub enum EditValidationError {
+pub enum UpdateRequestValidationError {
     InvalidDisplayName,
     InvalidAbout,
     InvalidLink,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct EditRequest {
+pub struct UpdateRequest {
     pub display_name: String,
     pub about: String,
-    pub links: Vec<EditLinkRequest>,
+    pub links: Vec<ProfileLink>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct EditLinkRequest {
+pub struct ProfileLink {
     pub label: String,
     pub url: String,
 }
-
-pub struct ValidatedEdit {
+#[derive(PartialEq)]
+pub struct ValidatedUpdateRequest {
     pub display_name: String,
     pub about: String,
-    pub links: Vec<ValidatedEditLink>,
+    pub links: Vec<ValidatedLink>,
 }
-
-pub struct ValidatedEditLink {
+#[derive(PartialEq)]
+pub struct ValidatedLink {
     pub label: String,
     pub url: String,
 }
 
-
-struct EditValidator<'a> {
-    input: &'a EditRequest,
-}
-
-impl EditValidator<'_> {
-    fn validate(&self) -> Result<ValidatedEdit, EditValidationError> {
-        if !is_valid_name(&self.input.display_name) {
-            return Err(EditValidationError::InvalidDisplayName);
+impl UpdateRequest {
+    fn validate(self) -> Result<ValidatedUpdateRequest, UpdateRequestValidationError> {
+        if !is_valid_name(&self.display_name) {
+            return Err(UpdateRequestValidationError::InvalidDisplayName);
         }
-        // TODO add a section for about in validation.rs
-        // You can add whatever rules you decide for `about`.
-        if self.input.about.len() > 5000 {
-            return Err(EditValidationError::InvalidAbout);
+        //TODO add this check inside a function in validation file
+        if self.about.len() > 5000 {
+            return Err(UpdateRequestValidationError::InvalidAbout);
         }
-        // Validate each link and collect the validated results.
-        let mut links = Vec::with_capacity(self.input.links.len());
-        //TODO idk check / look if there is problme here. i
-        // can think that sending idk wierd requests here will cause problems.
-        // also can a desyncs between current version_id and the links stored version id meaning we find
-        // no links in the current version causing them to dissapear from the sites.
-        for link in &self.input.links {
-            // A link label must be a valid name.
-            if !is_valid_name(&link.label) {
-                return Err(EditValidationError::InvalidLink);
+
+        let mut links = Vec::with_capacity(self.links.len());
+
+        for link in self.links {
+            if !is_valid_name(&link.label) || !is_valid_url(&link.url) {
+                return Err(UpdateRequestValidationError::InvalidLink);
             }
 
-            // A link URL must be a valid HTTP or HTTPS URL.
-            if !is_valid_url(&link.url) {
-                return Err(EditValidationError::InvalidLink);
-            }
-
-            // Store the link only after both fields pass validation.
-            links.push(ValidatedEditLink {
-                label: link.label.clone(),
-                url: link.url.clone(),
+            links.push(ValidatedLink {
+                label: link.label,
+                url: link.url,
             });
         }
 
-        Ok(ValidatedEdit {
-            display_name: self.input.display_name.clone(),
-            about: self.input.about.clone(),
+        Ok(ValidatedUpdateRequest {
+            display_name: self.display_name,
+            about: self.about,
             links,
         })
     }
 }
-//TODO make so edit does not do stuff if new data is same as old data. no reason to edit if no change been made
-pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser, Json(input): Json<EditRequest>) -> impl IntoResponse {
-    let validated = match (EditValidator { input: &input }).validate() {
-        Ok(v) => v,
-        Err(EditValidationError::InvalidDisplayName) => {
+
+impl PartialEq<ValidatedUpdateRequest> for DatabaseProfile {
+    fn eq(&self, other: &ValidatedUpdateRequest) -> bool {
+        self.display_name == other.display_name
+            && self.about == other.about
+            && self.links.len() == other.links.len()
+            && self.links.iter().zip(&other.links).all(|(old, new)| {
+                old.label == new.label
+                && old.url == new.url
+                //TODO add position thingy
+            })
+    }
+}
+
+pub async fn update(State(context): State<Context>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
+    let validated = match input.validate() {
+        Ok(validated) => validated,
+        Err(UpdateRequestValidationError::InvalidDisplayName) => {
             return Redirect::to("/profile?error=invalid-display-name").into_response();
         }
-        Err(EditValidationError::InvalidAbout) => {
+        Err(UpdateRequestValidationError::InvalidAbout) => {
             return Redirect::to("/profile?error=invalid-about").into_response();
         }
-        Err(EditValidationError::InvalidLink) => {
+        Err(UpdateRequestValidationError::InvalidLink) => {
             return Redirect::to("/profile?error=invalid-link").into_response();
         }
     };
-
-    let profile = match get_profile(&context, user.organization.id).await {
+    //TODo use the old profile to check if we actually need to update this profile.
+    let old_profile = match get_profile(&context, user.organization.id).await {
         Ok(profile) => profile,
         Err(status) => return status.into_response(),
     };
+    // If nothing changed from whats already in db disregard this request
+    if old_profile == validated {
+        return Redirect::to("/profile").into_response();
+    }
 
-    let current_version_id = match profile.current_version_id {
-        Some(id) => id,
-        None => {
-            tracing::error!(profile_id = profile.id, organization_id = user.organization.id, "profile has no current version");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
-
-    let current_version = match context.database.find_profile_version_by_version_id(current_version_id).await {
-        Ok(Some(version)) => version,
-
-        Ok(None) => {
-            tracing::error!(profile_id = profile.id, current_version_id, "profile references a version that does not exist");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-
-        Err(error) => {
-            tracing::error!(?error, profile_id = profile.id, current_version_id, "failed to load current profile version");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
-
-    let next_version = current_version.version + 1;
-
-    let links = validated.links
+    let new_links = validated
+        .links
         .into_iter()
         .enumerate()
         .map(|(position, link)| NewProfileLink {
@@ -141,73 +120,18 @@ pub async fn edit(State(context): State<Context>, CurrentUser(user): CurrentUser
         })
         .collect();
 
-    let new_profile_version = NewProfileVersion {
-        profile_id: profile.id,
-        version: next_version,
+    let new_profile = UpdateProfile {
         display_name: validated.display_name,
         about: validated.about,
-        created_by_member_id: user.member_id,
-        links,
     };
-
-    let _version_id = match context.database.create_new_profile_version(new_profile_version).await {
-        Ok(id) => id,
-        Err(error) => {
-            tracing::error!(?error, profile_id = profile.id, "failed to create new profile version");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
-    //TODO something i toughtr of cant this redirect still use old info, if we somewhere cache data in future instead of fetching diretly.
-    Redirect::to("/profile").into_response()
-}
-//TODO One additional safeguard: your foreign keys currently allow a profile to point
-// to a version belonging to a different profile. Eventually, consider enforcing that
-// both pointers reference versions belonging to the same profile, so a publishing
-// bug can't accidentally expose another organization's profile version.
-pub async fn publish(State(context): State<Context>, CurrentUser(user): CurrentUser) -> impl IntoResponse {
-    // Publishing does not create a new version.
-    // It simply makes the current version visible publicly.
-
-    let profile = match get_profile(&context, user.organization.id).await {
-        Ok(profile) => profile,
-        Err(status) => return status.into_response(),
-    };
-
-    match context.database.publish_current_profile_version(profile.id).await {
-        Ok(()) => {}
-
-        Err(PublishProfileError::ProfileNotFound) => {
-            tracing::error!(
-                profile_id = profile.id,
-                organization_id = user.organization.id,
-                "profile disappeared while publishing"
-            );
-
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-
-        Err(PublishProfileError::ProfileHasNoCurrentVersion) => {
-            tracing::error!(
-                profile_id = profile.id,
-                organization_id = user.organization.id,
-                "profile has no current version"
-            );
-
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-
-        Err(PublishProfileError::Database(error)) => {
-            tracing::error!(
-                ?error,
-                profile_id = profile.id,
-                organization_id = user.organization.id,
-                "failed to publish profile"
-            );
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
+    if let Err(error) = context.database.update_profile(user.organization.id, user.member_id, new_profile).await {
+        tracing::error!(?error,profile_id = old_profile.id, "failed to update profile");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+    if let Err(error) = context.database.update_profile_links(user.organization.id, new_links).await {
+        tracing::error!(?error,profile_id = old_profile.id, "failed to update profile links");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
     Redirect::to("/profile").into_response()
 }
-
-

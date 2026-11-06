@@ -6,7 +6,7 @@ use crate::{Context};
 use crate::api::validation::{ is_valid_email, is_valid_name, is_valid_password};
 use crate::auth::AuthenticationError;
 use crate::routes::redirect_with_session_cookie;
-use crate::storage::database::{CreateOrganizationError, NewMember, NewOrganization, OrganizationRoles};
+use crate::storage::database::{CreateOrganizationError, NewMember, NewOrganization, OrganizationRole};
 
 #[derive(Debug)]
 pub enum CreationValidationError {
@@ -80,7 +80,7 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRe
     let owner = NewMember {
         email: validated.email,
         password_hash: validated.password, // TODO: hash before storing
-        role: OrganizationRoles::Owner,
+        role: OrganizationRole::Owner,
     };
 
     let (_organization_id, owner_id) = match context.database.create_organization_with_owner_and_profile(organization, owner).await {
