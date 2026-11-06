@@ -1,4 +1,5 @@
-pub(crate) mod s3;
+pub mod s3;
+pub mod defaults;
 
 use async_trait::async_trait;
 

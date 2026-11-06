@@ -1,7 +1,7 @@
 {% extends "protected/base.html" %}
 
 {% block title %}
-{{ organization_profile.display_name }} - Profile
+{{ profile_view.display_name }} - Profile
 {% endblock %}
 
 {% block site_styles %}
@@ -29,8 +29,8 @@
 
       <img
               class="profile-banner"
-              src="{{ organization_profile.banner.url }}"
-              alt="{{ organization_profile.banner.alt }}"
+              src="{{ profile_view.banner.url }}"
+              alt="{{ profile_view.banner.alt }}"
       >
 
       <div class="profile-image-overlay">
@@ -58,8 +58,8 @@
 
           <img
                   class="profile-logo"
-                  src="{{ organization_profile.logo.url }}"
-                  alt="{{ organization_profile.logo.alt }}"
+                  src="{{ profile_view.logo.url }}"
+                  alt="{{ profile_view.logo.alt }}"
           >
 
           <div class="profile-image-overlay">
@@ -73,7 +73,7 @@
 
           <div class="profile-name-row">
 
-            <h1 id="profile-display-name">{{ organization_profile.display_name }}</h1>
+            <h1 id="profile-display-name">{{ profile_view.display_name }}</h1>
 
             <button
                     type="button"
@@ -101,7 +101,7 @@
           </div>
 
           <p class="profile-legal-name">
-            {{ organization_name }}
+            {{ profile_view.organization.name }}
           </p>
 
         </div>
@@ -116,7 +116,7 @@
 
     <div id="initial-profile-links" hidden>
 
-      {% for link in organization_profile.links %}
+      {% for link in profile_view.links %}
 
       <span
               class="initial-profile-link"
@@ -136,7 +136,7 @@
             id="profile-link-bar"
             class="profile-link-bar"
             aria-label="Organization links"
-            data-profile-slug="{{ organization_profile.slug }}"
+            data-profile-slug="{{ profile_view.organization.slug }}"
     >
 
       <span class="profile-links-loading">
@@ -192,7 +192,7 @@
         <div
                 id="profile-about-content"
                 class="profile-about-content"
-        >{{ organization_profile.about }}</div>
+        >{{ profile_view.about }}</div>
 
       </section>
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                profile_id,\n                image_type,\n                storage_key,\n                content_type,\n                width,\n                height,\n                file_size,\n                created_at,\n                updated_at\n            FROM profile_images\n            WHERE profile_id = $1\n              AND image_type = $2\n            FOR UPDATE\n            ",
+  "query": "\n            INSERT INTO organization_profile_images (\n                organization_id,\n                image_type,\n                storage_key,\n                content_type,\n                width,\n                height,\n                file_size\n            )\n            SELECT\n                $1, $2, $3, $4, $5, $6, $7\n            FROM organization_profiles\n            WHERE organization_id = $1\n            ON CONFLICT (organization_id, image_type)\n            DO UPDATE SET\n                storage_key = EXCLUDED.storage_key,\n                content_type = EXCLUDED.content_type,\n                width = EXCLUDED.width,\n                height = EXCLUDED.height,\n                file_size = EXCLUDED.file_size,\n                updated_at = NOW()\n            RETURNING\n                id,\n                organization_id,\n                image_type,\n                storage_key,\n                content_type,\n                width,\n                height,\n                file_size,\n                created_at AS \"created_at: DateTime<Utc>\",\n                updated_at AS \"updated_at: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -9,19 +9,19 @@
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "id"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "profile_id",
+        "name": "organization_id",
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "profile_images",
-            "name": "profile_id"
+            "table": "organization_profile_images",
+            "name": "organization_id"
           }
         }
       },
@@ -31,7 +31,7 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "image_type"
           }
         }
@@ -42,7 +42,7 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "storage_key"
           }
         }
@@ -53,7 +53,7 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "content_type"
           }
         }
@@ -64,7 +64,7 @@
         "type_info": "Int4",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "width"
           }
         }
@@ -75,7 +75,7 @@
         "type_info": "Int4",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "height"
           }
         }
@@ -86,29 +86,29 @@
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "file_size"
           }
         }
       },
       {
         "ordinal": 8,
-        "name": "created_at",
+        "name": "created_at: DateTime<Utc>",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "created_at"
           }
         }
       },
       {
         "ordinal": 9,
-        "name": "updated_at",
+        "name": "updated_at: DateTime<Utc>",
         "type_info": "Timestamptz",
         "origin": {
           "Table": {
-            "table": "profile_images",
+            "table": "organization_profile_images",
             "name": "updated_at"
           }
         }
@@ -117,7 +117,12 @@
     "parameters": {
       "Left": [
         "Int8",
-        "Text"
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int8"
       ]
     },
     "nullable": [
@@ -133,5 +138,5 @@
       false
     ]
   },
-  "hash": "48b3b606fe98d6909f3dc428adcb8e5a99a489e5b3d9fd381e7df2778fc9297a"
+  "hash": "904fc9c861c2a16ef43156c46e49f7c42b8efec215781e3e88e8ab96c8160bb8"
 }

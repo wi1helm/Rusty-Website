@@ -16,8 +16,7 @@ mod image;
 /// before its handler is called.
 pub fn router(context: Context) -> Router<Context> {
     Router::new()
-        .route("/edit", post(profile::edit))
-        .route("/publish", post(profile::publish))
+        .route("/update", post(profile::update))
         .route("/image", post(image::image::upload).layer(DefaultBodyLimit::max(image::MAX_REQUEST_SIZE)))
         .layer(middleware::from_fn_with_state(context, require_auth))
 }

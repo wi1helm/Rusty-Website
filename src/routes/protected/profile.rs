@@ -7,7 +7,7 @@ use axum::{
 use crate::config::{APP_NAME, APP_YEAR};
 use crate::routes::errors::not_found;
 use crate::{auth::CurrentUser, Context};
-use crate::routes::profile::{load_profile_view, ProfileView, VersionKind};
+use crate::routes::profile::{load_profile_view, ProfileView};
 
 #[derive(Template, WebTemplate)]
 #[template(path = "protected/profile.html")]
@@ -15,7 +15,7 @@ pub struct ProfileTemplate {
     pub app_name: &'static str,
     pub year: u16,
     pub organization_name: String,
-    pub organization_profile: ProfileView,
+    pub profile_view: ProfileView,
 }
 
 pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
@@ -28,15 +28,15 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         }
     };
 
-    let Some(profile) = load_profile_view(&context, &organization, VersionKind::Current).await else {
+    let Some(profile) = load_profile_view(&context, &organization).await else {
         return not_found::get_page();
     };
 
     ProfileTemplate {
         app_name: APP_NAME,
         year: APP_YEAR,
-        organization_name: organization.name,
-        organization_profile: profile,
+        organization_name: organization.name.clone(),
+        profile_view: profile,
     }
     .into_response()
 }

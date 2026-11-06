@@ -72,7 +72,7 @@ pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUs
     }
 
     let new_image = NewProfileImage {
-        profile_id: profile.id,
+        organization_id: user.organization.id,
         image_type: normalized.image_type,
         storage_key: storage_key.clone(),
         content_type: normalized.content_type.to_string(),
@@ -81,7 +81,7 @@ pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUs
         file_size,
     };
 
-    let old_image = match context.database.save_profile_image(new_image).await {
+    let old_image = match context.database.update_profile_image(new_image).await {
         Ok(old_image) => old_image,
         Err(error) => {
             tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to save profile image to database");
