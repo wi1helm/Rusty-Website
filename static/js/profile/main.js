@@ -9,12 +9,14 @@ import { initDialogs } from "./dialogs.js";
 import { initDisplayName } from "./display-name.js";
 import { initAbout } from "./about.js";
 import { initLinks } from "./links.js";
-import { initSavePublish } from "./save-publish.js";
+import { initSave } from "./save.js";
 import { initImageUpload } from "./image-upload.js";
+import { initGraph} from "./graph.js";
 
 initDialogs();
 initDisplayName(state);
 initAbout(state);
 initLinks(state);
-initSavePublish(state);
+initSave(state);
 initImageUpload();
+initGraph(state)

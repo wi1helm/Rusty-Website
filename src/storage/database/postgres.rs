@@ -1,6 +1,11 @@
 use async_trait::async_trait;
 use sqlx::{PgPool, Transaction};
 use chrono::{DateTime, Utc};
+use crate::storage::database::data::DatabasePosition;
+use crate::storage::database::mapping::position::{
+    map_position,
+    PositionRow,
+};
 use crate::storage::object::defaults::{default_banner, default_logo};
 use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfile, DatabaseMemberWithOrganization, CreateOrganizationError, NewProfileImage, DatabaseImage, ProfileImageType, DatabaseLink, NewProfileLink, NewProfile, OrganizationRole, UpdateProfile};
 use super::mapping::member::{
@@ -124,6 +129,17 @@ impl PostgresDatabase {
         Ok(())
     }
 }
+
+/// Maps a PostgreSQL unique-constraint violation to a specific organization-creation error.
+fn map_unique_violation(err: sqlx::Error, mapped: CreateOrganizationError) -> CreateOrganizationError {
+    if let sqlx::Error::Database(db_err) = &err {
+        if db_err.code().as_deref() == Some("23505") {
+            return mapped;
+        }
+    }
+    CreateOrganizationError::Database(DatabaseError::Sqlx(err))
+}
+
 #[async_trait]
 impl Database for PostgresDatabase {
     /// Creates an organization, assigns its owner, and creates its default profile in a single transaction.
@@ -150,6 +166,8 @@ impl Database for PostgresDatabase {
 
         Ok((organization_id, owner_id))
     }
+
+
 
     /// Finds an organization by its database ID.
     async fn find_organization_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseOrganization>, DatabaseError> {
@@ -359,6 +377,39 @@ impl Database for PostgresDatabase {
         }))
     }
 
+    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError> {
+
+        let rows = sqlx::query_as!(
+            PositionRow,
+            r#"
+            SELECT
+                p.id,
+                p.organization_id,
+                p.title,
+                p.description,
+                p.created_at,
+                p.updated_at,
+
+                s.id AS status_id,
+                s.position_id AS status_position_id,
+                s.status,
+                s.information,
+                s.created_at AS status_created_at
+
+            FROM organization_positions p
+
+            INNER JOIN organization_position_statuses s
+                ON s.id = p.current_status_id
+                AND s.position_id = p.id
+
+            WHERE p.organization_id = $1
+            "#,
+            organization_id
+        ).fetch_all(&self.pool).await?;
+
+        rows.into_iter().map(map_position).collect()
+    }
+
     /// Updates the profile associated with an organization.
     async fn update_profile(&self, organization_id: i64, member_id: i64, profile: UpdateProfile) -> Result<Option<DatabaseProfile>, DatabaseError> {
         let updated_profile_id = sqlx::query_scalar!(
@@ -520,14 +571,4 @@ impl Database for PostgresDatabase {
 
         Ok(links)
     }
-}
-
-/// Maps a PostgreSQL unique-constraint violation to a specific organization-creation error.
-fn map_unique_violation(err: sqlx::Error, mapped: CreateOrganizationError) -> CreateOrganizationError {
-    if let sqlx::Error::Database(db_err) = &err {
-        if db_err.code().as_deref() == Some("23505") {
-            return mapped;
-        }
-    }
-    CreateOrganizationError::Database(DatabaseError::Sqlx(err))
 }

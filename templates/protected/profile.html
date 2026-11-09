@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/assets/css/profile.css">
 <link rel="stylesheet" href="/assets/css/profile_editor.css">
 <link rel="stylesheet" href="/assets/css/profile_upload.css">
+<link rel="stylesheet" href="/assets/css/graph.css">
 {% endblock %}
 
 {% block protected_content %}
@@ -197,61 +198,87 @@
       </section>
 
 
-      <!-- Organization graph placeholder
-           (later: org_graph.js viewer + org_graph_editor.js) -->
-
+      <!-- Organization graph -->
       <section class="profile-section profile-graph-section">
 
         <div class="profile-section-heading">
-
           <div>
             <h2>Organization graph</h2>
             <p class="profile-section-description">
               Visualize your organization's structure.
             </p>
           </div>
-
         </div>
 
-        <div
-                id="organization-graph"
-                class="organization-graph"
-                aria-label="Organization graph workspace"
-        >
+        <div id="organization-graph" class="organization-graph" aria-label="Organization graph workspace">
+
+          <div class="organization-graph-toolbar">
+            <button type="button" class="organization-graph-add-button" id="add-position-button">
+              + Add position
+            </button>
+
+          </div>
+
+          {% if profile_view.graph.positions.is_empty() %}
 
           <div class="organization-graph-placeholder">
-            <span class="organization-graph-placeholder-icon" aria-hidden="true">
-              <svg
-                      viewBox="0 0 24 24"
-                      width="30"
-                      height="30"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-              >
-                <rect x="8" y="2" width="8" height="6" rx="1"/>
-                <rect x="2" y="16" width="8" height="6" rx="1"/>
-                <rect x="14" y="16" width="8" height="6" rx="1"/>
-                <path d="M12 8v4"/>
-                <path d="M6 16v-4h12v4"/>
-              </svg>
-            </span>
 
-            <p>Organization graph</p>
+              <span class="organization-graph-placeholder-icon" aria-hidden="true">
+                  <svg
+                          viewBox="0 0 24 24"
+                          width="30"
+                          height="30"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                  >
+                      <rect x="8" y="2" width="8" height="6" rx="1"/>
+                      <rect x="2" y="16" width="8" height="6" rx="1"/>
+                      <rect x="14" y="16" width="8" height="6" rx="1"/>
+                      <path d="M12 8v4"/>
+                      <path d="M6 16v-4h12v4"/>
+                  </svg>
+              </span>
 
-            <span>
-              Your organization's structure will appear here.
-            </span>
+              <p class="organization-graph-empty-title">
+                It's a little quiet in here...
+              </p>
+
+              <span class="organization-graph-empty-description">
+                Add some positions and bring your organization's structure to life.
+              </span>
+
           </div>
+
+          {% else %}
+
+          <div class="organization-graph-positions">
+
+            {% for position in profile_view.graph.positions %}
+
+            <div
+                    class="organization-graph-position"
+                    data-position-id="{{ position.id }}"
+            >
+                        <span class="organization-graph-position-title">
+                            {{ position.title }}
+                        </span>
+            </div>
+
+            {% endfor %}
+
+          </div>
+
+          {% endif %}
 
         </div>
 
       </section>
 
 
-      <!-- Save and publish -->
+      <!-- Save-->
 
       <footer class="profile-actions">
 
@@ -266,18 +293,10 @@
 
           <button
                   type="button"
-                  class="button secondary"
+                  class="button primary"
                   id="save-profile"
           >
             Save changes
-          </button>
-
-          <button
-                  type="button"
-                  class="button primary"
-                  id="publish-profile"
-          >
-            Publish
           </button>
 
         </div>

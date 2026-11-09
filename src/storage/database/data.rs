@@ -1,6 +1,7 @@
 // database/data.rs
 
 use sqlx::types::chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 /// Represents the information required to create a new organization.
 #[derive(Debug, Clone)]
@@ -296,4 +297,67 @@ pub struct DatabaseLink {
     pub created_at: DateTime<Utc>,
     /// The timestamp when the link was last updated.
     pub updated_at: DateTime<Utc>,
+}
+
+/// Represents a position tied to a organization graph
+#[derive(Debug, Clone)]
+pub struct DatabasePosition {
+    /// The unique identifier for this position
+    pub id: Uuid,
+    /// The identifier of the organization the position belongs to.
+    pub organization_id: i64,
+    /// The title of the position
+    pub title: String,
+    /// A general description of the position.
+    pub description: String,
+    /// The data associated with the status of this position.
+    pub status: DatabasePositionStatus,
+    /// The timestamp when the position was created
+    pub created_at: DateTime<Utc>,
+    /// The timestamp when the position was last updated.
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Represents the possible statuses of a position
+#[derive(Debug, Clone)]
+pub enum PositionStatus {
+    OPEN,
+    CLOSED,
+    ARCHIVED,
+    FILLED
+}
+
+impl PositionStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::OPEN => "open",
+            Self::CLOSED => "closed",
+            Self::ARCHIVED => "archived",
+            Self::FILLED => "filled"
+        }
+    }
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "open" => Some(Self::OPEN),
+            "closed" => Some(Self::CLOSED),
+            "archived" => Some(Self::ARCHIVED),
+            "filled" => Some(Self::FILLED),
+            _ => None
+        }
+    }
+}
+
+/// Represents a positions status.
+#[derive(Debug, Clone)]
+pub struct DatabasePositionStatus {
+    /// The unique identifier for this status data tied to a position
+    pub id: Uuid,
+    /// The unique identifier for the position this status is tied to.
+    pub position_id: Uuid,
+    /// The status or label associated with this status
+    pub status: PositionStatus,
+    /// The information associated with this specific status
+    pub information: String,
+    /// The timestamp this status was created
+    pub created_at: DateTime<Utc>,
 }
