@@ -3,14 +3,12 @@
 //! Converts database models into view models so page handlers and
 //! templates don't need to depend on database-specific structs.
 
+use uuid::Uuid;
 use crate::storage::database::{
     DatabaseOrganization,
     DatabaseProfile,
 };
 use crate::Context;
-
-/// The initial graph version until graph versioning is implemented.
-const INITIAL_GRAPH_VERSION: i64 = 1;
 
 /// Information about the organization displayed on its profile page.
 pub struct OrganizationView {
@@ -27,8 +25,7 @@ pub struct ProfileView {
     pub logo: ImageView,
     pub banner: ImageView,
 
-    /// The version of the organization's graph.
-    pub graph_version: i64,
+    pub graph: GraphView,
 }
 
 /// A link displayed on the organization profile.
@@ -41,6 +38,25 @@ pub struct LinkView {
 pub struct ImageView {
     pub url: String,
     pub alt: String,
+}
+
+pub struct GraphView {
+    pub positions: Vec<PositionView>,
+    pub connections: Vec<ConnectionView>,
+}
+
+pub struct PositionView {
+    pub id: Uuid,
+    pub title: String,
+    pub description: String,
+
+    pub status: String,
+    pub status_information: String,
+}
+
+pub struct ConnectionView {
+    pub from: Uuid,
+    pub to: Uuid,
 }
 
 /// Loads the information needed to render an organization profile.
@@ -87,6 +103,25 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
         alt: format!("{} banner", profile.display_name),
     };
 
+    let positions = match context.database.find_positions_by_organization_id(profile.organization_id).await {
+        Ok(positions) => positions,
+
+        Err(error) => {
+            tracing::error!(?error, organization_id = profile.organization_id, "failed to load organization positions");
+            return None;
+        }
+    };
+
+    let positions = positions.into_iter()
+            .map(|position| PositionView {
+                id: position.id,
+                title: position.title,
+                description: position.description,
+                status: position.status.status.as_str().to_string(),
+                status_information: position.status.information,
+            })
+            .collect();
+
     let profile_view = ProfileView {
         organization,
         display_name: profile.display_name,
@@ -94,7 +129,10 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
         links,
         logo,
         banner,
-        graph_version: INITIAL_GRAPH_VERSION,
+        graph: GraphView {
+            positions,
+            connections: Vec::new(),
+        },
     };
 
     Some(profile_view)

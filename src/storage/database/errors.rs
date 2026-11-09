@@ -13,6 +13,10 @@ pub enum DatabaseError {
 
     #[error("failed to create database profile images")]
     InvalidDefaultProfileImage,
+
+    #[error("invalid position status in database: {0}")]
+    InvalidPositionStatus(String),
+    
     #[error("database error")]
     Other(String),
 }

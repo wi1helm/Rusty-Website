@@ -230,66 +230,6 @@
 }
 
 
-/* ---------- Organization graph (container) ----------
-   Move to org_graph.css once the graph viewer exists. */
-
-.profile-graph-section {
-    width: 100%;
-}
-
-.organization-graph {
-    position: relative;
-    width: 100%;
-    min-height: 420px;
-    box-sizing: border-box;
-    overflow: hidden;
-    background-color: var(--surface);
-    background-image: radial-gradient(var(--border) 1px, transparent 1px);
-    background-size: 22px 22px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-}
-
-.organization-graph-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1.5rem;
-    color: var(--muted);
-    text-align: center;
-    pointer-events: none;
-}
-
-.organization-graph-placeholder-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    margin-bottom: 0.25rem;
-    color: var(--muted);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-}
-
-.organization-graph-placeholder p {
-    margin: 0;
-    color: var(--text);
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.organization-graph-placeholder > span:last-child {
-    max-width: 320px;
-    font-size: 0.9rem;
-    line-height: 1.6;
-}
-
 
 /* ---------- Responsive ---------- */
 

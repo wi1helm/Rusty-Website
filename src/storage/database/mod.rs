@@ -28,7 +28,7 @@ pub use data::{
 };
 
 use async_trait::async_trait;
-
+use crate::storage::database::data::DatabasePosition;
 
 #[async_trait]
 pub trait Database: Send + Sync {
@@ -69,6 +69,13 @@ pub trait Database: Send + Sync {
     /// Returns `Some(profile)` if the organization has a profile, or `None` if no profile is found.
     /// Returns an error if the database operation fails.
     async fn find_profile_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseProfile>, DatabaseError>;
+    ///
+    /// Finds a list of positions associated with the specified organization.
+    ///
+    /// Returns `Vec<DatabasePosition>` empty means no positions for this organization.
+    /// Returns an error if the database operation fails.
+    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError>;
+
     ///
     /// Updates the profile associated with the specified organization.
     ///
