@@ -184,6 +184,27 @@ export function createTestGraph() {
 
     return {
         positions,
-        connections: []
+        connections: [
+            {
+                id: "connection-ceo-cto",
+                from: "position-ceo",
+                to: "position-cto"
+            },
+            {
+                id: "connection-ceo-cfo",
+                from: "position-ceo",
+                to: "position-cfo"
+            },
+            {
+                id: "connection-cto-backend",
+                from: "position-cto",
+                to: "position-backend"
+            },
+            {
+                id: "connection-cto-frontend",
+                from: "position-cto",
+                to: "position-frontend"
+            }
+        ]
     };
 }

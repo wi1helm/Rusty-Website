@@ -94,11 +94,8 @@
     box-sizing: border-box;
     padding: 5rem 2rem 2rem;
 }
-
 /* =========================================================
-   Connections layer
-
-   SVG will eventually draw the relationships between cards.
+   Connections
 ========================================================= */
 
 .organization-graph-connections {
@@ -112,6 +109,18 @@
     pointer-events: none;
     z-index: 1;
 }
+
+.organization-graph-connection {
+    fill: none;
+
+    stroke: #3b82f6;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+
+    opacity: 0.8;
+}
+
 
 /* =========================================================
    Position layout
@@ -134,6 +143,7 @@
     box-sizing: border-box;
 }
 
+
 /* =========================================================
    Position cards
 ========================================================= */
@@ -141,13 +151,16 @@
 .organization-graph-position {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    justify-content: flex-start;
+
+    gap: 0.85rem;
 
     width: 220px;
-    min-height: 290px;
+    min-height: 190px;
 
     box-sizing: border-box;
-    padding: 1.25rem;
+    padding: 1.5rem 1.25rem;
 
     background: var(--surface);
     color: var(--text);
@@ -155,7 +168,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
 
-    text-align: left;
+    text-align: center;
     font: inherit;
 
     cursor: pointer;
@@ -169,84 +182,89 @@
 }
 
 .organization-graph-position:hover {
-    transform: translateY(-4px);
-    border-color: var(--text);
+    transform: translateY(-3px);
+
+    border-color: var(--primary);
+
     box-shadow: 0 8px 20px rgb(0 0 0 / 8%);
 }
 
 .organization-graph-position:focus-visible {
-    outline: 2px solid var(--text);
+    outline: 2px solid var(--primary);
     outline-offset: 3px;
 }
 
-.organization-graph-position-title {
-    margin: 0 0 1.5rem;
 
-    font-size: 1.2rem;
+/* =========================================================
+   Position icon
+========================================================= */
+
+.organization-graph-position-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 46px;
+    height: 46px;
+
+    flex-shrink: 0;
+
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+
+    border-radius: 50%;
+}
+
+.organization-graph-position-icon svg {
+    width: 23px;
+    height: 23px;
+
+    stroke: currentColor;
+    stroke-width: 1.7;
+}
+
+
+/* =========================================================
+   Position title
+========================================================= */
+
+.organization-graph-position-title {
+    margin: 0;
+
+    max-width: 100%;
+
+    font-size: 1rem;
     font-weight: 650;
 
-    line-height: 1.35;
-    letter-spacing: -0.025em;
+    line-height: 1.4;
+    letter-spacing: -0.02em;
 
     overflow-wrap: anywhere;
 }
 
-/* =========================================================
-   Empty state
-========================================================= */
-
-.organization-graph-placeholder {
-    position: absolute;
-    inset: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0.5rem;
-
-    padding: 1.5rem;
-
-    color: var(--muted);
-    text-align: center;
-
-    z-index: 3;
-}
-
-.organization-graph-placeholder[hidden] {
-    display: none;
-}
-
-.organization-graph-empty-title {
-    margin: 0;
-    color: var(--text);
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.organization-graph-empty-description {
-    max-width: 320px;
-    font-size: 0.9rem;
-    line-height: 1.6;
-}
 
 /* =========================================================
-   Skeleton
+   Position skeleton
 ========================================================= */
 
 .position-card-skeleton {
     display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
+    justify-content: center;
+
+    width: 100%;
+    margin-top: 0.1rem;
 }
 
 .position-card-skeleton-line {
     display: block;
-    height: 7px;
+
+    width: 55%;
+    height: 5px;
 
     background: var(--border);
     border-radius: 4px;
-    opacity: 0.75;
+
+    opacity: 0.8;
 }
 
 /* =========================================================
