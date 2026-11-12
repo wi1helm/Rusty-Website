@@ -1,4 +1,5 @@
 import { renderConnections } from "./graph-connections.js";
+import {getCurrentStatus} from "./graph.js";
 
 export function renderGraph(graph, container) {
     if (!container) {
@@ -38,6 +39,8 @@ export function renderGraph(graph, container) {
 
             canvas.prepend(svg);
         }
+
+
 
         renderConnections(graph, canvas);
 
@@ -131,7 +134,22 @@ function createPositionCard(position) {
 
     skeleton.appendChild(line);
 
-    card.append(icon, title, skeleton);
+
+    const status = getCurrentStatus(position);
+
+    const statusLabel = document.createElement("span");
+
+    statusLabel.className = "organization-graph-position-status";
+
+    statusLabel.textContent = (
+        status?.status ?? "unknown"
+    ).toUpperCase();
+
+    statusLabel.dataset.status = status?.status ?? "unknown";
+
+    statusLabel.setAttribute("aria-label", `Status: ${statusLabel.textContent}`);
+
+    card.append(statusLabel, icon, title, skeleton);
 
     return card;
 }

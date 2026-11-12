@@ -196,6 +196,52 @@
 
 
 /* =========================================================
+   Position status
+========================================================= */
+
+.organization-graph-position {
+    position: relative;
+}
+
+.organization-graph-position-status {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+
+    font-size: 0.65rem;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+
+    line-height: 1;
+
+    pointer-events: none;
+}
+
+/* Open */
+
+.organization-graph-position-status[data-status="open"] {
+    color: #16a34a;
+}
+
+/* Filled */
+
+.organization-graph-position-status[data-status="filled"] {
+    color: #3b82f6;
+}
+
+/* Closed */
+
+.organization-graph-position-status[data-status="closed"] {
+    color: #dc2626;
+}
+
+/* Archived */
+
+.organization-graph-position-status[data-status="archived"] {
+    color: #888888;
+}
+
+/* =========================================================
    Position icon
 ========================================================= */
 
