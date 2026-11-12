@@ -16,6 +16,7 @@ pub struct ProfileTemplate {
     pub year: u16,
     pub organization_name: String,
     pub profile_view: ProfileView,
+    pub graph_json: String,
 }
 
 pub async fn get_page(State(context): State<Context>, CurrentUser(user): CurrentUser) -> Response {
@@ -32,11 +33,24 @@ pub async fn get_page(State(context): State<Context>, CurrentUser(user): Current
         return not_found::get_page();
     };
 
+    let graph_json = match serde_json::to_string(&profile.graph) {
+        Ok(json) => json
+            .replace('<', "\\u003c")
+            .replace('>', "\\u003e")
+            .replace('&', "\\u0026"),
+
+        Err(error) => {
+            tracing::error!(?error, "failed to serialize organization graph");
+            return not_found::get_page();
+        }
+    };
+
     ProfileTemplate {
         app_name: APP_NAME,
         year: APP_YEAR,
         organization_name: organization.name.clone(),
         profile_view: profile,
+        graph_json,
     }
     .into_response()
 }

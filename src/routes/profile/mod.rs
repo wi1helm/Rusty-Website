@@ -9,6 +9,8 @@ use crate::storage::database::{
     DatabaseProfile,
 };
 use crate::Context;
+use serde::Serialize;
+use serde_json::Value;
 
 /// Information about the organization displayed on its profile page.
 pub struct OrganizationView {
@@ -40,18 +42,26 @@ pub struct ImageView {
     pub alt: String,
 }
 
+#[derive(Debug, Serialize)]
 pub struct GraphView {
     pub positions: Vec<PositionView>,
-    pub connections: Vec<ConnectionView>,
 }
 
+#[derive(Debug, Serialize)]
 pub struct PositionView {
     pub id: Uuid,
     pub title: String,
     pub description: String,
 
+    pub current_status_id: Uuid,
+    pub statuses: Vec<StatusView>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatusView {
+    pub id: Uuid,
     pub status: String,
-    pub status_information: String,
+    pub information: Value,
 }
 
 pub struct ConnectionView {
@@ -112,15 +122,25 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
         }
     };
 
-    let positions = positions.into_iter()
-            .map(|position| PositionView {
-                id: position.id,
-                title: position.title,
-                description: position.description,
-                status: position.status.status.as_str().to_string(),
-                status_information: position.status.information,
-            })
-            .collect();
+    let positions: Vec<PositionView> = positions
+        .into_iter()
+        .map(|position| PositionView {
+            id: position.id,
+            title: position.title,
+            description: position.description,
+            current_status_id: position.current_status_id,
+
+            statuses: position
+                .statuses
+                .into_iter()
+                .map(|status| StatusView {
+                    id: status.id,
+                    status: status.status.as_str().to_string(),
+                    information: status.information,
+                })
+                .collect(),
+        })
+        .collect();
 
     let profile_view = ProfileView {
         organization,
@@ -131,7 +151,6 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
         banner,
         graph: GraphView {
             positions,
-            connections: Vec::new(),
         },
     };
 
