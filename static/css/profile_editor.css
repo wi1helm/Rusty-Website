@@ -348,6 +348,8 @@
 }
 
 
+
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 640px) {
@@ -384,5 +386,202 @@
     .profile-link-action,
     .profile-add-link {
         transition: none;
+    }
+}
+
+/* =========================================================
+   Position editor
+========================================================= */
+
+#position-dialog {
+    width: min(90vw, 800px);
+    max-width: 900px;
+    box-sizing: border-box;
+}
+
+.position-editor-section {
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.position-editor-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.position-editor-section-heading {
+    margin-bottom: 1.25rem;
+}
+
+.position-editor-section-heading h3 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.position-editor-section-heading p {
+    margin: 0.3rem 0 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+
+/* ---------- Select ---------- */
+
+.position-dialog select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.8rem 2.5rem 0.8rem 0.9rem;
+
+    color: var(--text);
+    background-color: var(--surface);
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    font: inherit;
+    cursor: pointer;
+}
+
+.position-dialog select:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+
+/* ---------- Dynamic status sections ---------- */
+
+.position-status-fields {
+    padding-top: 0.5rem;
+    animation: position-fields-in 160ms ease;
+}
+
+.position-status-fields[hidden] {
+    display: none;
+}
+
+.position-status-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+}
+
+.position-status-heading h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.position-status-indicator {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+
+.position-status-indicator.is-open {
+    background: #16a34a;
+}
+
+.position-status-indicator.is-closed {
+    background: #d97706;
+}
+
+.position-status-indicator.is-filled {
+    background: #64748b;
+}
+
+
+/* ---------- Dialog actions ---------- */
+
+.position-dialog-actions {
+    justify-content: space-between;
+}
+
+.position-dialog-main-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+.position-delete-button {
+    color: #b42318;
+    border-color: #e5b8b5;
+}
+
+.position-delete-button:hover {
+    color: #991b1b;
+    background: #fef2f2;
+    border-color: #e5b8b5;
+}
+
+
+/* ---------- Position buttons ---------- */
+
+.organization-graph-position {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.organization-graph-position:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+
+/* ---------- Animation ---------- */
+
+@keyframes position-fields-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+
+    .position-dialog-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .position-dialog-main-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .position-dialog-main-actions button {
+        flex: 1;
+    }
+
+    .position-delete-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    #position-dialog {
+        width: 95vw;
+        max-width: 95vw;
+        padding: 1.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .position-status-fields {
+        animation: none;
     }
 }

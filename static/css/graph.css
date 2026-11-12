@@ -1,4 +1,6 @@
-/* ---------- Organization graph ---------- */
+/* =========================================================
+   Organization graph
+========================================================= */
 
 .profile-graph-section {
     width: 100%;
@@ -7,25 +9,24 @@
 .organization-graph {
     position: relative;
     width: 100%;
-    min-height: 420px;
+    height: 650px;
     box-sizing: border-box;
     overflow: hidden;
 
-    background-color: var(--surface);
-    background-image: radial-gradient(var(--border) 1px, transparent 1px);
-    background-size: 22px 22px;
-
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
 }
 
-/* ---------- Graph toolbar ---------- */
+/* =========================================================
+   Toolbar
+========================================================= */
 
 .organization-graph-toolbar {
     position: absolute;
     top: 16px;
     right: 16px;
-    z-index: 2;
+    z-index: 5;
 }
 
 .organization-graph-add-button {
@@ -54,7 +55,145 @@
     background: var(--surface-hover);
 }
 
-/* ---------- Empty state ---------- */
+/* =========================================================
+   Viewport
+
+   This is the fixed window through which the canvas is seen.
+========================================================= */
+
+.organization-graph-viewport {
+    position: absolute;
+    inset: 0;
+
+    overflow: auto;
+    overscroll-behavior: contain;
+
+    background-color: var(--surface);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+
+.organization-graph-viewport:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -3px;
+}
+
+/* =========================================================
+   Canvas
+
+   The canvas can become larger than the viewport.
+========================================================= */
+
+.organization-graph-canvas {
+    position: relative;
+
+    width: 100%;
+    min-width: 100%;
+    min-height: 100%;
+
+    box-sizing: border-box;
+    padding: 5rem 2rem 2rem;
+}
+
+/* =========================================================
+   Connections layer
+
+   SVG will eventually draw the relationships between cards.
+========================================================= */
+
+.organization-graph-connections {
+    position: absolute;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* =========================================================
+   Position layout
+========================================================= */
+
+.organization-graph-positions {
+    position: relative;
+    z-index: 2;
+
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 220px);
+
+    justify-content: center;
+    align-content: start;
+    gap: 1.5rem;
+
+    width: 100%;
+    min-height: 100%;
+
+    box-sizing: border-box;
+}
+
+/* =========================================================
+   Position cards
+========================================================= */
+
+.organization-graph-position {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+
+    width: 220px;
+    min-height: 290px;
+
+    box-sizing: border-box;
+    padding: 1.25rem;
+
+    background: var(--surface);
+    color: var(--text);
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    text-align: left;
+    font: inherit;
+
+    cursor: pointer;
+
+    box-shadow: 0 2px 5px rgb(0 0 0 / 4%);
+
+    transition:
+            transform 0.18s ease,
+            border-color 0.18s ease,
+            box-shadow 0.18s ease;
+}
+
+.organization-graph-position:hover {
+    transform: translateY(-4px);
+    border-color: var(--text);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 8%);
+}
+
+.organization-graph-position:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+}
+
+.organization-graph-position-title {
+    margin: 0 0 1.5rem;
+
+    font-size: 1.2rem;
+    font-weight: 650;
+
+    line-height: 1.35;
+    letter-spacing: -0.025em;
+
+    overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   Empty state
+========================================================= */
 
 .organization-graph-placeholder {
     position: absolute;
@@ -70,22 +209,12 @@
 
     color: var(--muted);
     text-align: center;
+
+    z-index: 3;
 }
 
-.organization-graph-placeholder-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 56px;
-    height: 56px;
-    margin-bottom: 0.25rem;
-
-    color: var(--muted);
-    background: var(--surface);
-
-    border: 1px solid var(--border);
-    border-radius: 14px;
+.organization-graph-placeholder[hidden] {
+    display: none;
 }
 
 .organization-graph-empty-title {
@@ -99,4 +228,48 @@
     max-width: 320px;
     font-size: 0.9rem;
     line-height: 1.6;
+}
+
+/* =========================================================
+   Skeleton
+========================================================= */
+
+.position-card-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.position-card-skeleton-line {
+    display: block;
+    height: 7px;
+
+    background: var(--border);
+    border-radius: 4px;
+    opacity: 0.75;
+}
+
+/* =========================================================
+   Responsive
+========================================================= */
+
+@media (max-width: 600px) {
+    .organization-graph {
+        height: 500px;
+    }
+
+    .organization-graph-canvas {
+        padding: 5rem 1rem 1.5rem;
+    }
+
+    .organization-graph-positions {
+        grid-template-columns: repeat(auto-fill, 220px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .organization-graph-position,
+    .organization-graph-add-button {
+        transition: none;
+    }
 }

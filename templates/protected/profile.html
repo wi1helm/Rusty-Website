@@ -18,7 +18,6 @@
   <div class="box profile-box">
 
     <!-- Banner -->
-
     <div
             class="profile-banner-wrap profile-image-editor"
             data-image-type="banner"
@@ -27,7 +26,6 @@
             tabindex="0"
             aria-label="Edit organization banner"
     >
-
       <img
               class="profile-banner"
               src="{{ profile_view.banner.url }}"
@@ -38,14 +36,10 @@
         <span class="profile-image-edit-icon" aria-hidden="true">✎</span>
         <span class="profile-image-overlay-label">Edit banner</span>
       </div>
-
     </div>
 
-
     <!-- Organization identity -->
-
     <header class="profile-header">
-
       <div class="profile-header-content">
 
         <div
@@ -56,7 +50,6 @@
                 tabindex="0"
                 aria-label="Edit organization logo"
         >
-
           <img
                   class="profile-logo"
                   src="{{ profile_view.logo.url }}"
@@ -66,14 +59,10 @@
           <div class="profile-image-overlay">
             <span class="profile-image-edit-icon" aria-hidden="true">✎</span>
           </div>
-
         </div>
 
-
         <div class="profile-identity">
-
           <div class="profile-name-row">
-
             <h1 id="profile-display-name">{{ profile_view.display_name }}</h1>
 
             <button
@@ -98,66 +87,44 @@
                 <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
               </svg>
             </button>
-
           </div>
 
           <p class="profile-legal-name">
             {{ profile_view.organization.name }}
           </p>
-
         </div>
-
       </div>
-
     </header>
 
-
-    <!-- Initial link data: the server renders existing links here,
-         links.js reads them and builds the link bar. -->
-
+    <!-- Initial link data -->
     <div id="initial-profile-links" hidden>
-
       {% for link in profile_view.links %}
-
       <span
               class="initial-profile-link"
               data-label="{{ link.label }}"
               data-url="{{ link.url }}"
       ></span>
-
       {% endfor %}
-
     </div>
 
-
-    <!-- Link bar: built by links.js. The "Public profile" shortcut
-         is generated there and only exists in the editor. -->
-
+    <!-- Link bar -->
     <nav
             id="profile-link-bar"
             class="profile-link-bar"
             aria-label="Organization links"
             data-profile-slug="{{ profile_view.organization.slug }}"
     >
-
       <span class="profile-links-loading">
         Loading links...
       </span>
-
     </nav>
 
-
     <!-- Main content -->
-
     <main class="profile-content">
 
-
       <!-- About -->
-
       <section class="profile-section profile-about-section">
-
         <div class="profile-section-heading">
-
           <div>
             <h2>About</h2>
             <p class="profile-section-description">
@@ -187,20 +154,16 @@
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>
             </svg>
           </button>
-
         </div>
 
         <div
                 id="profile-about-content"
                 class="profile-about-content"
         >{{ profile_view.about }}</div>
-
       </section>
-
 
       <!-- Organization graph -->
       <section class="profile-section profile-graph-section">
-
         <div class="profile-section-heading">
           <div>
             <h2>Organization graph</h2>
@@ -210,78 +173,72 @@
           </div>
         </div>
 
-        <div id="organization-graph" class="organization-graph" aria-label="Organization graph workspace">
-
+        <div
+                id="organization-graph"
+                class="organization-graph"
+                aria-label="Organization graph workspace"
+        >
+          <!-- Toolbar stays fixed above the viewport -->
           <div class="organization-graph-toolbar">
-            <button type="button" class="organization-graph-add-button" id="add-position-button">
+            <button
+                    type="button"
+                    class="organization-graph-add-button"
+                    id="add-position-button"
+            >
               + Add position
             </button>
-
           </div>
 
-          {% if profile_view.graph.positions.is_empty() %}
-
-          <div class="organization-graph-placeholder">
-
-              <span class="organization-graph-placeholder-icon" aria-hidden="true">
-                  <svg
-                          viewBox="0 0 24 24"
-                          width="30"
-                          height="30"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                  >
-                      <rect x="8" y="2" width="8" height="6" rx="1"/>
-                      <rect x="2" y="16" width="8" height="6" rx="1"/>
-                      <rect x="14" y="16" width="8" height="6" rx="1"/>
-                      <path d="M12 8v4"/>
-                      <path d="M6 16v-4h12v4"/>
-                  </svg>
-              </span>
-
-              <p class="organization-graph-empty-title">
-                It's a little quiet in here...
-              </p>
-
-              <span class="organization-graph-empty-description">
-                Add some positions and bring your organization's structure to life.
-              </span>
-
-          </div>
-
-          {% else %}
-
-          <div class="organization-graph-positions">
-
-            {% for position in profile_view.graph.positions %}
-
+          <!-- Fixed visible area -->
+          <div
+                  class="organization-graph-viewport"
+                  id="organization-graph-viewport"
+                  tabindex="0"
+                  aria-label="Scrollable organization graph"
+          >
+            <!-- Workspace can extend beyond the viewport -->
             <div
-                    class="organization-graph-position"
-                    data-position-id="{{ position.id }}"
+                    class="organization-graph-canvas"
+                    id="organization-graph-canvas"
             >
-                        <span class="organization-graph-position-title">
-                            {{ position.title }}
-                        </span>
+              <!-- Future connection lines -->
+              <svg
+                      class="organization-graph-connections"
+                      id="organization-graph-connections"
+                      aria-hidden="true"
+              ></svg>
+
+              <!-- Empty state -->
+              <div
+                      class="organization-graph-placeholder"
+                      id="organization-graph-placeholder"
+                      {% if !profile_view.graph.positions.is_empty() %}hidden{% endif %}
+              >
+                <p class="organization-graph-empty-title">
+                  It's a little quiet in here...
+                </p>
+
+                <span class="organization-graph-empty-description">
+                    Add some positions and bring your organization's
+                    structure to life.
+                </span>
+              </div>
+
+              <!-- Position cards are rendered here -->
+              <div
+                      class="organization-graph-positions"
+                      id="organization-graph-positions"
+              ></div>
             </div>
-
-            {% endfor %}
-
           </div>
 
-          {% endif %}
-
+          <!-- Server-rendered initial graph data -->
+          <script type="application/json" id="organization-graph-data">{{ graph_json|safe }}</script>
         </div>
-
       </section>
 
-
-      <!-- Save-->
-
+      <!-- Save -->
       <footer class="profile-actions">
-
         <div
                 id="profile-editor-status"
                 class="profile-editor-status"
@@ -290,7 +247,6 @@
         ></div>
 
         <div class="profile-action-buttons">
-
           <button
                   type="button"
                   class="button primary"
@@ -298,26 +254,17 @@
           >
             Save changes
           </button>
-
         </div>
-
       </footer>
 
     </main>
-
   </div>
-
 </section>
 
-
 <!-- Display name editor -->
-
 <dialog id="display-name-dialog" class="profile-dialog">
-
   <form id="display-name-form" class="profile-dialog-content">
-
     <div class="profile-dialog-header">
-
       <div>
         <h2>Edit organization name</h2>
         <p>Choose how your organization appears on its public profile.</p>
@@ -328,18 +275,11 @@
               class="profile-dialog-close"
               data-close-dialog="display-name-dialog"
               aria-label="Close"
-      >
-        ×
-      </button>
-
+      >×</button>
     </div>
 
     <div class="profile-form-group">
-
-      <label for="display-name-input">
-        Display name
-      </label>
-
+      <label for="display-name-input">Display name</label>
       <input
               id="display-name-input"
               name="display_name"
@@ -348,38 +288,26 @@
               required
               autocomplete="organization"
       >
-
     </div>
 
     <div class="profile-dialog-actions">
-
       <button
               type="button"
               class="button secondary"
               data-close-dialog="display-name-dialog"
-      >
-        Cancel
-      </button>
+      >Cancel</button>
 
       <button type="submit" class="button primary">
         Apply changes
       </button>
-
     </div>
-
   </form>
-
 </dialog>
 
-
 <!-- About editor -->
-
 <dialog id="about-dialog" class="profile-dialog">
-
   <form id="about-form" class="profile-dialog-content">
-
     <div class="profile-dialog-header">
-
       <div>
         <h2>Edit about</h2>
         <p>Describe your organization and what it does.</p>
@@ -390,18 +318,11 @@
               class="profile-dialog-close"
               data-close-dialog="about-dialog"
               aria-label="Close"
-      >
-        ×
-      </button>
-
+      >×</button>
     </div>
 
     <div class="profile-form-group">
-
-      <label for="about-input">
-        About your organization
-      </label>
-
+      <label for="about-input">About your organization</label>
       <textarea
               id="about-input"
               name="about"
@@ -413,38 +334,26 @@
       <div class="profile-character-count">
         <span id="about-character-count">0</span> / 5000
       </div>
-
     </div>
 
     <div class="profile-dialog-actions">
-
       <button
               type="button"
               class="button secondary"
               data-close-dialog="about-dialog"
-      >
-        Cancel
-      </button>
+      >Cancel</button>
 
       <button type="submit" class="button primary">
         Apply changes
       </button>
-
     </div>
-
   </form>
-
 </dialog>
 
-
 <!-- Add/edit link dialog -->
-
 <dialog id="link-dialog" class="profile-dialog">
-
   <form id="link-form" class="profile-dialog-content">
-
     <div class="profile-dialog-header">
-
       <div>
         <h2 id="link-dialog-title">Add a link</h2>
         <p>Add a website or an external platform.</p>
@@ -455,18 +364,11 @@
               class="profile-dialog-close"
               data-close-dialog="link-dialog"
               aria-label="Close"
-      >
-        ×
-      </button>
-
+      >×</button>
     </div>
 
     <div class="profile-form-group">
-
-      <label for="link-label-input">
-        Label
-      </label>
-
+      <label for="link-label-input">Label</label>
       <input
               id="link-label-input"
               name="label"
@@ -475,15 +377,10 @@
               placeholder="e.g. LinkedIn"
               required
       >
-
     </div>
 
     <div class="profile-form-group">
-
-      <label for="link-url-input">
-        URL
-      </label>
-
+      <label for="link-url-input">URL</label>
       <input
               id="link-url-input"
               name="url"
@@ -496,7 +393,6 @@
       <p class="profile-field-hint">
         Enter a complete URL starting with https:// or http://.
       </p>
-
     </div>
 
     <div
@@ -507,14 +403,11 @@
     ></div>
 
     <div class="profile-dialog-actions">
-
       <button
               type="button"
               class="button secondary"
               data-close-dialog="link-dialog"
-      >
-        Cancel
-      </button>
+      >Cancel</button>
 
       <button
               type="submit"
@@ -523,36 +416,198 @@
       >
         Add link
       </button>
+    </div>
+  </form>
+</dialog>
 
+<!-- Position editor -->
+<dialog id="position-dialog" class="profile-dialog position-dialog">
+  <form id="position-form" class="profile-dialog-content">
+
+    <div class="profile-dialog-header">
+      <div>
+        <h2 id="position-dialog-title">Add position</h2>
+        <p>Manage the position and its current status.</p>
+      </div>
+
+      <button
+              type="button"
+              class="profile-dialog-close"
+              data-close-dialog="position-dialog"
+              aria-label="Close"
+      >×</button>
+    </div>
+
+    <!-- Position ID -->
+    <input type="hidden" id="position-id" name="id">
+
+    <!-- General information -->
+    <section class="position-editor-section">
+      <div class="position-editor-section-heading">
+        <h3>Position information</h3>
+        <p>Basic information about this position.</p>
+      </div>
+
+      <div class="profile-form-group">
+        <label for="position-title">Position title</label>
+        <input
+                type="text"
+                id="position-title"
+                name="title"
+                maxlength="120"
+                placeholder="e.g. Software Engineer"
+                required
+        >
+      </div>
+
+      <div class="profile-form-group">
+        <label for="position-description">Description</label>
+        <textarea
+                id="position-description"
+                name="description"
+                rows="5"
+                maxlength="3000"
+                placeholder="Describe this position..."
+        ></textarea>
+      </div>
+    </section>
+
+    <!-- Status -->
+    <section class="position-editor-section">
+      <div class="position-editor-section-heading">
+        <h3>Status</h3>
+        <p>The status determines which additional information is displayed.</p>
+      </div>
+
+      <div class="profile-form-group">
+        <label for="position-status">Position status</label>
+        <select id="position-status" name="status">
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+          <option value="archived">Archived</option>
+          <option value="filled">Filled</option>
+        </select>
+      </div>
+
+      <div
+              class="position-status-fields"
+              data-status-fields="open"
+      >
+        <div class="profile-form-group">
+          <label for="position-open-information">Information</label>
+          <textarea
+                  id="position-open-information"
+                  name="open.information"
+                  rows="5"
+                  placeholder="Provide information about this open position..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div
+              class="position-status-fields"
+              data-status-fields="closed"
+              hidden
+      >
+        <div class="profile-form-group">
+          <label for="position-closed-information">Information</label>
+          <textarea
+                  id="position-closed-information"
+                  name="closed.information"
+                  rows="5"
+                  placeholder="Explain why this position is currently closed..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div
+              class="position-status-fields"
+              data-status-fields="archived"
+              hidden
+      >
+        <div class="profile-form-group">
+          <label for="position-archived-information">Information</label>
+          <textarea
+                  id="position-archived-information"
+                  name="archived.information"
+                  rows="5"
+                  placeholder="Provide information about this archived position..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div
+              class="position-status-fields"
+              data-status-fields="filled"
+              hidden
+      >
+        <div class="profile-form-group">
+          <label for="position-filled-information">Information</label>
+          <textarea
+                  id="position-filled-information"
+                  name="filled.information"
+                  rows="5"
+                  placeholder="Provide information about this filled position..."
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <div
+            id="position-form-error"
+            class="profile-form-error"
+            role="alert"
+            hidden
+    ></div>
+
+    <!-- Actions -->
+    <div class="profile-dialog-actions position-dialog-actions">
+      <button
+              type="button"
+              class="button secondary position-delete-button"
+              id="delete-position"
+              hidden
+      >
+        Delete position
+      </button>
+
+      <div class="position-dialog-main-actions">
+        <button
+                type="button"
+                class="button secondary"
+                data-close-dialog="position-dialog"
+        >
+          Cancel
+        </button>
+
+        <button
+                type="submit"
+                class="button primary"
+                id="position-save"
+        >
+          Add position
+        </button>
+      </div>
     </div>
 
   </form>
-
 </dialog>
 
-
 <!-- Image-upload modal -->
-
 <div id="image-upload-modal" class="image-upload-modal" hidden>
-
   <div
           class="image-upload-dialog"
           role="dialog"
           aria-modal="true"
           aria-labelledby="image-upload-title"
   >
-
     <button
             type="button"
             class="image-upload-close"
             aria-label="Close"
-    >
-      ×
-    </button>
+    >×</button>
 
-    <h2 id="image-upload-title">
-      Upload image
-    </h2>
+    <h2 id="image-upload-title">Upload image</h2>
 
     <p
             id="image-upload-description"
@@ -562,7 +617,6 @@
     </p>
 
     <label class="image-upload-dropzone" for="image-upload-input">
-
       <input
               id="image-upload-input"
               type="file"
@@ -573,7 +627,6 @@
       <span class="image-upload-dropzone-text">
         Drop image here or <strong>choose a file</strong>
       </span>
-
     </label>
 
     <div id="image-upload-preview" class="image-upload-preview" hidden>
@@ -581,7 +634,6 @@
     </div>
 
     <div class="image-upload-actions">
-
       <button
               type="button"
               class="button secondary"
@@ -597,13 +649,9 @@
       >
         Upload
       </button>
-
     </div>
-
   </div>
-
 </div>
-
 
 <script type="module" src="/assets/js/profile/main.js"></script>
 

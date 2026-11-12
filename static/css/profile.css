@@ -292,10 +292,6 @@
     .profile-section {
         padding: 1.5rem 0;
     }
-
-    .organization-graph {
-        min-height: 300px;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
