@@ -2,10 +2,7 @@ use async_trait::async_trait;
 use sqlx::{PgPool, Transaction};
 use chrono::{DateTime, Utc};
 use crate::storage::database::data::DatabasePosition;
-use crate::storage::database::mapping::position::{
-    map_position,
-    PositionRow,
-};
+use crate::storage::database::mapping::position::{map_positions, PositionRow};
 use crate::storage::object::defaults::{default_banner, default_logo};
 use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfile, DatabaseMemberWithOrganization, CreateOrganizationError, NewProfileImage, DatabaseImage, ProfileImageType, DatabaseLink, NewProfileLink, NewProfile, OrganizationRole, UpdateProfile};
 use super::mapping::member::{
@@ -377,7 +374,7 @@ impl Database for PostgresDatabase {
         }))
     }
 
-    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError> {
+    async fn find_positions_by_organization_id(&self, organization_id: i64, ) -> Result<Vec<DatabasePosition>, DatabaseError> {
 
         let rows = sqlx::query_as!(
             PositionRow,
@@ -387,6 +384,7 @@ impl Database for PostgresDatabase {
                 p.organization_id,
                 p.title,
                 p.description,
+                p.current_status_id,
                 p.created_at,
                 p.updated_at,
 
@@ -399,15 +397,18 @@ impl Database for PostgresDatabase {
             FROM organization_positions p
 
             INNER JOIN organization_position_statuses s
-                ON s.id = p.current_status_id
-                AND s.position_id = p.id
+                ON s.position_id = p.id
 
             WHERE p.organization_id = $1
+
+            ORDER BY p.created_at, p.id, s.created_at
             "#,
             organization_id
-        ).fetch_all(&self.pool).await?;
+        )
+            .fetch_all(&self.pool)
+            .await?;
 
-        rows.into_iter().map(map_position).collect()
+        map_positions(rows)
     }
 
     /// Updates the profile associated with an organization.

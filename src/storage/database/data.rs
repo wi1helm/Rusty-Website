@@ -1,5 +1,7 @@
 // database/data.rs
 
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::types::chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -299,32 +301,41 @@ pub struct DatabaseLink {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Represents a position tied to a organization graph
+/// Represents a position tied to an organization graph.
 #[derive(Debug, Clone)]
 pub struct DatabasePosition {
-    /// The unique identifier for this position
+    /// The unique identifier for this position.
     pub id: Uuid,
+
     /// The identifier of the organization the position belongs to.
     pub organization_id: i64,
-    /// The title of the position
+
+    /// The title of the position.
     pub title: String,
+
     /// A general description of the position.
     pub description: String,
-    /// The data associated with the status of this position.
-    pub status: DatabasePositionStatus,
-    /// The timestamp when the position was created
+
+    /// The ID of the status that is currently active.
+    pub current_status_id: Uuid,
+
+    /// All status records associated with this position.
+    pub statuses: Vec<DatabasePositionStatus>,
+
+    /// The timestamp when the position was created.
     pub created_at: DateTime<Utc>,
+
     /// The timestamp when the position was last updated.
     pub updated_at: DateTime<Utc>,
 }
 
 /// Represents the possible statuses of a position
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PositionStatus {
     OPEN,
     CLOSED,
     ARCHIVED,
-    FILLED
+    FILLED,
 }
 
 impl PositionStatus {
@@ -348,16 +359,21 @@ impl PositionStatus {
 }
 
 /// Represents a positions status.
-#[derive(Debug, Clone)]
+/// Represents a position's status.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatabasePositionStatus {
-    /// The unique identifier for this status data tied to a position
+    /// The unique identifier for this status record.
     pub id: Uuid,
-    /// The unique identifier for the position this status is tied to.
+
+    /// The position this status belongs to.
     pub position_id: Uuid,
-    /// The status or label associated with this status
+
+    /// The status associated with this record.
     pub status: PositionStatus,
-    /// The information associated with this specific status
-    pub information: String,
-    /// The timestamp this status was created
+
+    /// Additional information specific to this status.
+    pub information: Value,
+
+    /// When this status record was created.
     pub created_at: DateTime<Utc>,
 }
