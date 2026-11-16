@@ -34,35 +34,31 @@ pub struct ValidatedCreation {
     pub password: String,
 }
 
-struct CreationValidator<'a> {
-    input: &'a CreationRequest,
-}
-
-impl CreationValidator<'_> {
+impl CreationRequest {
     fn validate(&self) -> Result<ValidatedCreation, CreationValidationError> {
-        if !is_valid_name(&self.input.name) {
+        if !is_valid_name(&self.name) {
             return Err(CreationValidationError::InvalidName);
         }
-        if !is_valid_email(&self.input.email) {
+        if !is_valid_email(&self.email) {
             return Err(CreationValidationError::InvalidEmail);
         }
-        if !is_valid_password(&self.input.password) || !is_valid_password(&self.input.confirm) {
+        if !is_valid_password(&self.password) || !is_valid_password(&self.confirm) {
             return Err(CreationValidationError::InvalidPassword);
         }
-        if self.input.password != self.input.confirm {
+        if self.password != self.confirm {
             return Err(CreationValidationError::PasswordMismatch);
         }
 
         let validated = ValidatedCreation {
-            name: self.input.name.clone(),
-            email: self.input.email.clone(),
-            password: self.input.password.clone(),
+            name: self.name.clone(),
+            email: self.email.clone(),
+            password: self.password.clone(),
         };
         Ok(validated)
     }
 }
 pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRequest>) -> impl IntoResponse {
-    let validated = match (CreationValidator { input: &input }).validate() {
+    let validated = match input.validate() {
         Ok(v) => v,
         Err(CreationValidationError::InvalidEmail) => return Redirect::to("/create?error=invalid-email").into_response(),
         Err(CreationValidationError::InvalidPassword) => return Redirect::to("/create?error=invalid-password").into_response(),

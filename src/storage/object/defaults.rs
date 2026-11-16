@@ -5,12 +5,7 @@ use image::ImageReader;
 use crate::config::{DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 use crate::storage::database::{NewProfileImage, ProfileImageType};
 
-fn create_default_profile_image(
-    organization_id: i64,
-    image_type: ProfileImageType,
-    storage_key: &str,
-    data: &[u8],
-) -> Result<NewProfileImage, String> {
+fn create_default_profile_image(organization_id: i64, image_type: ProfileImageType, storage_key: &str, data: &[u8]) -> Result<NewProfileImage, String> {
     let reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()
         .map_err(|error| error.to_string())?;
@@ -43,9 +38,7 @@ fn create_default_profile_image(
     })
 }
 
-pub fn default_logo(
-    organization_id: i64,
-) -> Result<NewProfileImage, String> {
+pub fn default_logo(organization_id: i64) -> Result<NewProfileImage, String> {
     create_default_profile_image(
         organization_id,
         ProfileImageType::Logo,
