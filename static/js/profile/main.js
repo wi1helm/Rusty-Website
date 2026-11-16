@@ -12,7 +12,7 @@ import { initAbout } from "./about.js";
 import { initLinks } from "./links.js";
 import { initSave } from "./save.js";
 import { initImageUpload } from "./image-upload.js";
-import { initGraph } from "./graph.js";
+import { initGraph } from "./graph-editor.js";
 
 initDialogs();
 initDisplayName(state);

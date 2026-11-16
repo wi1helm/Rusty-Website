@@ -1,5 +1,5 @@
 /*
- * shared/graph.js
+ * shared/graph-editor.js
  * Shared graph structure and data helpers
  */
 
@@ -22,12 +22,7 @@ export function getGraph(root = document) {
     }
 
     try {
-        const graph = JSON.parse(element.textContent);
-
-        return {
-            positions: graph.positions ?? [],
-            connections: graph.connections ?? []
-        };
+        return hydrateGraph(JSON.parse(element.textContent));
     } catch (error) {
         console.error("Failed to parse organization graph data:", error);
         return createGraph();
@@ -73,20 +68,24 @@ export function getStatus(position, statusName) {
  * Create a new position.
  */
 export function createPosition(values = {}) {
-    const id = values.id ?? crypto.randomUUID();
-    const statusId = crypto.randomUUID();
+    const statusId = values.current_status_id ?? crypto.randomUUID();
 
     const status = values.status ?? "open";
 
     return {
-        id,
+        // Database identity.
+        // Null means this position has not been saved yet.
+        id: values.id ?? null,
+
+        // Browser/editor identity.
+        client_id: values.client_id ?? crypto.randomUUID(),
 
         title: values.title ?? "",
         description: values.description ?? "",
 
         current_status_id: statusId,
 
-        statuses: [
+        statuses: values.statuses ?? [
             {
                 id: statusId,
                 status,
@@ -96,13 +95,40 @@ export function createPosition(values = {}) {
     };
 }
 
+export function hydrateGraph(data) {
+    const positions = (data.positions ?? []).map(position => ({
+        ...position,
+        client_id: crypto.randomUUID()
+    }));
+
+    const clientIdsByDatabaseId = new Map(
+        positions.map(position => [
+            position.id,
+            position.client_id
+        ])
+    );
+
+    const connections = (data.connections ?? []).map(connection => ({
+        ...connection,
+        client_id: crypto.randomUUID(),
+
+        from: clientIdsByDatabaseId.get(connection.from),
+        to: clientIdsByDatabaseId.get(connection.to)
+    }));
+
+    return {
+        positions,
+        connections
+    };
+}
+
 /*
  * Temporary test data for styling the organization graph.
  */
 export function createTestGraph() {
     const positions = [
         createPosition({
-            id: "position-ceo",
+            client_id: "position-ceo",
             title: "Chief Executive Officer",
             description: "Leading the company, setting the vision and keeping everyone moving in the same direction.",
             status: "open",
@@ -112,7 +138,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-cto",
+            client_id: "position-cto",
             title: "Chief Technology Officer",
             description: "Oversees technology, engineering and product development.",
             status: "filled",
@@ -122,7 +148,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-cfo",
+            client_id: "position-cfo",
             title: "Chief Financial Officer",
             description: "Responsible for financial planning, budgeting and reporting.",
             status: "filled",
@@ -132,7 +158,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-design",
+            client_id: "position-design",
             title: "Head of Design",
             description: "Shapes the user experience and visual direction of our products.",
             status: "open",
@@ -142,7 +168,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-backend",
+            client_id: "position-backend",
             title: "Backend Developer",
             description: "Builds and maintains APIs, databases and backend services.",
             status: "open",
@@ -152,7 +178,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-frontend",
+            client_id: "position-frontend",
             title: "Frontend Developer",
             description: "Creates accessible, responsive and enjoyable user interfaces.",
             status: "filled",
@@ -162,7 +188,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-marketing",
+            client_id: "position-marketing",
             title: "Marketing Manager",
             description: "Plans campaigns, manages communication and grows brand awareness.",
             status: "closed",
@@ -172,7 +198,7 @@ export function createTestGraph() {
         }),
 
         createPosition({
-            id: "position-intern",
+            client_id: "position-intern",
             title: "Design Intern",
             description: "Works alongside the design team on everyday projects and experiments.",
             status: "archived",
@@ -186,22 +212,22 @@ export function createTestGraph() {
         positions,
         connections: [
             {
-                id: "connection-ceo-cto",
+                client_id: "connection-ceo-cto",
                 from: "position-ceo",
                 to: "position-cto"
             },
             {
-                id: "connection-ceo-cfo",
+                client_id: "connection-ceo-cfo",
                 from: "position-ceo",
                 to: "position-cfo"
             },
             {
-                id: "connection-cto-backend",
+                client_id: "connection-cto-backend",
                 from: "position-cto",
                 to: "position-backend"
             },
             {
-                id: "connection-cto-frontend",
+                client_id: "connection-cto-frontend",
                 from: "position-cto",
                 to: "position-frontend"
             }

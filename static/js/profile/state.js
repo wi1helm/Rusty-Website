@@ -4,7 +4,7 @@
    Each module's init function fills in its own part.
 ========================================================= */
 
-import {createGraph, createTestGraph} from "../shared/graph.js";
+import {createGraph, createTestGraph} from "../shared/graph/graph.js";
 
 export const state = {
     displayName: "",
