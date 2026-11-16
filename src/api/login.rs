@@ -25,29 +25,26 @@ pub struct ValidatedLogin {
     pub email: String,
     pub password: String,
 }
-// The struct that handles server side validation of input
-struct LoginValidator<'a> {
-    input: &'a LoginRequest,
-}
+
 // The validator for login requests.
-impl LoginValidator<'_> {
+impl LoginRequest {
     fn validate(&self) -> Result<ValidatedLogin, LoginValidationError> {
-        if !is_valid_email(&self.input.email) {
+        if !is_valid_email(&self.email) {
             return Err(LoginValidationError::InvalidEmail);
         }
-        if !is_valid_password(&self.input.password) {
+        if !is_valid_password(&self.password) {
             return Err(LoginValidationError::InvalidPassword);
         }
 
         Ok(ValidatedLogin {
-            email: self.input.email.clone(),
-            password: self.input.password.clone(),
+            email: self.email.clone(),
+            password: self.password.clone(),
         })
     }
 }
 
 pub async fn login(State(context): State<Context>, Form(input): Form<LoginRequest>, ) -> impl IntoResponse {
-    let validated = match (LoginValidator { input: &input }).validate() {
+    let validated = match input.validate() {
         Ok(v) => v,
         Err(LoginValidationError::InvalidEmail) => return Redirect::to("/login?error=invalid-credentials").into_response(),
         Err(LoginValidationError::InvalidPassword) => return Redirect::to("/login?error=invalid-credentials").into_response(),
