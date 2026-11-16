@@ -182,10 +182,17 @@
           <div class="organization-graph-toolbar">
             <button
                     type="button"
-                    class="organization-graph-add-button"
+                    class="organization-graph-tool-button"
                     id="add-position-button"
             >
               + Add position
+            </button>
+            <button
+                    type="button"
+                    class="organization-graph-tool-button"
+                    id="connect-position-button"
+            >
+              ↗ Connect positions
             </button>
           </div>
 
@@ -644,6 +651,7 @@
   </div>
 </div>
 
+<script src="/assets/js/vendor/elkjs/lib/elk-api.js"></script>
 <script type="module" src="/assets/js/profile/main.js"></script>
 
 {% endblock %}
