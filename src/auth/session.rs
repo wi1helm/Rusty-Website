@@ -176,13 +176,13 @@ mod tests {
 
     #[async_trait]
     impl Cache for FakeCache {
+        async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
+            Ok(self.store.lock().unwrap().get(key).cloned())
+        }
+
         async fn set(&self, key: &str, value: &[u8], _ttl: Duration) -> Result<(), CacheError> {
             self.store.lock().unwrap().insert(key.to_string(), value.to_vec());
             Ok(())
-        }
-
-        async fn get(&self, key: &str) -> Result<Option<Vec<u8>>, CacheError> {
-            Ok(self.store.lock().unwrap().get(key).cloned())
         }
 
         async fn delete(&self, key: &str) -> Result<(), CacheError> {

@@ -1,21 +1,21 @@
 use askama_web::__askama_web_impl::axum_core_0_5::IntoResponse;
 use axum::{
-    extract::{Multipart, State},
     extract::multipart::Field,
+    extract::{Multipart, State},
     http::StatusCode,
     response::Redirect,
 };
 
-use crate::{
-    auth::CurrentUser,
-    storage::database::ProfileImageType,
-    Context,
-};
+use super::MAX_IMAGE_SIZE;
+use super::validator::ImageValidator;
 use crate::api::protected::get_profile;
 use crate::api::protected::image::normalizer::ImageNormalizer;
 use crate::storage::database::NewProfileImage;
-use super::validator::ImageValidator;
-use super::MAX_IMAGE_SIZE;
+use crate::{
+    Context,
+    auth::CurrentUser,
+    storage::database::ProfileImageType,
+};
 
 const MAX_LENGTH_OF_IMAGE_TYPE: usize = 32;
 
@@ -230,9 +230,9 @@ async fn read_image_data(field: &mut Field<'_>, organization_id: i64, ) -> Resul
 mod tests {
     use super::*;
 
-    use axum::{body::Body, extract::FromRequest, http::{header, Request}, Router};
-    use axum::extract::DefaultBodyLimit;
     use crate::api::protected::image::MAX_REQUEST_SIZE;
+    use axum::extract::DefaultBodyLimit;
+    use axum::{Router, body::Body, http::{Request, header}};
     use tower::ServiceExt;
     fn multipart_body(boundary: &str, fields: &[(&str, &str, &[u8], Option<&str>)], ) -> Vec<u8> {
         let mut body = Vec::new();

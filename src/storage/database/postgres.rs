@@ -70,7 +70,7 @@ impl PostgresDatabase {
     }
 
     /// Creates the profile belonging to an organization and returns its database ID.
-    async fn create_profile(&self, tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, organization_id: i64, member_id: i64, profile: NewProfile) -> Result<i64, DatabaseError> {
+    async fn create_profile(&self, tx: &mut Transaction<'_, sqlx::Postgres>, organization_id: i64, member_id: i64, profile: NewProfile) -> Result<i64, DatabaseError> {
         let display_name = profile.display_name;
 
         let profile_id = sqlx::query_scalar!(
