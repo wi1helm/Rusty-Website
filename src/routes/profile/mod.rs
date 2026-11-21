@@ -2,6 +2,20 @@
 //!
 //! Converts database models into view models so page handlers and
 //! templates don't need to depend on database-specific structs.
+//!
+//! TODO: This shared module sits at the same level as `public/` and
+//! `protected/`, which is confusing structurally. The `load_profile_view()`
+//! function and view structs are imported by both `routes/public/profile.rs`
+//! and `routes/protected/profile.rs`, but the module name `routes/profile/`
+//! makes it unclear whether it's public, protected, or shared.
+//!
+//! To fix: Move shared view models to a dedicated `views/` module at the
+//! src root level (e.g. `src/views/profile.rs`), or collocate them with
+//! the domain they represent. This makes the module hierarchy clear:
+//! `routes/public/` = public routes, `routes/protected/` = auth-required
+//! routes, `views/` = shared view models used by routes.
+//! Search terms: "Rust module structure conventions", "separation of concerns
+//! view models", "Axum route organization", "colocation principle Rust".
 
 use uuid::Uuid;
 use crate::storage::database::{
@@ -64,10 +78,6 @@ pub struct StatusView {
     pub information: Value,
 }
 
-pub struct ConnectionView {
-    pub from: Uuid,
-    pub to: Uuid,
-}
 
 /// Loads the information needed to render an organization profile.
 ///

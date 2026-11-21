@@ -1,4 +1,23 @@
 // database/mod.rs
+//! Database abstraction layer.
+//!
+//! TODO: Split this trait into focused repository traits.
+//! The `Database` trait currently has 10+ methods and keeps growing — every
+//! new domain concept (positions CRUD, member management, etc.) adds more
+//! methods to this single catch-all interface. This violates the Interface
+//! Segregation Principle and makes mocking in tests harder.
+//!
+//! Suggested split:
+//! - `OrganizationRepository` — org CRUD (create_organization, find_organization_*)
+//! - `MemberRepository` — member queries (find_member_*)
+//! - `ProfileRepository` — profile operations (find_profile, update_profile, update_profile_image, update_profile_links)
+//! - `PositionRepository` — position queries (find_positions_*)
+//!
+//! Each repository would be a separate field in Context, and handlers would
+//! depend only on the repositories they need. This also makes it easier to
+//! swap implementations per domain if needed.
+//! Search terms: "Repository pattern Rust", "Interface Segregation Principle",
+//! "split trait into multiple traits Rust", "domain driven design repositories".
 
 mod errors;
 mod data;

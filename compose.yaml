@@ -89,6 +89,13 @@ services:
       start_period: 40s
 
   sqlx-tools:
+    # TODO: Rust version mismatch — this service uses rust:1.97.1-trixie while
+    # the Dockerfile (server build) uses rust:1.100.0-trixie. This version
+    # mismatch can cause subtle issues with .sqlx cache files and dependency
+    # resolution. Pin both to the same Rust version, ideally via a shared
+    # argument or a version file (e.g. .rust-version).
+    # Search terms: "rust-version file", "pin Rust version Docker Compose",
+    # "SQLx offline mode version mismatch".
     image: rust:1.97.1-trixie
     profiles: ["tools"]
     working_dir: /app

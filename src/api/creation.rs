@@ -1,4 +1,20 @@
 // routes/pages/creation
+//! API endpoints for organization creation and signup.
+//!
+//! TODO: API handlers currently return `Redirect::to("/path?error=...")` for
+//! every error case. This couples API endpoints to frontend routing and makes
+//! the API unusable as a real REST API. For API routes, return proper JSON
+//! error responses with appropriate HTTP status codes (e.g., 400 for validation
+//! errors, 409 for conflicts, 500 for server errors). Reserve redirects for
+//! HTML page routes. This separates concerns and makes the API testable with
+//! `curl` or automated tests.
+//!
+//! To fix: Add `#[derive(Serialize)]` to `CreationValidationError` and return
+//! JSON responses like `(StatusCode::BAD_REQUEST, Json(error))` instead of
+//! redirects. Consider creating a shared error response type in a common module.
+//! Search terms: "Axum JSON error responses", "REST API error handling Rust",
+//! "separate API from HTML routes Axum", "problem_details RFC 7807 Rust".
+
 use serde::Deserialize;
 use axum::{extract::State, Form};
 use axum::response::{IntoResponse, Redirect};

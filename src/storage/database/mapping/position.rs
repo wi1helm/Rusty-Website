@@ -43,8 +43,17 @@ pub fn map_positions(rows: Vec<PositionRow>) -> Result<Vec<DatabasePosition>, Da
         // TODO: This only checks last_mut(), so it relies on rows for the same
         // position being consecutive in the input. It works because the SQL query
         // orders by created_at, but this invariant is fragile — if the query ever
-        // changes, the mapping will silently produce incorrect results. Consider
-        // using a HashMap instead of last_mut() for robustness.
+        // changes, the mapping will silently produce incorrect results.
+        //
+        // Fix: Use a HashMap<Uuid, DatabasePosition> to group statuses by position
+        // ID, then collect into a Vec. This is O(n) instead of O(n²) and doesn't
+        // depend on row ordering. Example approach:
+        //   let mut map = HashMap::<Uuid, DatabasePosition>::new();
+        //   for row in rows { ... map.entry(row.id).or_insert(...).statuses.push(status); }
+        //   let positions = map.into_values().collect();
+        //
+        // Search terms: "HashMap grouping Rust", "Iterator::fold grouping",
+        // "itertools group_by", "avoid ordering dependency Rust".
         if let Some(position) = positions.last_mut()
             .filter(|position| position.id == row.id)
         {

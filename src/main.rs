@@ -3,6 +3,15 @@
 //!
 //! Loads configuration from the environment, connects to Postgres,
 //! builds the shared [`Context`], and starts the Axum HTTP server.
+//!
+//! TODO: Extract startup logic into an `AppBuilder` or similar struct.
+//! Currently `main()` does everything: env var parsing, database connection,
+//! cache setup, S3 config, session manager, authenticator, context building,
+//! router creation, and server binding. Every failure path is a hard `.expect()`
+//! panic. An AppBuilder would make the code testable, allow graceful error
+//! messages instead of panics, and separate configuration from wiring.
+//! Search terms: "Rust application bootstrap pattern", "AppBuilder pattern Axum",
+//! "dependency injection Rust".
 
 mod routes;
 mod api;
@@ -26,6 +35,15 @@ use crate::auth::{Authenticator, session::SessionManager};
 /// depend only on the [`Database`] trait, not a concrete implementation
 /// `cache` is type-erased behind `Arc<dyn Cache>` so handlers
 ///  depend only on the [`Cache`] trait, not a concrete implementation
+///
+/// TODO: This struct is becoming an "options anti-pattern" — every handler
+/// that needs any of these fields must take `State<Context>` even if it only
+/// uses one field (e.g. only the database). Consider whether handlers could
+/// extract only the state they need, such as `State<Arc<dyn Database>>` directly.
+/// For now it's fine, but as the struct grows it becomes harder to see which
+/// handlers depend on which services.
+/// Search terms: "Axum State extraction", "options anti-pattern Rust",
+/// "targeted state extraction Axum".
 #[derive(Clone)]
 pub struct Context {
     pub database: Arc<dyn Database>,

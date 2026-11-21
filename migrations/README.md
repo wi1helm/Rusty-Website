@@ -1,0 +1,15 @@
+-- TODO: SQLx migrations support paired "down" scripts for rollback, but none
+-- of the 7 migration files have corresponding down migrations. This means
+-- `sqlx migrate revert` won't work, making it impossible to roll back
+-- database changes during development or in staging environments.
+--
+-- To fix: Add a corresponding `<timestamp>_<name>_down.sql` file for each
+-- migration. For example, this file should have:
+--   20260821204409_create_organizations_down.sql
+-- with content: DROP TABLE IF EXISTS organizations;
+--
+-- Each down script should reverse the up script's changes. Do this for all
+-- 7 migrations, in reverse order.
+--
+-- Search terms: "SQLx migration rollback", "paired migrations SQLx",
+-- "DROP TABLE PostgreSQL", "database migration best practices".

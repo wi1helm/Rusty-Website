@@ -2,10 +2,13 @@ pub mod s3;
 pub mod defaults;
 
 use async_trait::async_trait;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ObjectStorageError {
+    #[error("Object not found")]
     NotFound,
+    #[error("Storage error: {0}")]
     Storage(String),
 }
 #[async_trait]
