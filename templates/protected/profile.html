@@ -97,6 +97,7 @@
     </header>
 
     <!-- Initial link data -->
+    <!-- TODO: The data-label and data-url attributes below render user-controlled values (link labels and URLs). While Askama auto-escapes HTML entities by default, if a label contains quotes or angle brackets it could break the HTML attribute parsing. Ensure the template engine properly escapes attribute values, or use JavaScript-safe encoding for data attributes. -->
     <div id="initial-profile-links" hidden>
       {% for link in profile_view.links %}
       <span
@@ -240,6 +241,7 @@
           </div>
 
           <!-- Server-rendered initial graph data -->
+          <!-- TODO: The |safe filter inserts raw JSON without any escaping. If any string value in the graph data (e.g., position titles, descriptions) contains user-controlled input, an attacker could inject JavaScript that runs in the browser of anyone viewing this page. Remove |safe and ensure the JSON is properly escaped, or sanitize all string values on the server before rendering. -->
           <script type="application/json" id="organization-graph-data">{{ graph_json|safe }}</script>
         </div>
       </section>
@@ -652,6 +654,7 @@
 </div>
 
 <script src="/assets/js/vendor/elkjs/lib/elk-api.js"></script>
+<!-- TODO: No Subresource Integrity (SRI) hash is used on this script tag. If the static file server is ever compromised and this file is replaced with malicious code, the browser will execute it without warning. Consider adding an integrity attribute with a SHA-256 hash so the browser refuses to load a tampered script. -->
 <script type="module" src="/assets/js/profile/main.js"></script>
 
 {% endblock %}

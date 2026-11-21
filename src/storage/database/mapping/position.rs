@@ -40,6 +40,11 @@ pub fn map_positions(rows: Vec<PositionRow>) -> Result<Vec<DatabasePosition>, Da
         };
 
         // Check whether we have already created this position.
+        // TODO: This only checks last_mut(), so it relies on rows for the same
+        // position being consecutive in the input. It works because the SQL query
+        // orders by created_at, but this invariant is fragile — if the query ever
+        // changes, the mapping will silently produce incorrect results. Consider
+        // using a HashMap instead of last_mut() for robustness.
         if let Some(position) = positions.last_mut()
             .filter(|position| position.id == row.id)
         {

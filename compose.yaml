@@ -3,25 +3,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        SQLX_OFFLINE: ${SQLX_OFFLINE:-true}
+    restart: unless-stopped
     expose:
       - "3000"
-    volumes:
-      - ./static:/app/static
     environment:
-      DATABASE_URL: postgres://admin:password@postgres:5432/database
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       CACHE_URL: redis://redis:6379
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: app
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin
-      S3_PUBLIC_URL: https://rust.wi1helm.dev/images
-      RUST_LOG: debug
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:9000}
+      S3_BUCKET: ${S3_BUCKET:-app}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      RUST_LOG: ${RUST_LOG:-info}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
+      storage:
         condition: service_healthy
 
   caddy:
@@ -40,56 +41,70 @@ services:
 
   postgres:
     image: postgres:18
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: database
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d database"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
 
   redis:
     image: redis:8
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio
-    command: server /data
+  storage:
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY}
+      RUSTFS_OBS_LOGGER_LEVEL: info
     volumes:
-      - minio_data:/data
+      - storage_data:/data
+    ports:
+      - "127.0.0.1:9001:9001"
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 40s
 
   sqlx-tools:
-    image: rust:1.97.1
+    image: rust:1.97.1-trixie
     profiles: ["tools"]
     working_dir: /app
     volumes:
       - .:/app
       - cargo_registry:/usr/local/cargo/registry
     environment:
-      DATABASE_URL: postgres://admin:password@postgres:5432/database
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SQLX_OFFLINE: ${SQLX_OFFLINE:-true}
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
-  minio_data:
+  storage_data:
   cargo_registry:
   caddy_data:
   caddy_config:

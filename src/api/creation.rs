@@ -57,6 +57,12 @@ impl CreationRequest {
         Ok(validated)
     }
 }
+// TODO: Add rate limiting to prevent spam organization creation.
+// Without it, an attacker can create unlimited organizations automatically.
+// See: https://en.wikipedia.org/wiki/Rate_limiting
+// TODO: Add CSRF token validation to prevent cross-site request forgery.
+// SameSite=Lax protects top-level navigation but not POST requests.
+// See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,

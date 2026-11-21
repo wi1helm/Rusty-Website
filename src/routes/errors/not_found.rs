@@ -12,6 +12,10 @@ pub struct NotFoundTemplate {
 }
 
 pub fn get_page() -> Response {
+    // TODO: Return HTTP 404 status code instead of 200 OK. Currently .into_response()
+    // produces a 200 status, which is incorrect HTTP semantics and can cause SEO/caching
+    // issues. Use (StatusCode::NOT_FOUND, template).into_response() or similar.
+    // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
     NotFoundTemplate {
         app_name: APP_NAME,
         year: APP_YEAR,

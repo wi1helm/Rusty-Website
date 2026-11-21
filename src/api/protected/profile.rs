@@ -86,6 +86,9 @@ impl PartialEq<ValidatedUpdateRequest> for DatabaseProfile {
     }
 }
 
+// TODO: Add CSRF token validation to prevent cross-site request forgery.
+// SameSite=Lax protects top-level navigation but not POST requests.
+// See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 pub async fn update(State(context): State<Context>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(validated) => validated,
@@ -124,6 +127,11 @@ pub async fn update(State(context): State<Context>, CurrentUser(user): CurrentUs
         display_name: validated.display_name,
         about: validated.about,
     };
+    // TODO: These two database operations are not atomic. If update_profile succeeds
+    // but update_profile_links fails, the profile is left with new display_name/about
+    // but old links — an inconsistent state. Wrap both in a database transaction so
+    // they either both succeed or both roll back.
+    // See: https://www.postgresql.org/docs/current/transaction-iso.html
     if let Err(error) = context.database.update_profile(user.organization.id, user.member_id, new_profile).await {
         tracing::error!(?error,profile_id = old_profile.id, "failed to update profile");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();

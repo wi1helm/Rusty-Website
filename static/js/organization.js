@@ -1,0 +1,1 @@
+// TODO: This file is empty but is loaded as a script in the organization template. An empty script wastes an HTTP request and suggests incomplete implementation. Either implement the organization page functionality or remove the script tag from the template to avoid unnecessary network requests.

@@ -31,6 +31,14 @@ pub fn router(context: Context) -> Router {
         // Organization slugs must not collide with routes such as /login, /signup,
         // /dashboard, /settings, /api, /assets, etc. When new top-level routes are
         // introduced, add their names to the reserved list before exposing them.
+        // TODO: Add a logout endpoint (e.g. POST /api/auth/logout) that deletes the
+        // session from Redis and clears the session cookie. Currently the SessionManager
+        // delete() method exists but no route calls it, so users cannot log out.
+        // TODO: Add security headers (Content-Security-Policy, X-Content-Type-Options,
+        // X-Frame-Options, Strict-Transport-Security). Consider using a middleware like
+        // tower-http's `SetHeader` layer. While Caddy may set some headers, the app
+        // should provide defense-in-depth.
+        // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers#security_headers
         .merge(public::router())
         .merge(protected::router(context.clone()))
         .nest("/api", api::router(context.clone()))
@@ -49,6 +57,11 @@ pub fn router(context: Context) -> Router {
 pub fn redirect_with_session_cookie(location: &str, session_id: &str, ) -> Response {
     let cookie = Cookie::build(("session", session_id.to_owned()))
         .http_only(true)
+        // TODO: Conditionally set secure flag based on environment. Currently secure(true)
+        // breaks local development over HTTP because browsers refuse to send secure cookies
+        // on non-HTTPS connections. In production behind Caddy (HTTPS) this is correct,
+        // but for local dev it should be false. Use an env var or check request scheme.
+        // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#secure
         .secure(true)
         .same_site(SameSite::Lax)
         .path("/")

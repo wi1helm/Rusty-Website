@@ -209,6 +209,11 @@ impl Database for PostgresDatabase {
     }
 
     /// Finds a member by their email address.
+    /// TODO: This query returns password_hash, which is only needed for login
+    /// credential verification. If DatabaseMember is ever accidentally serialized
+    /// (e.g., to JSON for an API response), the hash will be exposed. Consider
+    /// splitting this into a query that returns only the fields needed per use case,
+    /// or adding a separate method that omits the password_hash for non-auth flows.
     async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError> {
         let Some(row) = sqlx::query_as!(
             MemberRow,

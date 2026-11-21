@@ -372,6 +372,10 @@ pub struct DatabasePositionStatus {
     pub status: PositionStatus,
 
     /// Additional information specific to this status.
+    /// TODO: This field accepts arbitrary JSON with no size limit or schema
+    /// validation. A large or deeply nested JSON value could cause memory issues
+    /// or slow serialization. Consider adding a max-size check and/or a defined
+    /// schema for the information field.
     pub information: Value,
 
     /// When this status record was created.

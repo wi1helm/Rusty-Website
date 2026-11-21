@@ -252,6 +252,7 @@ function toggleConnection(editor, source, target) {
     }
 
     graph.connections.push({
+        // TODO: crypto.randomUUID() is called without checking if it's available. In non-secure (HTTP) contexts, the crypto API may be unavailable, causing an uncaught exception that breaks the connection feature. Add a fallback similar to createLinkId() in links.js.
         client_id: crypto.randomUUID(),
         from: source.client_id,
         to: target.client_id
@@ -606,6 +607,8 @@ function getPositionFromForm(
     const title = getField(form, "title");
     const description = getField(form, "description");
 
+    // TODO: No client-side validation for empty titles or descriptions. The HTML template has "required" on the title field, but this function silently accepts empty strings if called programmatically or if JavaScript bypasses the form. Add validation here to prevent saving positions with missing required fields.
+
     const statuses = existingPosition
         ? [...(existingPosition.statuses ?? [])]
         : [];
@@ -631,6 +634,7 @@ function getPositionFromForm(
         statuses[index] = statusRecord;
     } else {
         statusRecord = {
+            // TODO: crypto.randomUUID() is called without checking if it's available. In non-secure (HTTP) contexts, the crypto API may be unavailable, causing an uncaught exception. Add a fallback for generating unique IDs.
             id: crypto.randomUUID(),
             status: selectedStatus,
             information

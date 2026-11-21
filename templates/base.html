@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- TODO: No Content Security Policy (CSP) is set. CSP is a browser security feature that helps prevent cross-site scripting (XSS) attacks by restricting which sources of scripts, styles, and other resources the page can load. Without it, if an XSS vulnerability exists, there is no secondary defense. Add a CSP meta tag or HTTP header to limit script sources to trusted origins. -->
+    <!-- TODO: No referrer policy is set. Without it, the full URL (including any query parameters that might contain sensitive tokens) could be leaked to other sites when the user clicks a link. Add a referrer-policy meta tag (e.g., "strict-origin-when-cross-origin"). -->
+    <!-- TODO: No clickjacking protection is visible. Without X-Frame-Options or CSP frame-ancestors, this site could be embedded in an iframe on a malicious site, tricking users into clicking things they don't intend to. Set these headers on the server or add a CSP frame-ancestors directive. -->
 
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
 

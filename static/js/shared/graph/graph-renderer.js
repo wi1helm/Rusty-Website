@@ -116,6 +116,7 @@ function createPositionCard(position) {
     icon.className = "organization-graph-position-icon";
     icon.setAttribute("aria-hidden", "true");
 
+    // TODO: innerHTML is used to render SVG content. While the current SVG is hardcoded and safe, this pattern is fragile — if the SVG source is ever parameterized (e.g., different icons per status), it becomes an immediate cross-site scripting (XSS) vector where an attacker could inject malicious JavaScript. Consider using document.createElementNS() and setAttribute() to build SVG elements safely instead of innerHTML.
     icon.innerHTML = `
         <svg
             xmlns="http://www.w3.org/2000/svg"

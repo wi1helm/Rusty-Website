@@ -1,8 +1,9 @@
-FROM rust:1.97.1-trixie AS builder
+FROM rust:1.100.0-trixie AS builder
 
 WORKDIR /app
 
-ENV SQLX_OFFLINE=true
+ARG SQLX_OFFLINE=true
+ENV SQLX_OFFLINE=${SQLX_OFFLINE}
 
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
@@ -18,11 +19,13 @@ RUN cargo build --release
 
 FROM debian:trixie-slim
 
-WORKDIR /app
-# Askama templates are already compiled into the binary.
-COPY --from=builder /app/target/release/rusty-noname .
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Static files are needed at runtime.
+WORKDIR /app
+
+COPY --from=builder /app/target/release/rusty-noname .
 COPY --from=builder /app/static ./static
 
 CMD ["./rusty-noname"]

@@ -105,6 +105,11 @@ impl S3ObjectStorage {
         //storage.ensure_public_access().await?;
 
         // Make sure the default profile images exist.
+        // TODO: If the default image files (static/defaults/default_logo.webp and
+        // default_banner.webp) are missing or corrupted, this call fails and the
+        // entire app panics at startup via .expect() in main(). Consider handling
+        // this gracefully — e.g., embedding the defaults as binary literals or
+        // logging a warning and continuing if non-critical.
         storage.ensure_default_objects().await?;
 
         Ok(storage)

@@ -18,7 +18,8 @@
 
     <div id="form-error" class="error-banner" hidden></div>
 
-    <form action="api/auth/login" method="post" id="login-form">
+    <form action="/api/auth/login" method="post" id="login-form">
+        <!-- TODO: The form action was a relative URL ("api/auth/login"). From /login it resolves correctly, but from any sub-path it would resolve to the wrong location. Using an absolute path ("/api/auth/login") ensures the form always submits to the correct endpoint regardless of the current URL. -->
 
       <label for="email">
         Email

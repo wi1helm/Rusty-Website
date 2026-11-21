@@ -25,6 +25,9 @@ struct UploadedImage {
     content_type: String,
 }
 
+// TODO: Add CSRF token validation to prevent cross-site request forgery.
+// SameSite=Lax protects top-level navigation but not POST requests.
+// See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUser, multipart: Multipart) -> impl IntoResponse {
     let uploaded = match parse_multipart(multipart, user.organization.id).await {
         Ok(uploaded) => uploaded,

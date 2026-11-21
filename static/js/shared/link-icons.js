@@ -34,6 +34,8 @@ export function getLinkIconType(url) {
 
 
 export function getFaviconUrl(url) {
+    // TODO: This function sends the target domain to Google's favicon service (google.com/s2/favicons) on every profile view. This means Google can see which external links users have on their profiles — a privacy leak. Additionally, the "domain" parameter could potentially be abused for open redirects. Consider hosting favicons yourself or using a privacy-respecting alternative.
+    // TODO: new URL(url) can throw if the URL is malformed. While the caller (renderLinkIcon) wraps this in a try-catch, this function itself is not safe to call independently without error handling. Consider adding internal error handling or documenting that callers must wrap calls in try-catch.
     const parsed = new URL(url);
 
     const faviconUrl = new URL("https://www.google.com/s2/favicons");

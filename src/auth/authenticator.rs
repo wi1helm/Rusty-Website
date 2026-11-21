@@ -42,6 +42,12 @@ impl Authenticator {
         if member.password_hash != credentials.password {
             return Err(AuthenticationError::InvalidCredentials);
         }
+        // TODO: Invalidate all existing sessions for this member on login.
+        // Without session rotation, a stolen session remains valid even after
+        // the user logs in from another device, and there's no "logout all devices"
+        // capability. Consider tracking sessions per member in Redis and deleting
+        // old ones on each new login.
+        // See: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-id-change
         // login member using member id and return result
         self.login_member(member.id).await
     }

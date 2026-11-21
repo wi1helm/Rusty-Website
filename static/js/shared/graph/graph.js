@@ -68,6 +68,7 @@ export function getStatus(position, statusName) {
  * Create a new position.
  */
 export function createPosition(values = {}) {
+    // TODO: crypto.randomUUID() is called without checking if it's available. In non-secure (HTTP) contexts, the crypto API may be unavailable, causing an uncaught exception when creating new positions. Add a fallback for generating unique IDs.
     const statusId = values.current_status_id ?? crypto.randomUUID();
 
     const status = values.status ?? "open";
@@ -96,6 +97,7 @@ export function createPosition(values = {}) {
 }
 
 export function hydrateGraph(data) {
+    // TODO: crypto.randomUUID() is called without checking if it's available. In non-secure (HTTP) contexts, the crypto API may be unavailable, causing an uncaught exception when hydrating graph data from the server. Add a fallback for generating unique IDs.
     const positions = (data.positions ?? []).map(position => ({
         ...position,
         client_id: crypto.randomUUID()
