@@ -166,7 +166,7 @@ export function initImageUpload() {
         });
     }
 
-    // Native <dialog>s handle Escape themselves; this overlay is custom.
+    // Native <dialog's handle Escape themselves; this overlay is custom.
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && modal && !modal.hidden) {
             event.preventDefault();

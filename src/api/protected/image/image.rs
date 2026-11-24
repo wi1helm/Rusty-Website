@@ -260,12 +260,9 @@ mod tests {
         body
     }
 
-    async fn parse_test_multipart(
-        body: Vec<u8>,
-        boundary: &str,
-    ) -> Result<UploadedImage, StatusCode> {
+    async fn parse_test_multipart(body: Vec<u8>, boundary: &str) -> Result<UploadedImage, StatusCode> {
         // Shared state slot to capture the uploaded image on success
-        let captured_image = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+        let captured_image = Arc::new(tokio::sync::Mutex::new(None));
         let captured_clone = captured_image.clone();
 
         let app = Router::new()

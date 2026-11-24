@@ -10,6 +10,7 @@ if [[ "$#" -gt 1 ]]; then
   echo "Usage: $0 [${SCENARIOS[*]}]" >&2
   exit 2
 fi
+# shellcheck disable=SC2076
 if [[ "$SCENARIO" != all ]] && [[ ! " ${SCENARIOS[*]} " =~ " ${SCENARIO} " ]]; then
   echo "Unknown integration scenario: $SCENARIO" >&2
   echo "Usage: $0 [${SCENARIOS[*]}]" >&2

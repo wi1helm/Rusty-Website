@@ -96,7 +96,7 @@ pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentU
         Ok(profile) => profile,
         Err(status) => return status.into_response(),
     };
-    // If nothing changed from whats already in db disregard this request
+    // If nothing changed from what's already in db disregard this request
     if old_profile == validated { return Redirect::to("/profile").into_response(); }
 
     let new_links = validated

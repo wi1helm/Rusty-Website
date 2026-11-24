@@ -105,7 +105,7 @@ impl SessionManager {
             member_id,
         };
 
-        // TODO(security): look into ways if needed encrypt the data in redis so no attacked can use / desqrilize data and use.
+        // TODO(security): look into ways if needed encrypt the data in Redis so no attacked can use / desqrilize data and use.
         let value = serde_json::to_vec(&session)?;
 
         let key = Self::cache_key(&session.id);

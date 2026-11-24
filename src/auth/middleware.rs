@@ -154,7 +154,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         // of their organization being deleted. The session is therefore stale
         // and cannot be used to construct an authenticated request context.
         Ok(None) => {
-            //TODO remove stale cookie and stale redis value as this session id is invalid
+            //TODO remove stale cookie and stale Redis value as this session id is invalid
             tracing::warn!(member_id = session.member_id,"authenticated session references a missing member");
             return Redirect::to("/login?error=server-error").into_response();
         }

@@ -393,7 +393,7 @@ impl PositionStatus {
     }
 }
 
-/// Represents a positions status.
+/// Represents a positions' status.
 /// Represents a position's status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatabasePositionStatus {

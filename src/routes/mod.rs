@@ -226,7 +226,7 @@ mod tests {
 
     #[tokio::test]
     async fn security_headers_are_added_to_responses() {
-        let response = add_security_headers(Response::new(axum::body::Body::empty())).await;
+        let response = add_security_headers(Response::new(Body::empty())).await;
         let headers = response.headers();
 
         assert_eq!(headers[header::CONTENT_SECURITY_POLICY], "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
@@ -283,7 +283,7 @@ mod tests {
         let response = redirect_with_session_cookie("/dashboard", "test-session", &config);
         let cookie = response
             .headers()
-            .get(axum::http::header::SET_COOKIE)
+            .get(header::SET_COOKIE)
             .unwrap()
             .to_str()
             .unwrap();
@@ -311,7 +311,7 @@ mod tests {
         let response = redirect_with_session_cookie("/dashboard", "test-session", &config);
         let cookie = response
             .headers()
-            .get(axum::http::header::SET_COOKIE)
+            .get(header::SET_COOKIE)
             .unwrap()
             .to_str()
             .unwrap();

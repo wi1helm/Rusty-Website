@@ -134,7 +134,7 @@ pub fn is_valid_email(email: &str) -> bool {
         return false;
     }
 
-    // NOTE: add more checks if needed later /wi1helm
+    // NOTE: add more checks if needed later /Wilhelm
 
     // Passing these checks only means the email has an acceptable
     // structure. It does not prove that the address exists or belongs
@@ -231,7 +231,7 @@ pub fn is_valid_url(url: &str) -> bool {
     // A host identifies the website's server.
     //
     // For example, the host in "https://github.com/example" is
-    // "github.com".
+    // "GitHub.com".
     //
     // Require a host because this function validates website links,
     // not URLs referring to other kinds of resources.

@@ -10,7 +10,7 @@
 //! `curl` or automated tests.
 //!
 //! To fix: Add `#[derive(Serialize)]` to `CreationValidationError` and return
-//! JSON responses like `(StatusCode::BAD_REQUEST, Json(error))` instead of
+//! JSON responses like `(StatusCode::BAD_REQUEST, JSON(error))` instead of
 //! redirects. Consider creating a shared error response type in a common module.
 //! Search terms: "Axum JSON error responses", "REST API error handling Rust",
 //! "separate API from HTML routes Axum", "problem_details RFC 7807 Rust".
@@ -148,7 +148,7 @@ pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>
     // todo handle all of the rest Authentication errors and remove Err(_)
     match authenticator.login_member(owner_id).await {
         Ok(session) => redirect_with_session_cookie("/dashboard", &session.id, &cookies),
-        // Session(_) means we dont care what specific session error happened just that we could not
+        // Session(_) means we don't care what specific session error happened just that we could not
         // establish a session (for example, Redis could be down etc.)
         Err(AuthenticationError::Session(_)) => {
             //TODO add logging for bug / bad errors such as serilization
