@@ -108,7 +108,7 @@ fn request_origin(request: &Request) -> Option<url::Origin> {
 
 async fn add_security_headers(mut response: Response) -> Response {
     let headers = response.headers_mut();
-    headers.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"));
+    headers.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"));
     headers.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(header::REFERRER_POLICY, HeaderValue::from_static("strict-origin-when-cross-origin"));
@@ -210,7 +210,7 @@ mod tests {
         let response = add_security_headers(Response::new(axum::body::Body::empty())).await;
         let headers = response.headers();
 
-        assert_eq!(headers[header::CONTENT_SECURITY_POLICY], "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
+        assert_eq!(headers[header::CONTENT_SECURITY_POLICY], "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
         assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
         assert_eq!(headers[header::X_FRAME_OPTIONS], "DENY");
         assert_eq!(headers[header::REFERRER_POLICY], "strict-origin-when-cross-origin");

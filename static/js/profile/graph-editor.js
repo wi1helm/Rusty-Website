@@ -607,8 +607,6 @@ function getPositionFromForm(
     const title = getField(form, "title");
     const description = getField(form, "description");
 
-    // TODO: Enforce position validation in the graph API when persistence is implemented; form constraints are client-side only.
-
     const statuses = existingPosition
         ? [...(existingPosition.statuses ?? [])]
         : [];

@@ -221,6 +221,23 @@
                       id="organization-graph-placeholder"
                       {% if !profile_view.graph.positions.is_empty() %}hidden{% endif %}
               >
+                <span class="organization-graph-placeholder-icon" aria-hidden="true">
+                  <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                  >
+                    <rect x="8" y="2" width="8" height="6" rx="1"/>
+                    <rect x="2" y="16" width="8" height="6" rx="1"/>
+                    <rect x="14" y="16" width="8" height="6" rx="1"/>
+                    <path d="M12 8v4"/>
+                    <path d="M6 16v-4h12v4"/>
+                  </svg>
+                </span>
+
                 <p class="organization-graph-empty-title">
                   It's a little quiet in here...
                 </p>

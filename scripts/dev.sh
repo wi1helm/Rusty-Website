@@ -172,7 +172,7 @@ case "${1:-up}" in
 
   down)
     stop_existing_server
-    "${COMPOSE[@]}" down
+    "${COMPOSE[@]}" down -v
     echo "Development environment stopped."
     ;;
 

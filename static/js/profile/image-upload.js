@@ -98,6 +98,7 @@ export function initImageUpload() {
             return;
         }
 
+        preview.dataset.imageType = currentImageType;
         modal.hidden = false;
 
         if (closeButton) {
