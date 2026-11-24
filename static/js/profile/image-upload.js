@@ -7,6 +7,7 @@ import { $, $$ } from "../shared/helpers.js";
 
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 
 export function initImageUpload() {
@@ -26,7 +27,6 @@ export function initImageUpload() {
     let selectedFile = null;
     let previewObjectUrl = null;
     let previouslyFocused = null;
-
 
     function revokePreviewUrl() {
         if (previewObjectUrl) {
@@ -110,15 +110,28 @@ export function initImageUpload() {
             return;
         }
 
-        // TODO: Add a client-side size check for faster feedback; the server enforces the upload limits.
+        selectedFile = null;
+        clearPreview();
+
         if (!ALLOWED_TYPES.includes(file.type)) {
+            if (input) {
+                input.value = "";
+            }
+
             window.alert("Please choose a JPEG, PNG, or WebP image.");
             return;
         }
 
-        selectedFile = file;
-        clearPreview();
+        if (file.size > MAX_FILE_SIZE) {
+            if (input) {
+                input.value = "";
+            }
 
+            window.alert("Please choose an image that is 10 MiB or smaller.");
+            return;
+        }
+
+        selectedFile = file;
         previewObjectUrl = URL.createObjectURL(file);
         previewImage.src = previewObjectUrl;
         preview.hidden = false;

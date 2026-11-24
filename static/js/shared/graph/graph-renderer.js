@@ -116,30 +116,53 @@ function createPositionCard(position) {
     icon.className = "organization-graph-position-icon";
     icon.setAttribute("aria-hidden", "true");
 
-    // TODO: innerHTML is used to render SVG content. While the current SVG is hardcoded and safe, this pattern is fragile — if the SVG source is ever parameterized (e.g., different icons per status), it becomes an immediate cross-site scripting (XSS) vector where an attacker could inject malicious JavaScript. Consider using document.createElementNS() and setAttribute() to build SVG elements safely instead of innerHTML.
-    icon.innerHTML = `
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <path d="M9 4v16" />
-            <path d="M15 4v16" />
-            <path d="M6 8h.01" />
-            <path d="M6 12h.01" />
-            <path d="M6 16h.01" />
-            <path d="M12 8h.01" />
-            <path d="M12 12h.01" />
-            <path d="M12 16h.01" />
-            <path d="M18 8h.01" />
-            <path d="M18 12h.01" />
-            <path d="M18 16h.01" />
-        </svg>
-    `;
+    const svgNamespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNamespace, "svg");
+
+    for (const [name, value] of Object.entries({
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round"
+    })) {
+        svg.setAttribute(name, value);
+    }
+
+    const rectangle = document.createElementNS(svgNamespace, "rect");
+
+    for (const [name, value] of Object.entries({
+        x: "3",
+        y: "4",
+        width: "18",
+        height: "16",
+        rx: "2"
+    })) {
+        rectangle.setAttribute(name, value);
+    }
+
+    svg.appendChild(rectangle);
+
+    for (const pathData of [
+        "M9 4v16",
+        "M15 4v16",
+        "M6 8h.01",
+        "M6 12h.01",
+        "M6 16h.01",
+        "M12 8h.01",
+        "M12 12h.01",
+        "M12 16h.01",
+        "M18 8h.01",
+        "M18 12h.01",
+        "M18 16h.01"
+    ]) {
+        const path = document.createElementNS(svgNamespace, "path");
+
+        path.setAttribute("d", pathData);
+        svg.appendChild(path);
+    }
+
+    icon.appendChild(svg);
 
     const title = document.createElement("h3");
 

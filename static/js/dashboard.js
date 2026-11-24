@@ -1,1 +1,1 @@
-// TODO: This file is empty but is loaded as a script in the dashboard template. An empty script wastes an HTTP request and suggests incomplete implementation. Either implement the dashboard functionality or remove the script tag from the template to avoid unnecessary network requests.
+// No page-specific interactions are currently required.

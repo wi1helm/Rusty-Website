@@ -7,6 +7,7 @@ use axum::http::StatusCode;
 use axum::{Router, middleware, routing::post};
 
 mod image;
+mod graph;
 mod profile;
 
 /// Builds API routes that require an authenticated session.
@@ -19,6 +20,7 @@ pub fn router(context: Context) -> Router<Context> {
 
     Router::new()
         .route("/update", post(profile::update))
+        .route("/update-graph", post(graph::update))
         .route("/image", post(image::image::upload).layer(DefaultBodyLimit::max(image::MAX_REQUEST_SIZE)), )
         .layer(middleware::from_fn_with_state(auth_state, require_auth))
 }

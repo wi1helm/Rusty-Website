@@ -14,6 +14,7 @@ COMPOSE=(
 
 case "${1:-}" in
   up)
+    npm test
     "${COMPOSE[@]}" up -d --build
     echo "Staging started."
     ;;
@@ -24,11 +25,13 @@ case "${1:-}" in
     ;;
 
   rebuild)
+    npm test
     "${COMPOSE[@]}" up -d --build --force-recreate
     echo "Staging rebuilt."
     ;;
 
   reset)
+    npm test
     "${COMPOSE[@]}" down -v
     "${COMPOSE[@]}" up -d --build
     echo "Staging recreated with fresh data."

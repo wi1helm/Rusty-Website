@@ -110,7 +110,6 @@ impl AppConfig {
         let s3_bucket = required("S3_BUCKET", &mut errors);
         let s3_access_key = required("S3_ACCESS_KEY", &mut errors);
         let s3_secret_key = required("S3_SECRET_KEY", &mut errors);
-        let s3_public_url = required("S3_PUBLIC_URL", &mut errors);
 
         // Logging
         let log_filter = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
@@ -138,7 +137,6 @@ impl AppConfig {
                 bucket: s3_bucket.unwrap(),
                 access_key: s3_access_key.unwrap(),
                 secret_key: s3_secret_key.unwrap(),
-                public_url: s3_public_url.unwrap(),
             },
             cookies: CookieConfig::for_environment(environment),
             log_filter,
@@ -184,7 +182,6 @@ pub struct ObjectStorageConfig {
     pub bucket: String,
     pub access_key: String,
     pub secret_key: String,
-    pub public_url: String,
 }
 
 // ─────────────────────────────────────────────

@@ -9,9 +9,10 @@ pub use errors::{CreateOrganizationError, DatabaseError};
 
 pub use data::{
     DatabaseImage, DatabaseLink, DatabaseMember, DatabaseMemberWithOrganization,
-    DatabaseOrganization, DatabasePosition, DatabaseProfile, MemberCredentials, NewMember,
-    NewOrganization, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole,
-    ProfileImageType, UpdateProfile,
+    DatabaseOrganization, DatabasePosition, DatabasePositionConnection, DatabaseProfile,
+    MemberCredentials, NewMember, NewOrganization, NewPosition, NewPositionConnection,
+    NewPositionStatus, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole,
+    PositionStatus, ProfileImageType, UpdateProfile,
 };
 
 use async_trait::async_trait;
@@ -92,4 +93,8 @@ pub trait PositionRepository: Send + Sync {
     /// Returns an empty collection when the organization has no positions.
     /// Returns an error if the database operation fails.
     async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError>;
+
+    async fn find_position_connections_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePositionConnection>, DatabaseError>;
+
+    async fn replace_graph_by_organization_id(&self, organization_id: i64, positions: Vec<NewPosition>, connections: Vec<NewPositionConnection>) -> Result<(), DatabaseError>;
 }

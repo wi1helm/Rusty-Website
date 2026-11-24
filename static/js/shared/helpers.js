@@ -22,6 +22,19 @@ export function createElement(tag, className, text = null) {
     return element;
 }
 
+export function createClientId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+        const values = crypto.getRandomValues(new Uint32Array(4));
+        return [...values].map(value => value.toString(16).padStart(8, "0")).join("");
+    }
+
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
 export function createSvgIcon(paths, size = 18) {
     const ns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(ns, "svg");

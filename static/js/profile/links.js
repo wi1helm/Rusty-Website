@@ -4,48 +4,12 @@
    Icons come from shared/link-icons.js (same as public page).
 ========================================================= */
 
-import { $, $$, createElement, createSvgIcon, icons } from "../shared/helpers.js";
+import { $, $$, createClientId, createElement, createSvgIcon, icons } from "../shared/helpers.js";
 import { renderLinkIcon } from "../shared/link-icons.js";
 import { makeButton } from "./buttons.js";
 import { openDialog, closeDialog } from "./dialogs.js";
+import { normalizeLinkUrl } from "./link-url.js";
 import { showStatus } from "./status.js";
-
-
-function createLinkId() {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID();
-    }
-
-    return Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
-
-
-function normalizeLinkUrl(value) {
-    const raw = value.trim();
-
-    if (!raw) {
-        throw new Error("Please enter a URL.");
-    }
-
-    let parsed;
-
-    try {
-        parsed = new URL(raw);
-    } catch {
-        throw new Error("Please enter a valid URL, including https://.");
-    }
-
-    // TODO: Decide whether to disallow HTTP links; unlike HTTPS, their content can be modified in transit.
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-        throw new Error("Only HTTP and HTTPS links are supported.");
-    }
-
-    if (!parsed.hostname) {
-        throw new Error("Please enter a valid website address.");
-    }
-
-    return parsed.href;
-}
 
 
 function readInitialLinks() {
@@ -57,7 +21,7 @@ function readInitialLinks() {
 
     return $$(".initial-profile-link", container)
         .map(element => ({
-            id: createLinkId(),
+            id: createClientId(),
             label: element.dataset.label || "",
             url: element.dataset.url || ""
         }))
@@ -244,7 +208,7 @@ export function initLinks(state) {
                     existing.url = url;
                 }
             } else {
-                state.links.push({ id: createLinkId(), label, url });
+                state.links.push({ id: createClientId(), label, url });
             }
 
             renderLinks();

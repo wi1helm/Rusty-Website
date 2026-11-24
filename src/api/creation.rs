@@ -18,6 +18,7 @@
 use crate::api::validation::{is_valid_email, is_valid_name, is_valid_password};
 use crate::auth::AuthenticationError;
 use crate::auth::Authenticator;
+use crate::auth::password::hash_password;
 use crate::config::CookieConfig;
 use crate::routes::redirect_with_session_cookie;
 use crate::storage::database::{
@@ -96,9 +97,17 @@ pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>
         slug,
     };
 
+    let password_hash = match hash_password(validated.password).await {
+        Ok(password_hash) => password_hash,
+        Err(error) => {
+            tracing::error!(?error, "failed to hash signup password");
+            return Redirect::to("/create?error=server-error").into_response();
+        }
+    };
+
     let owner = NewMember {
         email: validated.email,
-        password_hash: validated.password, // TODO: hash before storing
+        password_hash,
         role: OrganizationRole::Owner,
     };
 

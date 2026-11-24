@@ -3,7 +3,7 @@
 
    Picks an icon for an external link:
    known services get an inline icon, everything else gets
-   the site's favicon, with a generic link icon as fallback.
+   a generic link icon.
 ========================================================= */
 
 import { createElement, createSvgIcon, icons } from "./helpers.js";
@@ -28,19 +28,7 @@ export function getLinkIconType(url) {
     if (hostMatches(hostname, "facebook.com") || hostname === "fb.com") return "facebook";
     if (hostMatches(hostname, "youtube.com") || hostname === "youtu.be") return "youtube";
     if (hostMatches(hostname, "x.com") || hostMatches(hostname, "twitter.com")) return "x";
-    // TODO: This sends the external link's hostname to Google; consider a local favicon cache or generic icon to avoid third-party disclosure.
-    return "favicon";
-}
-
-
-export function getFaviconUrl(url) {
-    const parsed = new URL(url);
-
-    const faviconUrl = new URL("https://www.google.com/s2/favicons");
-    faviconUrl.searchParams.set("domain", parsed.hostname);
-    faviconUrl.searchParams.set("sz", "64");
-
-    return faviconUrl.href;
+    return "link";
 }
 
 
@@ -91,26 +79,6 @@ export function renderLinkIcon(container, url) {
 
     container.classList.add("profile-link-icon");
     container.replaceChildren();
-
-    if (iconType === "favicon") {
-        try {
-            const image = createElement("img");
-
-            image.alt = "";
-            image.loading = "lazy";
-            image.referrerPolicy = "no-referrer";
-            image.src = getFaviconUrl(url);
-
-            image.addEventListener("error", () => {
-                container.replaceChildren(createSvgIcon(icons.link, 18));
-            }, { once: true });
-
-            container.appendChild(image);
-            return;
-        } catch {
-            // Invalid URL: fall through to the generic icon.
-        }
-    }
 
     if (textIcons[iconType]) {
         const { text, fontSize } = textIcons[iconType];

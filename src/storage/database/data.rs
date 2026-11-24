@@ -336,8 +336,36 @@ pub struct DatabasePosition {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone)]
+pub struct DatabasePositionConnection {
+    pub from: Uuid,
+    pub to: Uuid,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewPosition {
+    pub id: Option<Uuid>,
+    pub client_id: String,
+    pub title: String,
+    pub description: String,
+    pub current_status: PositionStatus,
+    pub statuses: Vec<NewPositionStatus>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewPositionStatus {
+    pub status: PositionStatus,
+    pub information: Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewPositionConnection {
+    pub from: String,
+    pub to: String,
+}
+
 /// Represents the possible statuses of a position
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionStatus {
     OPEN,
     CLOSED,
@@ -355,7 +383,7 @@ impl PositionStatus {
         }
     }
     pub fn from_str(value: &str) -> Option<Self> {
-        match value {
+        match value.to_ascii_lowercase().as_str() {
             "open" => Some(Self::OPEN),
             "closed" => Some(Self::CLOSED),
             "archived" => Some(Self::ARCHIVED),

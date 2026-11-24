@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::auth::password::verify_password;
 use crate::auth::session::{Session, SessionError, SessionManager};
 use crate::storage::database::{DatabaseError, MemberRepository};
 pub struct Authenticator {
@@ -22,6 +23,8 @@ pub enum AuthenticationError {
 
     #[error("session error")]
     Session(#[from] SessionError),
+    #[error("password hash error")]
+    PasswordHash(String),
 }
 
 impl Authenticator {
@@ -39,8 +42,7 @@ impl Authenticator {
     pub async fn login(&self, credentials: LoginCredentials, ) -> Result<Session, AuthenticationError> {
         let member = self.members.find_member_credentials_by_email(&credentials.email).await?.ok_or(AuthenticationError::InvalidCredentials)?;
 
-        // TODO: Replace this with real password hash verification.
-        if member.password_hash != credentials.password { return Err(AuthenticationError::InvalidCredentials); }
+        if !verify_password(credentials.password, member.password_hash).await.map_err(|error| AuthenticationError::PasswordHash(error.to_string()))? { return Err(AuthenticationError::InvalidCredentials); }
         // TODO: Invalidate all existing sessions for this member on login.
         // Without session rotation, a stolen session remains valid even after
         // the user logs in from another device, and there's no "logout all devices"

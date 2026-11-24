@@ -11,6 +11,7 @@ use super::MAX_IMAGE_SIZE;
 use super::validator::ImageValidator;
 use crate::api::protected::get_profile;
 use crate::api::protected::image::normalizer::ImageNormalizer;
+use crate::config::{DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 use crate::storage::database::NewProfileImage;
 use crate::{
     auth::CurrentUser,
@@ -54,6 +55,10 @@ pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(ob
         Ok(profile) => profile,
         Err(status) => return status.into_response(),
     };
+    let old_storage_key = match normalized.image_type {
+        ProfileImageType::Logo => profile.logo.storage_key.clone(),
+        ProfileImageType::Banner => profile.banner.storage_key.clone(),
+    };
 
     let storage_key = format!("organizations/{}/profile/{}/{}.webp", user.organization.id, normalized.image_type.as_str(), uuid::Uuid::new_v4());
 
@@ -77,8 +82,17 @@ pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(ob
         file_size,
     };
 
-    let old_image = match profiles.update_profile_image(new_image).await {
-        Ok(old_image) => old_image,
+    match profiles.update_profile_image(new_image).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            tracing::error!(organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "profile image update did not find a profile");
+
+            if let Err(cleanup_error) = object_storage.delete(&storage_key).await {
+                tracing::error!(?cleanup_error, organization_id = user.organization.id, storage_key = %storage_key, "failed to clean up uploaded profile image after missing profile");
+            }
+
+            return StatusCode::NOT_FOUND.into_response();
+        }
         Err(error) => {
             tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to save profile image to database");
 
@@ -91,12 +105,14 @@ pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(ob
         }
     };
 
-    match old_image {
-        Some(old_image) => match object_storage.delete(&old_image.storage_key).await {
+    if old_storage_key != storage_key
+        && old_storage_key != DEFAULT_LOGO_KEY
+        && old_storage_key != DEFAULT_BANNER_KEY
+    {
+        match object_storage.delete(&old_storage_key).await {
             Ok(()) => {}
-            Err(error) => { tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %old_image.storage_key,"failed to delete old profile image"); }
-        },
-        None => {}
+            Err(error) => { tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %old_storage_key,"failed to delete old profile image"); }
+        }
     }
 
     Redirect::to("/profile").into_response()

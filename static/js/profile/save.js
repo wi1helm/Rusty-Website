@@ -3,6 +3,7 @@
 ========================================================= */
 
 import { $ } from "../shared/helpers.js";
+import { getCurrentStatus } from "../shared/graph/graph.js";
 import { showStatus } from "./status.js";
 
 
@@ -36,9 +37,24 @@ async function saveProfileData(state) {
 }
 
 
-async function saveOrganizationGraph() {
-    // TODO: Graph changes are not persisted yet: this sends an empty body to an unregistered route.
-    return postJson("/api/profile/update-graph", {});
+async function saveOrganizationGraph(state) {
+    return postJson("/api/profile/update-graph", {
+        positions: state.graph.positions.map(position => ({
+            id: position.id,
+            client_id: position.client_id,
+            title: position.title,
+            description: position.description,
+            current_status: getCurrentStatus(position)?.status,
+            statuses: position.statuses.map(status => ({
+                status: status.status,
+                information: status.information
+            }))
+        })),
+        connections: state.graph.connections.map(connection => ({
+            from: connection.from,
+            to: connection.to
+        }))
+    });
 }
 
 
@@ -49,6 +65,7 @@ export function initSave(state) {
 
     saveButton.addEventListener("click", async () => {
         const originalText = saveButton.textContent;
+        let profileSaved = false;
 
         saveButton.disabled = true;
         saveButton.textContent = "Saving…";
@@ -68,12 +85,12 @@ export function initSave(state) {
             if (!profileResponse.ok) {
                 throw new Error(`Profile save failed with status ${profileResponse.status}.`);
             }
+            profileSaved = true;
 
             // Save organization graph.
-            const graphResponse = await saveOrganizationGraph();
+            const graphResponse = await saveOrganizationGraph(state);
 
             if (!graphResponse.ok) {
-                // TODO: Once graph persistence exists, make the two saves atomic or clearly report partial success.
                 throw new Error(`Graph save failed with status ${graphResponse.status}.`);
             }
 
@@ -82,7 +99,9 @@ export function initSave(state) {
 
         } catch (error) {
             console.error("Save failed:", error);
-            showStatus("Could not save everything. Please try again.");
+            showStatus(profileSaved
+                ? "Profile details were saved, but the organization graph could not be saved. Please try again."
+                : "Could not save your profile. Please try again.");
 
         } finally {
             saveButton.disabled = false;

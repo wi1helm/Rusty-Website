@@ -69,6 +69,14 @@ impl ProfileService {
             }
         };
 
+        let connections = match self.positions.find_position_connections_by_organization_id(profile.organization_id).await {
+            Ok(connections) => connections,
+            Err(error) => {
+                tracing::error!(?error, organization_id = profile.organization_id, "failed to load organization graph connections");
+                return None;
+            }
+        };
+
         let links = profile.links.into_iter().map(|link| LinkView { label: link.label, url: link.url }).collect();
         let logo = ImageView {
             url: self.object_storage.url(&profile.logo.storage_key),
@@ -97,7 +105,13 @@ impl ProfileService {
             links,
             logo,
             banner,
-            graph: GraphView { positions },
+            graph: GraphView {
+                positions,
+                connections: connections.into_iter().map(|connection| ConnectionView {
+                    from: connection.from,
+                    to: connection.to,
+                }).collect(),
+            },
         })
     }
 }
@@ -130,6 +144,13 @@ pub struct ImageView {
 #[derive(Debug, Serialize)]
 pub struct GraphView {
     pub positions: Vec<PositionView>,
+    pub connections: Vec<ConnectionView>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConnectionView {
+    pub from: Uuid,
+    pub to: Uuid,
 }
 
 #[derive(Debug, Serialize)]

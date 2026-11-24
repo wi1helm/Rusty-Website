@@ -74,8 +74,7 @@
                         rel="noopener noreferrer"
                 >
 
-                    <!-- Generic icon works without JS.
-                         profile_public.js swaps in the favicon / brand icon. -->
+                    <!-- Generic icon works without JS; known brands are enhanced by JavaScript. -->
                     <span
                             class="profile-link-icon"
                             data-url="{{ link.url }}"
@@ -148,61 +147,49 @@
                         class="organization-graph"
                         aria-label="Organization graph"
                 >
+                    <div class="organization-graph-viewport" tabindex="0" aria-label="Scrollable organization graph">
+                        <div class="organization-graph-canvas">
+                            <svg class="organization-graph-connections" aria-hidden="true"></svg>
 
-                    {% if profile_view.graph.positions.is_empty() %}
+                            <div
+                                    class="organization-graph-placeholder"
+                                    id="organization-graph-placeholder"
+                                    {% if !profile_view.graph.positions.is_empty() %}hidden{% endif %}
+                            >
+                                <span class="organization-graph-placeholder-icon" aria-hidden="true">
+                                    <svg
+                                            viewBox="0 0 24 24"
+                                            width="30"
+                                            height="30"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.5"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                    >
+                                        <rect x="8" y="2" width="8" height="6" rx="1"/>
+                                        <rect x="2" y="16" width="8" height="6" rx="1"/>
+                                        <rect x="14" y="16" width="8" height="6" rx="1"/>
+                                        <path d="M12 8v4"/>
+                                        <path d="M6 16v-4h12v4"/>
+                                    </svg>
+                                </span>
 
-                    <div class="organization-graph-placeholder">
+                                <p class="organization-graph-empty-title">
+                                    Nothing to see here just yet.
+                                </p>
 
-                <span class="organization-graph-placeholder-icon" aria-hidden="true">
-                    <svg
-                            viewBox="0 0 24 24"
-                            width="30"
-                            height="30"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.5"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                    >
-                        <rect x="8" y="2" width="8" height="6" rx="1"/>
-                        <rect x="2" y="16" width="8" height="6" rx="1"/>
-                        <rect x="14" y="16" width="8" height="6" rx="1"/>
-                        <path d="M12 8v4"/>
-                        <path d="M6 16v-4h12v4"/>
-                    </svg>
-                </span>
+                                <span class="organization-graph-empty-description">
+                                    This organization hasn't added its structure yet.
+                                </span>
+                            </div>
 
-                        <p class="organization-graph-empty-title">
-                            Nothing to see here just yet.
-                        </p>
-
-                        <span class="organization-graph-empty-description">
-                    This organization hasn't added its structure yet.
-                </span>
-
-                    </div>
-
-                    {% else %}
-
-                    <div class="organization-graph-positions">
-
-                        {% for position in profile_view.graph.positions %}
-
-                        <div
-                                class="organization-graph-position"
-                                data-position-id="{{ position.id }}"
-                        >
-                        <span class="organization-graph-position-title">
-                            {{ position.title }}
-                        </span>
+                            <div class="organization-graph-positions"></div>
                         </div>
-
-                        {% endfor %}
-
                     </div>
 
-                    {% endif %}
-
+                    <!-- Graph JSON escapes <, >, and & server-side before rendering. -->
+                    <script type="application/json" id="organization-graph-data">{{ graph_json|safe }}</script>
                 </div>
 
             </section>
@@ -213,6 +200,7 @@
 
 </section>
 
+<script src="/assets/js/vendor/elkjs/lib/elk-api.js" integrity="sha384-XS/2gMomqaV/vDjOECXXXOFwLFbjPVS1xZjNkt1aUqkmUm7pIIrYETtgNaAezrnC" crossorigin="anonymous"></script>
 <script type="module" src="/assets/js/profile_public.js"></script>
 
 {% endblock %}

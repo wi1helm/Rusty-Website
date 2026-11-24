@@ -75,6 +75,10 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
             }
             Redirect::to("/login?error=server-error").into_response()
         }
+        Err(AuthenticationError::PasswordHash(error)) => {
+            tracing::error!(?error, "password verification failed");
+            Redirect::to("/login?error=server-error").into_response()
+        }
     }
 }
 

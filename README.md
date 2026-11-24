@@ -54,21 +54,24 @@ Handlers use repository traits rather than depending directly on PostgreSQL. `Pr
 | `S3_ENDPOINT` | S3-compatible API endpoint |
 | `S3_BUCKET` | Bucket used for application objects |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Object-storage credentials |
-| `S3_PUBLIC_URL` | Base URL used to form browser-facing object URLs |
 | `RUST_LOG` | Optional tracing filter; defaults to `info` |
+
+Browsers do not connect to object storage directly. Profile HTML uses root-relative `/images/{key}` URLs, served through the app's image proxy, so image requests stay on the same host, port, and scheme as the page. `S3_ENDPOINT` is only used for server-to-storage traffic; configure it to the address reachable from the app process (for example, `http://localhost:9000` for a host-run development app or `http://storage:9000` inside Compose).
 
 The Docker Compose infrastructure additionally needs `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`. `POSTGRES_PORT` and `REDIS_PORT` optionally change the development host ports (defaults `5432` and `6379`). Keep credentials in local environment files or a secret manager; do not commit them.
 
 ## Local development
 
-The development script expects a local `.env.dev` file and `cargo-watch` to be installed. Copy the tracked example and adjust its values for your setup; `.env.dev` is git-ignored:
+The development script expects a local `.env.dev` file, `cargo-watch`, and Node.js/npm at the version pinned in `.nvmrc`. Copy the tracked example and adjust its values for your setup; `.env.dev` is git-ignored:
 
 ```sh
 cp .env.example .env.dev
 ./scripts/dev.sh up
 ```
 
-This starts PostgreSQL, Redis, and object storage with Docker Compose, then runs the Rust app with `cargo watch`. Stop the app with `Ctrl+C`; infrastructure helpers are also available:
+This starts PostgreSQL, Redis, and object storage with Docker Compose, then uses `cargo watch` to run `npm test` (JavaScript and Rust unit tests) before starting the Rust app. The tests rerun after each watched file change; integration tests are not part of this loop. Stop the app with `Ctrl+C`; infrastructure helpers are also available:
+
+If startup reports that the HTTP bind address is already in use, set `APP_PORT` in `.env.dev` to an unused port and retry. The development script checks for an existing TCP listener before starting the services.
 
 ```sh
 ./scripts/dev.sh status
@@ -76,13 +79,35 @@ This starts PostgreSQL, Redis, and object storage with Docker Compose, then runs
 ./scripts/dev.sh down
 ```
 
-Run the Rust test suite with:
+The repository pins its Node.js major version in `.nvmrc`. With `nvm`, select it from the project root using `nvm use` (or install that Node.js version another way). Run both the JavaScript unit tests and Rust test suite with:
 
 ```sh
-cargo test
+npm test
 ```
 
-`./scripts/sqlx-prepare.sh` refreshes SQLx offline metadata after query or migration changes. It resets the development database first, so do not use it with data you need to keep. The staging helper uses `.env.staging`, which must be created locally:
+For a quick frontend-only check, run `npm run test:js`.
+
+Run the integration tests with:
+
+```sh
+./scripts/integration-test.sh
+```
+
+This requires Docker Compose, Node.js/npm at the version in `.nvmrc`, the Rust toolchain, `curl`, and `python3`. The script runs `npm test` (JavaScript and Rust tests), starts PostgreSQL, Redis, and S3-compatible storage in a uniquely named Compose project with temporary host ports, builds and starts the app, and runs all scenarios against those services. Scenarios cover signup and sessions, login and access control (including expired sessions), profile and graph persistence, graph validation, and image uploads with invalid-input cases.
+
+Run just one scenario by name when iterating:
+
+```sh
+./scripts/integration-test.sh signup-session
+./scripts/integration-test.sh login-access
+./scripts/integration-test.sh profile-update
+./scripts/integration-test.sh graph-update
+./scripts/integration-test.sh image-upload
+```
+
+The script removes only that project's containers and volumes on exit; it does not use or modify the development or staging Compose projects.
+
+`./scripts/sqlx-prepare.sh` refreshes SQLx offline metadata after query or migration changes. It resets the development database first, so do not use it with data you need to keep. The staging helper uses `.env.staging`, which must be created locally. Its `up`, `rebuild`, and `reset` actions run `npm test` first and stop if either test suite fails:
 
 ```sh
 ./scripts/staging.sh up

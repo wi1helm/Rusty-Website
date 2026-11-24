@@ -6,6 +6,7 @@ import {
 } from "../shared/graph/graph.js";
 
 import { renderGraph } from "../shared/graph/graph-renderer.js";
+import { createClientId } from "../shared/helpers.js";
 
 
 /*
@@ -252,8 +253,7 @@ function toggleConnection(editor, source, target) {
     }
 
     graph.connections.push({
-        // TODO: crypto.randomUUID() is called without checking if it's available. In non-secure (HTTP) contexts, the crypto API may be unavailable, causing an uncaught exception that breaks the connection feature. Add a fallback similar to createLinkId() in links.js.
-        client_id: crypto.randomUUID(),
+        client_id: createClientId(),
         from: source.client_id,
         to: target.client_id
     });
@@ -634,8 +634,7 @@ function getPositionFromForm(
         statuses[index] = statusRecord;
     } else {
         statusRecord = {
-            // TODO: crypto.randomUUID() is called without checking if it's available. In non-secure (HTTP) contexts, the crypto API may be unavailable, causing an uncaught exception. Add a fallback for generating unique IDs.
-            id: crypto.randomUUID(),
+            id: createClientId(),
             status: selectedStatus,
             information
         };

@@ -4,8 +4,10 @@ use super::mapping::member::{
 };
 use super::{
     CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink,
-    DatabaseMemberWithOrganization, DatabaseOrganization, DatabaseProfile, MemberCredentials,
-    MemberRepository, NewMember, NewOrganization, NewProfile, NewProfileImage, NewProfileLink,
+    DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePositionConnection,
+    DatabaseProfile, MemberCredentials, MemberRepository, NewMember, NewOrganization,
+    NewPosition, NewPositionConnection, NewPositionStatus, NewProfile, NewProfileImage,
+    NewProfileLink,
     OrganizationRepository, OrganizationRole, PositionRepository, ProfileImageType,
     ProfileRepository, UpdateProfile,
 };
@@ -14,7 +16,9 @@ use crate::storage::database::mapping::position::{PositionRow, map_positions};
 use crate::storage::object::defaults::{default_banner, default_logo};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Transaction};
+use sqlx::{PgPool, Row, Transaction};
+use std::collections::{HashMap, HashSet};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct PostgresDatabase {
@@ -584,5 +588,219 @@ impl PositionRepository for PostgresDatabase {
         .await?;
 
         map_positions(rows)
+    }
+
+    async fn find_position_connections_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePositionConnection>, DatabaseError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT source_position_id, target_position_id
+            FROM organization_position_connections
+            WHERE organization_id = $1
+            ORDER BY source_position_id, target_position_id
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| Ok(DatabasePositionConnection {
+                from: row.try_get("source_position_id")?,
+                to: row.try_get("target_position_id")?,
+            }))
+            .collect()
+    }
+
+    async fn replace_graph_by_organization_id(&self, organization_id: i64, positions: Vec<NewPosition>, connections: Vec<NewPositionConnection>) -> Result<(), DatabaseError> {
+        let mut tx = self.pool.begin().await?;
+
+        let profile_id: Option<i64> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM organization_profiles
+            WHERE organization_id = $1
+            FOR UPDATE
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        if profile_id.is_none() {
+            return Err(DatabaseError::Other(format!("missing profile for organization {organization_id}")));
+        }
+
+        let existing_position_ids: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT id FROM organization_positions WHERE organization_id = $1 FOR UPDATE",
+        )
+        .bind(organization_id)
+        .fetch_all(&mut *tx)
+        .await?;
+        let mut available_position_ids = existing_position_ids.iter().copied().collect::<HashSet<_>>();
+
+        let existing_status_rows = sqlx::query(
+            r#"
+            SELECT s.position_id, s.id, s.status
+            FROM organization_position_statuses s
+            INNER JOIN organization_positions p ON p.id = s.position_id
+            WHERE p.organization_id = $1
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_all(&mut *tx)
+        .await?;
+        let mut existing_status_ids = HashMap::new();
+        for row in existing_status_rows {
+            let position_id: Uuid = row.try_get("position_id")?;
+            let status_id: Uuid = row.try_get("id")?;
+            let status: String = row.try_get("status")?;
+            existing_status_ids.insert((position_id, status.to_ascii_lowercase()), status_id);
+        }
+
+        let mut graph_position_ids = HashMap::new();
+        let mut persisted_positions = Vec::with_capacity(positions.len());
+        for position in positions {
+            let NewPosition {
+                id: requested_id,
+                client_id,
+                title,
+                description,
+                current_status,
+                statuses: input_statuses,
+            } = position;
+            let id = requested_id
+                .filter(|id| available_position_ids.remove(id))
+                .unwrap_or_else(Uuid::new_v4);
+            let statuses = input_statuses
+                .into_iter()
+                .map(|status| {
+                    let status_id = existing_status_ids
+                        .get(&(id, status.status.as_str().to_owned()))
+                        .copied()
+                        .unwrap_or_else(Uuid::new_v4);
+                    (status, status_id)
+                })
+                .collect::<Vec<(NewPositionStatus, Uuid)>>();
+            let current_status_id = statuses
+                .iter()
+                .find(|(status, _)| status.status == current_status)
+                .map(|(_, status_id)| *status_id)
+                .ok_or_else(|| DatabaseError::Other("graph position has no current status".to_owned()))?;
+
+            graph_position_ids.insert(client_id, id);
+            persisted_positions.push((id, current_status_id, title, description, statuses));
+        }
+
+        sqlx::query("DELETE FROM organization_position_connections WHERE organization_id = $1")
+            .bind(organization_id)
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query(
+            r#"
+            DELETE FROM organization_position_statuses s
+            USING organization_positions p
+            WHERE s.position_id = p.id
+                AND p.organization_id = $1
+                AND NOT (s.id = ANY($2))
+            "#,
+        )
+        .bind(organization_id)
+        .bind(
+            persisted_positions
+                .iter()
+                .flat_map(|(_, _, _, _, statuses)| statuses.iter().map(|(_, status_id)| *status_id))
+                .collect::<Vec<_>>(),
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            "DELETE FROM organization_positions WHERE organization_id = $1 AND NOT (id = ANY($2))",
+        )
+        .bind(organization_id)
+        .bind(persisted_positions.iter().map(|(id, _, _, _, _)| *id).collect::<Vec<_>>())
+        .execute(&mut *tx)
+        .await?;
+
+        for (position_id, current_status_id, title, description, statuses) in persisted_positions {
+            if existing_position_ids.contains(&position_id) {
+                sqlx::query(
+                    r#"
+                    UPDATE organization_positions
+                    SET current_status_id = $3, title = $4, description = $5, updated_at = NOW()
+                    WHERE organization_id = $1 AND id = $2
+                    "#,
+                )
+                .bind(organization_id)
+                .bind(position_id)
+                .bind(current_status_id)
+                .bind(&title)
+                .bind(&description)
+                .execute(&mut *tx)
+                .await?;
+            } else {
+                sqlx::query(
+                    r#"
+                    INSERT INTO organization_positions (
+                        id, organization_id, current_status_id, title, description
+                    )
+                    VALUES ($1, $2, $3, $4, $5)
+                    "#,
+                )
+                .bind(position_id)
+                .bind(organization_id)
+                .bind(current_status_id)
+                .bind(&title)
+                .bind(&description)
+                .execute(&mut *tx)
+                .await?;
+            }
+
+            for (status, status_id) in statuses {
+                let database_status = status.status.as_str().to_ascii_uppercase();
+                sqlx::query(
+                    r#"
+                    INSERT INTO organization_position_statuses (id, position_id, status, information)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (id) DO UPDATE SET information = EXCLUDED.information
+                    "#,
+                )
+                .bind(status_id)
+                .bind(position_id)
+                .bind(database_status)
+                .bind(status.information)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        for connection in connections {
+            let source_position_id = graph_position_ids
+                .get(&connection.from)
+                .copied()
+                .ok_or_else(|| DatabaseError::Other("graph connection source was not found".to_owned()))?;
+            let target_position_id = graph_position_ids
+                .get(&connection.to)
+                .copied()
+                .ok_or_else(|| DatabaseError::Other("graph connection target was not found".to_owned()))?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO organization_position_connections (
+                    organization_id, source_position_id, target_position_id
+                )
+                VALUES ($1, $2, $3)
+                "#,
+            )
+            .bind(organization_id)
+            .bind(source_position_id)
+            .bind(target_position_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(())
     }
 }

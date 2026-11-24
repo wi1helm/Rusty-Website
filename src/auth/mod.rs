@@ -2,6 +2,7 @@
 
 mod authenticator;
 mod extractor;
+pub(crate) mod password;
 pub(crate) mod middleware;
 pub(crate) mod session;
 

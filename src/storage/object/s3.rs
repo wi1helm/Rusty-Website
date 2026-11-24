@@ -18,12 +18,6 @@ pub struct S3ObjectStorage {
 
     /// Name of the bucket where our objects are stored.
     bucket: String,
-
-    /// Base URL that browsers can use to access stored objects.
-    ///
-    /// This is separate from the S3 endpoint because the endpoint
-    /// is used by the application, while this URL is used by clients.
-    pub public_url: String,
 }
 
 impl S3ObjectStorage {
@@ -31,7 +25,7 @@ impl S3ObjectStorage {
     ///
     /// The endpoint can point to MinIO locally or an external
     /// S3-compatible provider in production.
-    pub async fn new(endpoint: &str, bucket: String, access_key: &str, secret_key: &str, public_url: String) -> Result<Self, ObjectStorageError> {
+    pub async fn new(endpoint: &str, bucket: String, access_key: &str, secret_key: &str) -> Result<Self, ObjectStorageError> {
         //TODO SECURITY:
         // Use a dedicated least-privilege object-storage identity for the
         // application instead of MinIO root/admin credentials.
@@ -83,7 +77,6 @@ impl S3ObjectStorage {
         let storage = Self {
             client,
             bucket,
-            public_url,
         };
 
         // Make sure the bucket exists.
@@ -271,19 +264,27 @@ impl ObjectStorage for S3ObjectStorage {
         Ok(())
     }
 
-    /// Generate the public URL for an object.
-    ///
-    /// For example:
-    ///
-    /// public_url:
-    /// http://localhost:9000/app
-    ///
-    /// key:
-    /// defaults/default_banner.webp
-    ///
-    /// Result:
-    /// http://localhost:9000/app/defaults/default_banner.webp
+    /// Generate a same-origin URL served by the application image proxy.
     fn url(&self, key: &str) -> String {
-        format!("{}/{}", self.public_url, key)
+        format!("/images/{key}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn image_urls_use_the_application_origin() {
+        let client_config = aws_sdk_s3::Config::builder()
+            .credentials_provider(Credentials::new("access", "secret", None, None, "test"))
+            .region(Region::new("eu-north-1"))
+            .build();
+        let storage = S3ObjectStorage {
+            client: Client::from_conf(client_config),
+            bucket: "rusty-dev".to_owned(),
+        };
+
+        assert_eq!(storage.url("defaults/default_logo.webp"), "/images/defaults/default_logo.webp");
     }
 }

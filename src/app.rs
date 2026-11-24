@@ -111,7 +111,6 @@ impl App {
             config.object_storage.bucket.clone(),
             &config.object_storage.access_key,
             &config.object_storage.secret_key,
-            config.object_storage.public_url.clone(),
         )
         .await
         .map_err(|error| AppError::ObjectStorage(Box::new(error)))?;
@@ -204,8 +203,9 @@ mod tests {
             database::{
                 CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink,
                 DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePosition,
-                DatabaseProfile, MemberCredentials, NewMember, NewOrganization,
-                NewProfileImage, NewProfileLink, UpdateProfile,
+                DatabasePositionConnection, DatabaseProfile, MemberCredentials, NewMember,
+                NewOrganization, NewPosition, NewPositionConnection, NewProfileImage,
+                NewProfileLink, UpdateProfile,
             },
             object::ObjectStorageError,
         },
@@ -266,6 +266,14 @@ mod tests {
     impl PositionRepository for FakeDependencies {
         async fn find_positions_by_organization_id(&self, _organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError> {
             Ok(Vec::new())
+        }
+
+        async fn find_position_connections_by_organization_id(&self, _organization_id: i64) -> Result<Vec<DatabasePositionConnection>, DatabaseError> {
+            Ok(Vec::new())
+        }
+
+        async fn replace_graph_by_organization_id(&self, _organization_id: i64, _positions: Vec<NewPosition>, _connections: Vec<NewPositionConnection>) -> Result<(), DatabaseError> {
+            Ok(())
         }
     }
 
