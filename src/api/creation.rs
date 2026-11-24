@@ -78,9 +78,11 @@ impl CreationRequest {
         Ok(validated)
     }
 }
-// TODO: Add rate limiting to prevent spam organization creation.
-// Without it, an attacker can create unlimited organizations automatically.
-// See: https://en.wikipedia.org/wiki/Rate_limiting
+// TODO(AUDIT): [MEDIUM] Limit automated organization creation (AUDIT-002)
+// Problem: Public signup has no rate limit or anti-automation control and creates persistent records.
+// Impact: Automated signups can consume database and password-hashing resources.
+// Suggested fix: Apply shared signup throttles and abuse controls before creating records.
+// Reference: POST /api/organizations/create; signup.
 pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<CreationRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
@@ -91,6 +93,9 @@ pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>
     };
 
     let slug = create_slug(&validated.name);
+    if crate::routes::is_reserved_organization_slug(&slug) {
+        return Redirect::to("/create?error=invalid-slug").into_response();
+    }
 
     let organization = NewOrganization {
         name: validated.name,
@@ -113,9 +118,7 @@ pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>
 
     let (_organization_id, owner_id) = match organizations.create_organization_with_owner_and_profile(organization, owner).await {
         Ok(result) => result,
-        Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => { return Redirect::to("/create?error=invalid-slug").into_response(); }
-        Err(CreateOrganizationError::MemberAlreadyExists) => { return Redirect::to("/create?error=email-taken").into_response(); }
-        Err(CreateOrganizationError::Database(_error)) => { return Redirect::to("/create?error=server-error").into_response(); }
+        Err(error) => { return Redirect::to(signup_error_redirect_location(error)).into_response(); }
     };
 
     // The organization and owner member have now been successfully created
@@ -161,6 +164,15 @@ pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>
         }
     }
 }
+
+fn signup_error_redirect_location(error: CreateOrganizationError) -> &'static str {
+    match error {
+        CreateOrganizationError::OrganizationSlugAlreadyExists => "/create?error=invalid-slug",
+        CreateOrganizationError::MemberAlreadyExists => "/create?error=signup-failed",
+        CreateOrganizationError::Database(_) => "/create?error=server-error",
+    }
+}
+
 /// Generates the slug for any company name used on signup
 ///TODO for now if the slug is taken we reject the signup
 /// later on add ways to generate new unique slug instead like slug-1, slug-2!!
@@ -199,6 +211,38 @@ mod tests {
     #[test]
     fn non_ascii_characters_are_replaced() {
         assert_eq!(create_slug("W Jerrestål AB"), "w-jerrest-l-ab");
+    }
+
+    #[test]
+    fn rejects_slugs_that_match_application_routes() {
+        for name in [
+            "Login",
+            "Create",
+            "Organization",
+            "Dashboard",
+            "Profile",
+            "API",
+            "Images",
+            "Assets",
+        ] {
+            assert!(
+                crate::routes::is_reserved_organization_slug(&create_slug(name)),
+                "{name} should not produce a usable organization slug"
+            );
+        }
+    }
+
+    #[test]
+    fn allows_slugs_that_do_not_match_application_routes() {
+        assert!(!crate::routes::is_reserved_organization_slug(&create_slug("Acme")));
+    }
+
+    #[test]
+    fn duplicate_email_uses_a_neutral_signup_error() {
+        let location = signup_error_redirect_location(CreateOrganizationError::MemberAlreadyExists);
+
+        assert_eq!(location, "/create?error=signup-failed");
+        assert!(!location.contains("email"));
     }
 
     #[test]

@@ -51,6 +51,11 @@ pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(ob
         }
     };
 
+    // TODO(AUDIT): [LOW] Serialize concurrent image replacements (AUDIT-011)
+    // Problem: Concurrent uploads can read the same old key, then overwrite the profile independently.
+    // Impact: The losing upload's new object can become unreferenced and accumulate in object storage.
+    // Suggested fix: Serialize replacements per organization/image type or reconcile unreferenced objects.
+    // Reference: POST /api/profile/image; old_storage_key read and update_profile_image.
     let profile = match get_profile(profiles.as_ref(), user.organization.id).await {
         Ok(profile) => profile,
         Err(status) => return status.into_response(),

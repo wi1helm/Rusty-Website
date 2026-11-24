@@ -7,6 +7,9 @@ use axum::extract::FromRef;
 mod dashboard;
 mod profile;
 
+pub(super) const DASHBOARD_PATH: &str = "/dashboard";
+pub(super) const PROFILE_PATH: &str = "/profile";
+
 /// Routes that require an authenticated session.
 ///
 /// The authentication middleware is attached to this router, meaning every
@@ -18,7 +21,7 @@ pub fn router(context: Context) -> Router<Context> {
     let auth_state = AuthState::from_ref(&context);
 
     Router::new()
-        .route("/dashboard", get(dashboard::get_page))
-        .route("/profile", get(profile::get_page))
+        .route(DASHBOARD_PATH, get(dashboard::get_page))
+        .route(PROFILE_PATH, get(profile::get_page))
         .layer(middleware::from_fn_with_state(auth_state, require_auth))
 }

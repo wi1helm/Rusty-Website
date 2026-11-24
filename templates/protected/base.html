@@ -17,6 +17,12 @@
                 {{ organization_name }}
             </h1>
 
+            <!-- TODO(AUDIT): [LOW] Remove or implement dead workspace navigation (AUDIT-006)
+                 Problem: Members and Settings links have no matching protected page routes.
+                 Impact: Users are sent to a missing page or a public-profile slug route.
+                 Suggested fix: Implement the protected pages or remove these links until available.
+                 Reference: GET /members and GET /settings; src/routes/protected/mod.rs.
+            -->
             <nav class="protected-nav">
 
                 <a href="/dashboard">

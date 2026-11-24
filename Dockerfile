@@ -25,4 +25,6 @@ WORKDIR /app
 COPY --from=builder /app/target/release/rusty-noname .
 COPY --from=builder /app/static ./static
 
+USER 10001:10001
+
 CMD ["./rusty-noname"]

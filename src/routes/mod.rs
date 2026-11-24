@@ -23,6 +23,27 @@ mod profile;
 mod protected;
 mod public;
 
+const API_PATH: &str = "/api";
+const IMAGES_PATH: &str = "/images/{*key}";
+const ASSETS_PATH: &str = "/assets";
+
+pub(crate) fn is_reserved_organization_slug(slug: &str) -> bool {
+    [
+        public::LOGIN_PATH,
+        public::CREATE_PATH,
+        public::ORGANIZATION_PATH,
+        protected::DASHBOARD_PATH,
+        protected::PROFILE_PATH,
+        API_PATH,
+        IMAGES_PATH,
+        ASSETS_PATH,
+    ]
+    .iter()
+    .any(|path| {
+        path.strip_prefix('/').and_then(|path| path.split('/').next()) == Some(slug)
+    })
+}
+
 /// Builds the complete application router.
 ///
 /// `context` is attached once here via `.with_state(...)`, which is why
@@ -31,22 +52,20 @@ mod public;
 /// from this root state through `FromRef`.
 pub fn router(context: Context) -> Router {
     Router::new()
-        //TODO: Maintain a list of reserved slugs for top-level application routes.
-        // Organization slugs must not collide with routes such as /login, /signup,
-        // /dashboard, /settings, /api, /assets, etc. When new top-level routes are
-        // introduced, add their names to the reserved list before exposing them.
-        // TODO: Add a logout endpoint (e.g. POST /api/auth/logout) that deletes the
-        // session from Redis and clears the session cookie. Currently the SessionManager
-        // delete() method exists but no route calls it, so users cannot log out.
+        // TODO(AUDIT): [MEDIUM] Implement an authenticated logout route (AUDIT-003)
+        // Problem: No route deletes the Redis session or clears the session cookie.
+        // Impact: Users on shared devices cannot revoke their session and remain authenticated until expiry.
+        // Suggested fix: Add a same-origin POST logout handler that deletes the session and expires the cookie.
+        // Reference: src/auth/session.rs; protected navigation; session TTL is 24 hours.
         .merge(public::router())
         .merge(protected::router(context.clone()))
-        .nest("/api", api::router(context.clone()))
-        .route("/images/{*key}", get(images::get_image))
+        .nest(API_PATH, api::router(context.clone()))
+        .route(IMAGES_PATH, get(images::get_image))
         // Expose the local `static/` directory as `/assets/*` over HTTP.
         // The URL path is intentionally `/assets` rather than `/static` so the
         // filesystem layout stays an internal implementation detail.
         // For example: `/assets/shared/styles.css` -> `static/shared/styles.css`.
-        .nest_service("/assets", ServeDir::new("static"))
+        .nest_service(ASSETS_PATH, ServeDir::new("static"))
         .with_state(context)
         .layer(middleware::from_fn(csrf_protection))
         .layer(middleware::map_response(add_security_headers))

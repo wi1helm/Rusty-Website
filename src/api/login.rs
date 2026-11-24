@@ -45,9 +45,11 @@ impl LoginRequest {
     }
 }
 
-// TODO: Add rate limiting to prevent brute-force attacks.
-// Without it, an attacker can try unlimited password combinations.
-// See: https://en.wikipedia.org/wiki/Rate_limiting
+// TODO(AUDIT): [HIGH] Throttle repeated login attempts (AUDIT-001)
+// Problem: The public login handler accepts repeated credential attempts without a rate limit.
+// Impact: Attackers can brute-force credentials and drive expensive password verification work.
+// Suggested fix: Add distributed per-IP/account throttling and alerting without revealing account state.
+// Reference: POST /api/auth/login; Authenticator::login.
 pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<LoginRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,

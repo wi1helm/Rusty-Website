@@ -16,6 +16,11 @@ pub fn router(context: Context) -> Router<Context> {
         // Public API routes.
         //
         // These do not require an authenticated session.
+        // TODO(AUDIT): [LOW] Provide a secure password recovery flow (AUDIT-008)
+        // Problem: No password-reset endpoint or public recovery page is registered.
+        // Impact: A user who forgets the owner password cannot regain organization access.
+        // Suggested fix: Add single-use, expiring reset tokens, verified delivery, and abuse limits.
+        // Reference: Public authentication routes; templates/public/login.html.
         .route("/organizations/create", post(creation::signup))
         .route("/auth/login", post(login::login))
         // Protected API routes.

@@ -1,7 +1,8 @@
 use argon2::Argon2;
 use argon2::password_hash::{
-    PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng,
+    PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
 };
+use rand_core::OsRng;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PasswordHashError {

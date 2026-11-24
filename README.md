@@ -115,9 +115,8 @@ The script removes only that project's containers and volumes on exit; it does n
 
 ## Known limitations and follow-ups
 
-- **Critical — password storage:** Signup currently passes the submitted password unchanged into the database field named `password_hash`, and login compares the submitted password directly. Do not deploy this authentication flow for real users until passwords are stored using a dedicated password-hashing algorithm and verified against hashes; existing credentials will also need a migration/reset plan.
+- **Legacy credentials:** Passwords are now hashed with Argon2 and verified against the stored hash. Any accounts created by an earlier plaintext-password implementation will need a password reset or a safe migration before those users can log in.
 - **Session logout:** There is no logout route, although the session manager can delete a session. Sessions currently expire after 24 hours; add a route that deletes the server-side session and clears the browser cookie.
-- **Organization URL collisions:** Public profiles use the catch-all `/{slug}` route. Reserve application route names for organization slugs so new pages and API paths cannot be shadowed by organizations.
-- **Database rollback:** The seven current SQLx migrations have no corresponding down migrations, so `sqlx migrate revert` cannot roll them back.
+- **Database rollback:** The eight current SQLx migrations have no corresponding down migrations, so `sqlx migrate revert` cannot roll them back.
 - **Developer onboarding:** `.env.example` provides placeholder settings; copy it to a local `.env.dev` or `.env.staging` and replace values as needed. Local environment files remain ignored so real credentials are not committed.
 - **API response shape:** Several API handlers redirect to HTML pages on errors instead of returning structured HTTP/JSON errors, coupling API behavior to browser navigation.

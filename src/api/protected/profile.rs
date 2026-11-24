@@ -114,11 +114,11 @@ pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentU
         display_name: validated.display_name,
         about: validated.about,
     };
-    // TODO: These two database operations are not atomic. If update_profile succeeds
-    // but update_profile_links fails, the profile is left with new display_name/about
-    // but old links — an inconsistent state. Wrap both in a database transaction so
-    // they either both succeed or both roll back.
-    // See: https://www.postgresql.org/docs/current/transaction-iso.html
+    // TODO(AUDIT): [MEDIUM] Make profile fields and links update atomically (AUDIT-005)
+    // Problem: Profile fields commit before links are written in a separate transaction.
+    // Impact: A link-write failure leaves a partially updated public profile while returning an error.
+    // Suggested fix: Move both repository writes into one database transaction.
+    // Reference: POST /api/profile/update; ProfileRepository::update_profile and update_profile_links.
     if let Err(error) = profiles.update_profile(user.organization.id, user.member_id, new_profile).await {
         tracing::error!(?error,profile_id = old_profile.id,"failed to update profile");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();

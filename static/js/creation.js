@@ -5,7 +5,8 @@ const ERROR_MESSAGES = {
     "invalid-email": "Please enter a valid email address.",
     "invalid-password": "Password must be at least 8 characters long.",
     "passwords-mismatch": "Passwords do not match.",
-    "email-taken": "An account with that email already exists.",
+    "invalid-slug": "That organization name uses a reserved URL. Please choose another name.",
+    "signup-failed": "We couldn't complete signup. Please try again, or log in if you already have access.",
     "organization-exists": "An organization with that name already exists.",
     "server-error": "Something went wrong. Please try again.",
 };
