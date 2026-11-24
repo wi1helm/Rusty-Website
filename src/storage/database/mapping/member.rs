@@ -1,10 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::storage::database::{
-    DatabaseError,
-    DatabaseMember,
-    DatabaseMemberWithOrganization,
-    DatabaseOrganization,
+    DatabaseError, DatabaseMember, DatabaseMemberWithOrganization, DatabaseOrganization,
     OrganizationRole,
 };
 
@@ -34,8 +31,7 @@ pub struct MemberWithOrganizationRow {
 }
 
 pub fn map_member(row: MemberRow) -> Result<DatabaseMember, DatabaseError> {
-    let role = OrganizationRole::from_str(&row.role)
-        .ok_or_else(|| DatabaseError::InvalidOrganizationRole(row.role))?;
+    let role = OrganizationRole::from_str(&row.role).ok_or_else(|| DatabaseError::InvalidOrganizationRole(row.role))?;
 
     Ok(DatabaseMember {
         id: row.id,
@@ -49,8 +45,7 @@ pub fn map_member(row: MemberRow) -> Result<DatabaseMember, DatabaseError> {
 }
 
 pub fn map_member_with_organization(row: MemberWithOrganizationRow) -> Result<DatabaseMemberWithOrganization, DatabaseError> {
-    let role = OrganizationRole::from_str(&row.member_role)
-        .ok_or_else(|| DatabaseError::InvalidOrganizationRole(row.member_role))?;
+    let role = OrganizationRole::from_str(&row.member_role).ok_or_else(|| DatabaseError::InvalidOrganizationRole(row.member_role))?;
 
     Ok(DatabaseMemberWithOrganization {
         member: DatabaseMember {

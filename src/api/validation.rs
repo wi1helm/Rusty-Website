@@ -1,7 +1,5 @@
 // routes/api/validation.rs
 
-
-
 /// Checks whether a name meets the basic requirements expected by the
 /// application.
 ///
@@ -197,9 +195,7 @@ pub fn is_valid_url(url: &str) -> bool {
     //
     // Control characters, such as newlines, tabs, and null characters,
     // are also rejected because they are not appropriate in this input.
-    if url.chars().any(char::is_whitespace)
-        || url.chars().any(char::is_control)
-    {
+    if url.chars().any(char::is_whitespace) || url.chars().any(char::is_control) {
         return false;
     }
 
@@ -442,9 +438,7 @@ mod tests {
 
     #[test]
     fn accepts_url_with_query_parameters() {
-        assert!(is_valid_url(
-            "https://example.com/about?source=profile"
-        ));
+        assert!(is_valid_url("https://example.com/about?source=profile"));
     }
 
     #[test]
@@ -529,9 +523,7 @@ mod tests {
 
     #[test]
     fn rejects_url_with_embedded_username_and_password() {
-        assert!(!is_valid_url(
-            "https://username:password@example.com"
-        ));
+        assert!(!is_valid_url("https://username:password@example.com"));
     }
 
     #[test]

@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     response::Redirect,
 };
+use std::sync::Arc;
 
 use super::MAX_IMAGE_SIZE;
 use super::validator::ImageValidator;
@@ -12,9 +13,11 @@ use crate::api::protected::get_profile;
 use crate::api::protected::image::normalizer::ImageNormalizer;
 use crate::storage::database::NewProfileImage;
 use crate::{
-    Context,
     auth::CurrentUser,
-    storage::database::ProfileImageType,
+    storage::{
+        database::{Database, ProfileImageType},
+        object::ObjectStorage,
+    },
 };
 
 const MAX_LENGTH_OF_IMAGE_TYPE: usize = 32;
@@ -28,16 +31,16 @@ struct UploadedImage {
 // TODO: Add CSRF token validation to prevent cross-site request forgery.
 // SameSite=Lax protects top-level navigation but not POST requests.
 // See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUser, multipart: Multipart) -> impl IntoResponse {
+pub async fn upload(State(database): State<Arc<dyn Database>>, State(object_storage): State<Arc<dyn ObjectStorage>>, CurrentUser(user): CurrentUser, multipart: Multipart, ) -> impl IntoResponse {
     let uploaded = match parse_multipart(multipart, user.organization.id).await {
         Ok(uploaded) => uploaded,
-        Err(status) => return status.into_response()
+        Err(status) => return status.into_response(),
     };
 
     let validated = match ImageValidator::validate(uploaded.image_type, uploaded.data, &uploaded.content_type) {
         Ok(image) => image,
         Err(error) => {
-            tracing::debug!(?error, organization_id = user.organization.id, "profile image failed validation");
+            tracing::debug!(?error,organization_id = user.organization.id,"profile image failed validation");
             return error.status_code().into_response();
         }
     };
@@ -45,28 +48,21 @@ pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUs
     let normalized = match ImageNormalizer::normalize(validated) {
         Ok(image) => image,
         Err(error) => {
-            tracing::error!(?error, organization_id = user.organization.id, "profile image normalization failed");
+            tracing::error!(?error,organization_id = user.organization.id,"profile image normalization failed");
             return error.status_code().into_response();
         }
     };
 
-
-
-    let profile = match get_profile(&context, user.organization.id).await {
+    let profile = match get_profile(database.as_ref(), user.organization.id).await {
         Ok(profile) => profile,
         Err(status) => return status.into_response(),
     };
 
-    let storage_key = format!(
-        "organizations/{}/profile/{}/{}.webp",
-        user.organization.id,
-        normalized.image_type.as_str(),
-        uuid::Uuid::new_v4(),
-    );
+    let storage_key = format!("organizations/{}/profile/{}/{}.webp", user.organization.id, normalized.image_type.as_str(), uuid::Uuid::new_v4());
 
     let file_size = normalized.data.len() as i64;
 
-    match context.public_object_storage.put(&storage_key, normalized.data, normalized.content_type).await {
+    match object_storage.put(&storage_key, normalized.data, normalized.content_type).await {
         Ok(()) => {}
         Err(error) => {
             tracing::error!(?error,organization_id = user.organization.id,storage_key = %storage_key,"failed to upload profile image");
@@ -84,29 +80,24 @@ pub async fn upload(State(context): State<Context>, CurrentUser(user): CurrentUs
         file_size,
     };
 
-    let old_image = match context.database.update_profile_image(new_image).await {
+    let old_image = match database.update_profile_image(new_image).await {
         Ok(old_image) => old_image,
         Err(error) => {
             tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to save profile image to database");
 
-            match context.public_object_storage.delete(&storage_key).await {
+            match object_storage.delete(&storage_key).await {
                 Ok(()) => {}
-                Err(cleanup_error) => {
-                    tracing::error!(?cleanup_error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to clean up profile image after database failure");
-                }
+                Err(cleanup_error) => { tracing::error!(?cleanup_error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to clean up profile image after database failure"); }
             }
 
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-
     match old_image {
-        Some(old_image) => match context.public_object_storage.delete(&old_image.storage_key).await {
+        Some(old_image) => match object_storage.delete(&old_image.storage_key).await {
             Ok(()) => {}
-            Err(error) => {
-                tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %old_image.storage_key,"failed to delete old profile image");
-            }
+            Err(error) => { tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %old_image.storage_key,"failed to delete old profile image"); }
         },
         None => {}
     }
@@ -121,14 +112,8 @@ async fn parse_multipart(mut multipart: Multipart, organization_id: i64) -> Resu
 
     while let Some(mut field) = next_field(&mut multipart, organization_id).await? {
         match field.name() {
-            Some("image_type") => {
-                parse_image_type(field, &mut image_type, organization_id).await?;
-            }
-
-            Some("image") => {
-                parse_image(&mut field, &mut image_data, &mut content_type, organization_id).await?;
-            }
-
+            Some("image_type") => { parse_image_type(field, &mut image_type, organization_id).await?; }
+            Some("image") => { parse_image(&mut field, &mut image_data, &mut content_type, organization_id, ).await?; }
             Some(name) => {
                 tracing::debug!(organization_id, field = name, "unexpected multipart field");
                 return Err(StatusCode::BAD_REQUEST);
@@ -145,7 +130,11 @@ async fn parse_multipart(mut multipart: Multipart, organization_id: i64) -> Resu
     let image_data = image_data.ok_or(StatusCode::BAD_REQUEST)?;
     let content_type = content_type.ok_or(StatusCode::BAD_REQUEST)?;
 
-    Ok(UploadedImage { image_type, data: image_data, content_type})
+    Ok(UploadedImage {
+        image_type,
+        data: image_data,
+        content_type,
+    })
 }
 
 /// Reads the next multipart field and converts multipart parsing errors into
@@ -161,7 +150,7 @@ async fn next_field(multipart: &mut Multipart, organization_id: i64) -> Result<O
 ///
 /// The field is consumed because `Field::text()` takes ownership of the field.
 /// The value is bounded before it is converted into a `ProfileImageType`.
-async fn parse_image_type(field: Field<'_>, image_type: &mut Option<ProfileImageType>, organization_id: i64) -> Result<(), StatusCode> {
+async fn parse_image_type(field: Field<'_>, image_type: &mut Option<ProfileImageType>, organization_id: i64, ) -> Result<(), StatusCode> {
     if image_type.is_some() {
         tracing::debug!(organization_id, "duplicate image_type field");
         return Err(StatusCode::BAD_REQUEST);
@@ -189,11 +178,7 @@ async fn parse_image(field: &mut Field<'_>, image_data: &mut Option<Vec<u8>>, co
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let field_content_type = field
-        .content_type()
-        .ok_or(StatusCode::BAD_REQUEST)?
-        .to_owned();
-
+    let field_content_type = field.content_type().ok_or(StatusCode::BAD_REQUEST)?.to_owned();
     let data = read_image_data(field, organization_id).await?;
 
     *image_data = Some(data);
@@ -206,15 +191,10 @@ async fn parse_image(field: &mut Field<'_>, image_data: &mut Option<Vec<u8>>, co
 ///
 /// This deliberately avoids `Field::bytes()`, which would read the entire
 /// field before we can enforce the image-specific size limit.
-async fn read_image_data(field: &mut Field<'_>, organization_id: i64, ) -> Result<Vec<u8>, StatusCode> {
+async fn read_image_data(field: &mut Field<'_>, organization_id: i64) -> Result<Vec<u8>, StatusCode> {
     let mut data = Vec::new();
 
-    while let Some(chunk) = field.chunk().await
-        .map_err(|error| {
-            tracing::warn!(?error, organization_id, "failed to read uploaded image");
-            StatusCode::BAD_REQUEST
-        })?
-    {
+    while let Some(chunk) = field.chunk().await.map_err(|error| { tracing::warn!(?error, organization_id, "failed to read uploaded image");StatusCode::BAD_REQUEST })? {
         if data.len() + chunk.len() > MAX_IMAGE_SIZE {
             tracing::debug!(organization_id, "uploaded image exceeded maximum size");
             return Err(StatusCode::PAYLOAD_TOO_LARGE);
@@ -232,15 +212,24 @@ mod tests {
 
     use crate::api::protected::image::MAX_REQUEST_SIZE;
     use axum::extract::DefaultBodyLimit;
-    use axum::{Router, body::Body, http::{Request, header}};
+    use axum::{
+        Router,
+        body::Body,
+        http::{Request, header},
+    };
     use tower::ServiceExt;
-    fn multipart_body(boundary: &str, fields: &[(&str, &str, &[u8], Option<&str>)], ) -> Vec<u8> {
+    fn multipart_body(boundary: &str, fields: &[(&str, &str, &[u8], Option<&str>)]) -> Vec<u8> {
         let mut body = Vec::new();
 
         for (name, filename, data, content_type) in fields {
             body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
 
-            body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{name}\"; filename=\"{filename}\"\r\n").as_bytes());
+            body.extend_from_slice(
+                format!(
+                    "Content-Disposition: form-data; name=\"{name}\"; filename=\"{filename}\"\r\n"
+                )
+                .as_bytes(),
+            );
 
             if let Some(content_type) = content_type {
                 body.extend_from_slice(format!("Content-Type: {content_type}\r\n").as_bytes());
@@ -253,13 +242,17 @@ mod tests {
         body
     }
 
-    async fn parse_test_multipart(body: Vec<u8>, boundary: &str) -> Result<UploadedImage, StatusCode> {
+    async fn parse_test_multipart(
+        body: Vec<u8>,
+        boundary: &str,
+    ) -> Result<UploadedImage, StatusCode> {
         // Shared state slot to capture the uploaded image on success
         let captured_image = std::sync::Arc::new(tokio::sync::Mutex::new(None));
         let captured_clone = captured_image.clone();
 
         let app = Router::new()
-            .route("/",
+            .route(
+                "/",
                 axum::routing::post(move |multipart: Multipart| async move {
                     match parse_multipart(multipart, 123).await {
                         Ok(uploaded) => {
@@ -275,7 +268,10 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/")
-            .header(header::CONTENT_TYPE, format!("multipart/form-data; boundary={boundary}"))
+            .header(
+                header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={boundary}"),
+            )
             .body(Body::from(body))
             .unwrap();
 
@@ -318,9 +314,7 @@ mod tests {
     async fn rejects_missing_image_type() {
         let body = multipart_body(
             "test-boundary",
-            &[
-                ("image", "logo.png", b"fake image data", Some("image/png")),
-            ],
+            &[("image", "logo.png", b"fake image data", Some("image/png"))],
         );
 
         let result = parse_test_multipart(body, "test-boundary").await;
@@ -330,12 +324,7 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_missing_image() {
-        let body = multipart_body(
-            "test-boundary",
-            &[
-                ("image_type", "", b"logo", None),
-            ],
-        );
+        let body = multipart_body("test-boundary", &[("image_type", "", b"logo", None)]);
 
         let result = parse_test_multipart(body, "test-boundary").await;
 

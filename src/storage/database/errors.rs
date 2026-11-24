@@ -16,7 +16,7 @@ pub enum DatabaseError {
 
     #[error("invalid position status in database: {0}")]
     InvalidPositionStatus(String),
-    
+
     #[error("database error")]
     Other(String),
 }

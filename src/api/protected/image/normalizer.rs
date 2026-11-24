@@ -64,18 +64,15 @@ impl ImageNormalizer {
     fn normalize_dimensions(image_type: ProfileImageType, image: DynamicImage) -> DynamicImage {
         let rules = image_type.rules();
 
-        if image.width() <= rules.output_max_width && image.height() <= rules.output_max_height {
-            return image;
-        }
+        if image.width() <= rules.output_max_width && image.height() <= rules.output_max_height { return image; }
 
-        image.resize(rules.output_max_width, rules.output_max_height, image::imageops::FilterType::Lanczos3)
+        image.resize(rules.output_max_width, rules.output_max_height, image::imageops::FilterType::Lanczos3, )
     }
 
-    fn encode_webp(image: &DynamicImage, ) -> Result<Vec<u8>, ImageNormalizationError> {
+    fn encode_webp(image: &DynamicImage) -> Result<Vec<u8>, ImageNormalizationError> {
         let mut data = Cursor::new(Vec::new());
 
-        image.write_to(&mut data, ImageFormat::WebP)
-            .map_err(|_| ImageNormalizationError::Encode)?;
+        image.write_to(&mut data, ImageFormat::WebP).map_err(|_| ImageNormalizationError::Encode)?;
 
         Ok(data.into_inner())
     }

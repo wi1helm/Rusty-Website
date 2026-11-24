@@ -4,3 +4,4 @@ target
 .gitignore
 README.md
 compose.yaml
+compose.*.yaml

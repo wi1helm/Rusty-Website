@@ -1,12 +1,12 @@
+use super::{ObjectStorage, ObjectStorageError};
+use crate::config::{DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
 use async_trait::async_trait;
+use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::{
+    Client,
     config::{Credentials, Region},
     primitives::ByteStream,
-    Client,
 };
-use aws_sdk_s3::error::ProvideErrorMetadata;
-use crate::config::{DEFAULT_BANNER_KEY, DEFAULT_LOGO_KEY};
-use super::{ObjectStorage, ObjectStorageError};
 
 /// S3-compatible object storage implementation.
 ///
@@ -45,13 +45,7 @@ impl S3ObjectStorage {
         //
         // For local development these will be the MinIO credentials.
         // In production these would be your actual storage credentials.
-        let credentials = Credentials::new(
-            access_key,
-            secret_key,
-            None,
-            None,
-            "app",
-        );
+        let credentials = Credentials::new(access_key, secret_key, None, None, "app");
 
         // Configure the S3 client.
         let config = aws_sdk_s3::Config::builder()
@@ -62,16 +56,13 @@ impl S3ObjectStorage {
             //
             // With Amazon S3 this would be an AWS S3 endpoint.
             .endpoint_url(endpoint)
-
             // Tell the SDK which credentials to use.
             .credentials_provider(credentials)
-
             // S3 requires a region.
             //
             // MinIO doesn't really care about the region, so this
             // is mainly here to satisfy the S3 client's configuration.
             .region(Region::new("eu-north-1"))
-
             // Use path-style URLs.
             //
             // This is important for MinIO because it allows requests
@@ -83,7 +74,6 @@ impl S3ObjectStorage {
             //
             // http://my-bucket.minio:9000/my-file.webp
             .force_path_style(true)
-
             .build();
 
         // Create the S3 client from our configuration.
@@ -134,9 +124,7 @@ impl S3ObjectStorage {
                     .bucket(&self.bucket)
                     .send()
                     .await
-                    .map_err(|error| {
-                        ObjectStorageError::Storage(error.to_string())
-                    })?;
+                    .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
                 Ok(())
             }
@@ -170,9 +158,7 @@ impl S3ObjectStorage {
             .policy(policy)
             .send()
             .await
-            .map_err(|error| {
-                ObjectStorageError::Storage(error.to_string())
-            })?;
+            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(())
     }
@@ -184,22 +170,21 @@ impl S3ObjectStorage {
             include_bytes!("../../../static/defaults/default_logo.webp"),
             "image/webp",
         )
-            .await?;
+        .await?;
 
         self.ensure_default_object(
             DEFAULT_BANNER_KEY,
             include_bytes!("../../../static/defaults/default_banner.webp"),
             "image/webp",
         )
-            .await?;
+        .await?;
 
         Ok(())
     }
 
     /// Makes sure a specific default object exists.
-    async fn ensure_default_object(&self, key: &str, data: &[u8], content_type: &str, ) -> Result<(), ObjectStorageError> {
-        match self
-            .client
+    async fn ensure_default_object(&self, key: &str, data: &[u8], content_type: &str) -> Result<(), ObjectStorageError> {
+        match self.client
             .head_object()
             .bucket(&self.bucket)
             .key(key)
@@ -221,9 +206,7 @@ impl S3ObjectStorage {
                     .body(ByteStream::from(data.to_vec()))
                     .send()
                     .await
-                    .map_err(|error| {
-                        ObjectStorageError::Storage(error.to_string())
-                    })?;
+                    .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
                 Ok(())
             }
@@ -243,9 +226,7 @@ impl ObjectStorage for S3ObjectStorage {
             .body(ByteStream::from(data))
             .send()
             .await
-            .map_err(|error| {
-                ObjectStorageError::Storage(error.to_string())
-            })?;
+            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(())
     }
@@ -261,15 +242,15 @@ impl ObjectStorage for S3ObjectStorage {
             .await
             .map_err(|error| {
                 // Distinguish a missing object from other storage failures.
-                if error.as_service_error().and_then(|service_error| service_error.code()) == Some("NoSuchKey") {
+                if error.as_service_error()
+                    .and_then(|service_error| service_error.code()) == Some("NoSuchKey") {
                     ObjectStorageError::NotFound
                 } else {
                     ObjectStorageError::Storage(error.to_string())
                 }
             })?;
 
-        let data = result
-            .body
+        let data = result.body
             .collect()
             .await
             .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
@@ -285,9 +266,7 @@ impl ObjectStorage for S3ObjectStorage {
             .key(key)
             .send()
             .await
-            .map_err(|error| {
-                ObjectStorageError::Storage(error.to_string())
-            })?;
+            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(())
     }

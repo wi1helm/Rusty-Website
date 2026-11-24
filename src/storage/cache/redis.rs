@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use redis::aio::MultiplexedConnection;
 use redis::AsyncCommands;
+use redis::aio::MultiplexedConnection;
 use std::time::Duration;
 
 use super::{Cache, CacheError};
@@ -31,9 +31,7 @@ impl RedisCache {
         //
         // A multiplexed connection allows multiple commands to be
         // processed concurrently over the same underlying connection.
-        let connection = client
-            .get_multiplexed_async_connection()
-            .await?;
+        let connection = client.get_multiplexed_async_connection().await?;
 
         Ok(Self { connection })
     }
@@ -66,12 +64,7 @@ impl Cache for RedisCache {
     /// Stores a value in Redis with a time-to-live.
     ///
     /// Once `ttl` expires, Redis automatically removes the key.
-    async fn set(
-        &self,
-        key: &str,
-        value: &[u8],
-        ttl: Duration,
-    ) -> Result<(), CacheError> {
+    async fn set(&self, key: &str, value: &[u8], ttl: Duration) -> Result<(), CacheError> {
         // Clone the shared multiplexed connection for this operation.
         let mut connection = self.connection.clone();
 
@@ -85,9 +78,7 @@ impl Cache for RedisCache {
         //
         // The explicit type is also necessary because newer Rust
         // versions may otherwise fail to infer the Redis response type.
-        let _: () = connection
-            .set_ex(key, value, ttl_seconds)
-            .await?;
+        let _: () = connection.set_ex(key, value, ttl_seconds).await?;
 
         Ok(())
     }

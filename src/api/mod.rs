@@ -1,10 +1,10 @@
-use axum::{routing::post, Router};
 use crate::Context;
+use axum::{Router, routing::post};
 
 mod creation;
-mod validation;
 mod login;
 mod protected;
+mod validation;
 
 /// Builds the `/api/*` routes.
 ///
@@ -18,7 +18,6 @@ pub fn router(context: Context) -> Router<Context> {
         // These do not require an authenticated session.
         .route("/organizations/create", post(creation::signup))
         .route("/auth/login", post(login::login))
-
         // Protected API routes.
         //
         // The nested router applies authentication middleware to all

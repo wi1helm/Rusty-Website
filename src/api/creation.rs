@@ -15,14 +15,18 @@
 //! Search terms: "Axum JSON error responses", "REST API error handling Rust",
 //! "separate API from HTML routes Axum", "problem_details RFC 7807 Rust".
 
-use serde::Deserialize;
-use axum::{extract::State, Form};
-use axum::response::{IntoResponse, Redirect};
-use crate::{Context};
-use crate::api::validation::{ is_valid_email, is_valid_name, is_valid_password};
+use crate::api::validation::{is_valid_email, is_valid_name, is_valid_password};
 use crate::auth::AuthenticationError;
+use crate::auth::Authenticator;
+use crate::config::CookieConfig;
 use crate::routes::redirect_with_session_cookie;
-use crate::storage::database::{CreateOrganizationError, NewMember, NewOrganization, OrganizationRole};
+use crate::storage::database::{
+    CreateOrganizationError, Database, NewMember, NewOrganization, OrganizationRole,
+};
+use axum::response::{IntoResponse, Redirect};
+use axum::{Form, extract::State};
+use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum CreationValidationError {
@@ -31,7 +35,6 @@ pub enum CreationValidationError {
     InvalidPassword,
     PasswordMismatch,
 }
-
 
 // This represents that the application does not deem trustworthy.
 // #derive means this struct is automaticly creates from form data.
@@ -79,13 +82,13 @@ impl CreationRequest {
 // TODO: Add CSRF token validation to prevent cross-site request forgery.
 // SameSite=Lax protects top-level navigation but not POST requests.
 // See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRequest>) -> impl IntoResponse {
+pub async fn signup(State(database): State<Arc<dyn Database>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<CreationRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
-        Err(CreationValidationError::InvalidEmail) => return Redirect::to("/create?error=invalid-email").into_response(),
-        Err(CreationValidationError::InvalidPassword) => return Redirect::to("/create?error=invalid-password").into_response(),
-        Err(CreationValidationError::InvalidName) => return Redirect::to("/create?error=invalid-name").into_response(),
-        Err(CreationValidationError::PasswordMismatch) => return Redirect::to("/create?error=passwords-mismatch").into_response()
+        Err(CreationValidationError::InvalidEmail) => { return Redirect::to("/create?error=invalid-email").into_response(); }
+        Err(CreationValidationError::InvalidPassword) => { return Redirect::to("/create?error=invalid-password").into_response(); }
+        Err(CreationValidationError::InvalidName) => { return Redirect::to("/create?error=invalid-name").into_response(); }
+        Err(CreationValidationError::PasswordMismatch) => { return Redirect::to("/create?error=passwords-mismatch").into_response(); }
     };
 
     let slug = create_slug(&validated.name);
@@ -101,12 +104,11 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRe
         role: OrganizationRole::Owner,
     };
 
-    let (_organization_id, owner_id) = match context.database.create_organization_with_owner_and_profile(organization, owner).await {
+    let (_organization_id, owner_id) = match database.create_organization_with_owner_and_profile(organization, owner).await {
         Ok(result) => result,
-
-        Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => return Redirect::to("/create?error=invalid-slug").into_response(),
-        Err(CreateOrganizationError::MemberAlreadyExists) => return Redirect::to("/create?error=email-taken").into_response(),
-        Err(CreateOrganizationError::Database(_error)) => return Redirect::to("/create?error=server-error").into_response()
+        Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => { return Redirect::to("/create?error=invalid-slug").into_response(); }
+        Err(CreateOrganizationError::MemberAlreadyExists) => { return Redirect::to("/create?error=email-taken").into_response(); }
+        Err(CreateOrganizationError::Database(_error)) => { return Redirect::to("/create?error=server-error").into_response(); }
     };
 
     // The organization and owner member have now been successfully created
@@ -134,10 +136,8 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRe
     // In theory the database could be unavailable directly after creating the org + owner
     // and login could therefor not access the database(password hash)
     // todo handle all of the rest Authentication errors and remove Err(_)
-    match context.authenticator.login_member(owner_id).await {
-        Ok(session) => {
-            redirect_with_session_cookie("/dashboard", &session.id)
-        }
+    match authenticator.login_member(owner_id).await {
+        Ok(session) => redirect_with_session_cookie("/dashboard", &session.id, &cookies),
         // Session(_) means we dont care what specific session error happened just that we could not
         // establish a session (for example, Redis could be down etc.)
         Err(AuthenticationError::Session(_)) => {
@@ -153,7 +153,6 @@ pub async fn signup(State(context): State<Context>, Form(input): Form<CreationRe
             Redirect::to("/create?error=server-error").into_response()
         }
     }
-
 }
 /// Generates the slug for any company name used on signup
 ///TODO for now if the slug is taken we reject the signup

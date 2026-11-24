@@ -7,7 +7,6 @@ use crate::storage::database::ProfileImageType;
 
 use super::MAX_IMAGE_SIZE;
 
-
 #[derive(Debug)]
 pub enum ImageValidationError {
     MissingImage,
@@ -59,15 +58,13 @@ pub struct ValidatedImage {
 pub struct ImageValidator;
 
 impl ImageValidator {
-    pub fn validate(image_type: ProfileImageType, data: Vec<u8>, content_type: &str) -> Result<ValidatedImage, ImageValidationError> {
+    pub fn validate(image_type: ProfileImageType, data: Vec<u8>, content_type: &str, ) -> Result<ValidatedImage, ImageValidationError> {
         if data.is_empty() { return Err(ImageValidationError::MissingImage); }
-
         if data.len() > MAX_IMAGE_SIZE { return Err(ImageValidationError::FileTooLarge); }
 
         let declared_content_type = Self::validate_content_type(content_type)?;
 
-        let format = image::guess_format(&data)
-            .map_err(|_| ImageValidationError::InvalidImageFormat)?;
+        let format = image::guess_format(&data).map_err(|_| ImageValidationError::InvalidImageFormat)?;
 
         Self::validate_format(declared_content_type, format)?;
 
@@ -75,8 +72,7 @@ impl ImageValidator {
 
         Self::validate_dimensions(&image_type, width, height)?;
 
-        let decoded = image::load_from_memory(&data)
-            .map_err(|_| ImageValidationError::InvalidImage)?;
+        let decoded = image::load_from_memory(&data).map_err(|_| ImageValidationError::InvalidImage)?;
 
         Ok(ValidatedImage {
             image_type,
@@ -282,11 +278,7 @@ mod tests {
 
         assert!(width as f64 / height as f64 > rules.max_aspect_ratio);
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            width,
-            height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, width, height);
 
         assert!(matches!(
             result,
@@ -303,11 +295,7 @@ mod tests {
 
         assert!((width as f64 / height as f64) < rules.min_aspect_ratio);
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            width,
-            height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, width, height);
 
         assert!(matches!(
             result,
@@ -324,11 +312,7 @@ mod tests {
 
         assert!((width as f64 / height as f64) < rules.min_aspect_ratio);
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Banner,
-            width,
-            height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Banner, width, height);
 
         assert!(matches!(
             result,
@@ -345,11 +329,7 @@ mod tests {
 
         assert!(width as f64 / height as f64 > rules.max_aspect_ratio);
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Banner,
-            width,
-            height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Banner, width, height);
 
         assert!(matches!(
             result,
@@ -363,11 +343,7 @@ mod tests {
 
     #[test]
     fn reads_dimensions_from_valid_image() {
-        let data = create_image(
-            800,
-            600,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(800, 600, image::ImageFormat::Png);
 
         let result = ImageValidator::read_dimensions(&data);
 
@@ -382,8 +358,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(ImageValidationError::InvalidImageFormat)
-                | Err(ImageValidationError::InvalidImage)
+            Err(ImageValidationError::InvalidImageFormat) | Err(ImageValidationError::InvalidImage)
         ));
     }
 
@@ -393,68 +368,36 @@ mod tests {
 
     #[test]
     fn accepts_png_with_png_content_type() {
-        let data = create_image(
-            800,
-            200,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(800, 200, image::ImageFormat::Png);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Banner,
-            data,
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/png");
 
         assert!(result.is_ok());
     }
 
     #[test]
     fn accepts_jpeg_with_jpeg_content_type() {
-        let data = create_image(
-            800,
-            400,
-            image::ImageFormat::Jpeg,
-        );
+        let data = create_image(800, 400, image::ImageFormat::Jpeg);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Banner,
-            data,
-            "image/jpeg",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/jpeg");
 
         assert!(result.is_ok());
     }
 
     #[test]
     fn accepts_webp_with_webp_content_type() {
-        let data = create_image(
-            800,
-            400,
-            image::ImageFormat::WebP,
-        );
+        let data = create_image(800, 400, image::ImageFormat::WebP);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Banner,
-            data,
-            "image/webp",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/webp");
 
         assert!(result.is_ok());
     }
 
     #[test]
     fn rejects_unsupported_content_type() {
-        let data = create_image(
-            800,
-            600,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(800, 600, image::ImageFormat::Png);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Banner,
-            data,
-            "image/gif",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/gif");
 
         assert!(matches!(
             result,
@@ -464,17 +407,9 @@ mod tests {
 
     #[test]
     fn rejects_mismatched_content_type() {
-        let data = create_image(
-            800,
-            600,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(800, 600, image::ImageFormat::Png);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Banner,
-            data,
-            "image/jpeg",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/jpeg");
 
         assert!(matches!(
             result,
@@ -488,64 +423,37 @@ mod tests {
 
     #[test]
     fn rejects_empty_image() {
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            Vec::new(),
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Logo, Vec::new(), "image/png");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::MissingImage)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::MissingImage)));
     }
 
     #[test]
     fn rejects_image_that_is_too_large() {
         let data = vec![0u8; MAX_IMAGE_SIZE + 1];
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            data,
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::FileTooLarge)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::FileTooLarge)));
     }
 
     #[test]
     fn rejects_malformed_image() {
         let data = b"not actually an image".to_vec();
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            data,
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
         assert!(matches!(
             result,
-            Err(ImageValidationError::InvalidImageFormat)
-                | Err(ImageValidationError::InvalidImage)
+            Err(ImageValidationError::InvalidImageFormat) | Err(ImageValidationError::InvalidImage)
         ));
     }
 
     #[test]
     fn rejects_valid_image_with_dimensions_too_small() {
-        let data = create_image(
-            199,
-            200,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(199, 200, image::ImageFormat::Png);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            data,
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
         assert!(matches!(
             result,
@@ -555,17 +463,9 @@ mod tests {
 
     #[test]
     fn rejects_valid_image_with_dimensions_too_large() {
-        let data = create_image(
-            5001,
-            5000,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(5001, 5000, image::ImageFormat::Png);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            data,
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
         assert!(matches!(
             result,
@@ -575,17 +475,9 @@ mod tests {
 
     #[test]
     fn rejects_valid_image_with_invalid_aspect_ratio() {
-        let data = create_image(
-            5000,
-            1000,
-            image::ImageFormat::Png,
-        );
+        let data = create_image(5000, 1000, image::ImageFormat::Png);
 
-        let result = ImageValidator::validate(
-            ProfileImageType::Logo,
-            data,
-            "image/png",
-        );
+        let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
         assert!(matches!(
             result,

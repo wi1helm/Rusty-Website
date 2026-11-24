@@ -1,8 +1,8 @@
+use crate::storage::database::DatabaseError;
+use crate::storage::database::data::{DatabasePosition, DatabasePositionStatus, PositionStatus};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
-use crate::storage::database::data::{DatabasePosition, DatabasePositionStatus, PositionStatus};
-use crate::storage::database::DatabaseError;
 
 pub struct PositionRow {
     // Position
@@ -22,14 +22,10 @@ pub struct PositionRow {
     pub status_created_at: DateTime<Utc>,
 }
 pub fn map_positions(rows: Vec<PositionRow>) -> Result<Vec<DatabasePosition>, DatabaseError> {
-
     let mut positions: Vec<DatabasePosition> = Vec::new();
 
     for row in rows {
-        let status = PositionStatus::from_str(&row.status)
-            .ok_or_else(|| {
-                DatabaseError::InvalidPositionStatus(row.status.clone())
-            })?;
+        let status = PositionStatus::from_str(&row.status).ok_or_else(|| DatabaseError::InvalidPositionStatus(row.status.clone()))?;
 
         let status = DatabasePositionStatus {
             id: row.status_id,
@@ -54,9 +50,7 @@ pub fn map_positions(rows: Vec<PositionRow>) -> Result<Vec<DatabasePosition>, Da
         //
         // Search terms: "HashMap grouping Rust", "Iterator::fold grouping",
         // "itertools group_by", "avoid ordering dependency Rust".
-        if let Some(position) = positions.last_mut()
-            .filter(|position| position.id == row.id)
-        {
+        if let Some(position) = positions.last_mut().filter(|position| position.id == row.id) {
             // Add this status to the existing position.
             position.statuses.push(status);
         } else {

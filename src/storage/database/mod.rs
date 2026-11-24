@@ -19,35 +19,21 @@
 //! Search terms: "Repository pattern Rust", "Interface Segregation Principle",
 //! "split trait into multiple traits Rust", "domain driven design repositories".
 
-mod errors;
 mod data;
-pub mod postgres;
+mod errors;
 mod mapping;
+pub mod postgres;
 
-pub use errors::{
-    CreateOrganizationError,
-    DatabaseError,
-};
+pub use errors::{CreateOrganizationError, DatabaseError};
 
 pub use data::{
-    DatabaseImage,
-    DatabaseMember,
-    DatabaseMemberWithOrganization,
-    DatabaseOrganization,
-    DatabaseProfile,
-    DatabaseLink,
-    NewMember,
-    NewOrganization,
-    NewProfileImage,
-    NewProfileLink,
-    NewProfile,
-    UpdateProfile,
-    OrganizationRole,
-    ProfileImageType,
+    DatabaseImage, DatabaseLink, DatabaseMember, DatabaseMemberWithOrganization,
+    DatabaseOrganization, DatabaseProfile, NewMember, NewOrganization, NewProfile, NewProfileImage,
+    NewProfileLink, OrganizationRole, ProfileImageType, UpdateProfile,
 };
 
-use async_trait::async_trait;
 use crate::storage::database::data::DatabasePosition;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait Database: Send + Sync {
@@ -74,7 +60,7 @@ pub trait Database: Send + Sync {
     ///
     /// Returns `Some(member)` if a matching member exists, or `None` if no member is found.
     /// Returns an error if the database operation fails.
-    async fn find_member_by_email(&self, email: &str)-> Result<Option<DatabaseMember>, DatabaseError>;
+    async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError>;
     ///
     /// Finds a member by their ID and includes information about their organization.
     ///

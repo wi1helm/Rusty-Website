@@ -1,20 +1,18 @@
 use axum::{
     body::Body,
     extract::{Path, State},
-    http::{header, HeaderValue, StatusCode},
+    http::{HeaderValue, StatusCode, header},
     response::Response,
 };
+use std::sync::Arc;
 
-use crate::{
-    storage::object::ObjectStorageError,
-    Context,
-};
+use crate::storage::object::{ObjectStorage, ObjectStorageError};
 
-pub async fn get_image(State(context): State<Context>, Path(key): Path<String>) -> Result<Response, StatusCode> {
+pub async fn get_image(State(object_storage): State<Arc<dyn ObjectStorage>>, Path(key): Path<String>) -> Result<Response, StatusCode> {
     // We only serve WebP images.
     if !key.ends_with(".webp") { return Err(StatusCode::NOT_FOUND); }
 
-    let bytes = match context.public_object_storage.get(&key).await {
+    let bytes = match object_storage.get(&key).await {
         Ok(bytes) => bytes,
 
         Err(ObjectStorageError::NotFound) => { return Err(StatusCode::NOT_FOUND); }

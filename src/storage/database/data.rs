@@ -115,7 +115,7 @@ pub struct UpdateProfile {
     /// The display name of the profile, if provided.
     pub display_name: String,
     /// The descriptive text for the profile, if provided.
-    pub about: String
+    pub about: String,
 }
 /// Represents an organization profile retrieved from the database.
 #[derive(Debug, Clone)]
@@ -344,7 +344,7 @@ impl PositionStatus {
             Self::OPEN => "open",
             Self::CLOSED => "closed",
             Self::ARCHIVED => "archived",
-            Self::FILLED => "filled"
+            Self::FILLED => "filled",
         }
     }
     pub fn from_str(value: &str) -> Option<Self> {
@@ -353,7 +353,7 @@ impl PositionStatus {
             "closed" => Some(Self::CLOSED),
             "archived" => Some(Self::ARCHIVED),
             "filled" => Some(Self::FILLED),
-            _ => None
+            _ => None,
         }
     }
 }

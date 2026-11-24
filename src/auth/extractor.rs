@@ -1,9 +1,9 @@
+use crate::auth::AuthenticatedUser;
 use axum::{
     extract::FromRequestParts,
     http::request::Parts,
     response::{IntoResponse, Redirect, Response},
 };
-use crate::auth::AuthenticatedUser;
 
 /// Extracts the authenticated user from the current request.
 ///

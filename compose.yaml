@@ -1,44 +1,4 @@
 services:
-  server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        SQLX_OFFLINE: ${SQLX_OFFLINE:-true}
-    restart: unless-stopped
-    expose:
-      - "3000"
-    environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      CACHE_URL: redis://redis:6379
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:9000}
-      S3_BUCKET: ${S3_BUCKET:-app}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
-      RUST_LOG: ${RUST_LOG:-info}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      storage:
-        condition: service_healthy
-
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - server
-
   postgres:
     image: postgres:18
     restart: unless-stopped
@@ -49,9 +9,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -60,6 +18,9 @@ services:
   redis:
     image: redis:8
     restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -79,8 +40,6 @@ services:
       RUSTFS_OBS_LOGGER_LEVEL: info
     volumes:
       - storage_data:/data
-    ports:
-      - "127.0.0.1:9001:9001"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
       interval: 10s
@@ -89,29 +48,23 @@ services:
       start_period: 40s
 
   sqlx-tools:
-    # TODO: Rust version mismatch — this service uses rust:1.97.1-trixie while
-    # the Dockerfile (server build) uses rust:1.100.0-trixie. This version
-    # mismatch can cause subtle issues with .sqlx cache files and dependency
-    # resolution. Pin both to the same Rust version, ideally via a shared
-    # argument or a version file (e.g. .rust-version).
-    # Search terms: "rust-version file", "pin Rust version Docker Compose",
-    # "SQLx offline mode version mismatch".
-    image: rust:1.97.1-trixie
-    profiles: ["tools"]
+    image: rust:1.100.0-trixie
+    profiles: [ "tools" ]
     working_dir: /app
     volumes:
       - .:/app
-      - cargo_registry:/usr/local/cargo/registry
+      - cargo_home:/usr/local/cargo
+      - sqlx_target:/app/target
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      SQLX_OFFLINE: ${SQLX_OFFLINE:-true}
+      SQLX_OFFLINE: "false"
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:
   storage_data:
-  cargo_registry:
-  caddy_data:
-  caddy_config:
+  cargo_home:
+  sqlx_target:

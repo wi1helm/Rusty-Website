@@ -1,5 +1,5 @@
-pub mod s3;
 pub mod defaults;
+pub mod s3;
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -21,4 +21,3 @@ pub trait ObjectStorage: Send + Sync {
 
     fn url(&self, key: &str) -> String;
 }
-

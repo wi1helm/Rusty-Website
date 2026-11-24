@@ -19,5 +19,6 @@ pub fn get_page() -> Response {
     NotFoundTemplate {
         app_name: APP_NAME,
         year: APP_YEAR,
-    }.into_response()
+    }
+    .into_response()
 }

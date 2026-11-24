@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::storage::database::{Database, DatabaseError};
 use crate::auth::session::{Session, SessionError, SessionManager};
+use crate::storage::database::{Database, DatabaseError};
 pub struct Authenticator {
     database: Arc<dyn Database>,
     session_manager: Arc<SessionManager>,
@@ -26,22 +26,21 @@ pub enum AuthenticationError {
 
 impl Authenticator {
     pub fn new(database: Arc<dyn Database>, session_manager: Arc<SessionManager>) -> Self {
-        Self { database, session_manager }
+        Self {
+            database,
+            session_manager,
+        }
     }
 
     pub async fn login_member(&self, member_id: i64) -> Result<Session, AuthenticationError> {
         let session = self.session_manager.create(member_id).await?;
         Ok(session)
     }
-    pub async fn login(&self, credentials: LoginCredentials) -> Result<Session, AuthenticationError> {
-        let member = self.database.find_member_by_email(&credentials.email)
-            .await?
-            .ok_or(AuthenticationError::InvalidCredentials)?;
+    pub async fn login(&self, credentials: LoginCredentials, ) -> Result<Session, AuthenticationError> {
+        let member = self.database.find_member_by_email(&credentials.email).await?.ok_or(AuthenticationError::InvalidCredentials)?;
 
         // TODO: Replace this with real password hash verification.
-        if member.password_hash != credentials.password {
-            return Err(AuthenticationError::InvalidCredentials);
-        }
+        if member.password_hash != credentials.password { return Err(AuthenticationError::InvalidCredentials); }
         // TODO: Invalidate all existing sessions for this member on login.
         // Without session rotation, a stolen session remains valid even after
         // the user logs in from another device, and there's no "logout all devices"

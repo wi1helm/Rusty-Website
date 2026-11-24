@@ -1,16 +1,18 @@
-use async_trait::async_trait;
-use sqlx::{PgPool, Transaction};
-use chrono::{DateTime, Utc};
-use crate::storage::database::data::DatabasePosition;
-use crate::storage::database::mapping::position::{map_positions, PositionRow};
-use crate::storage::object::defaults::{default_banner, default_logo};
-use super::{Database, NewMember, NewOrganization, DatabaseOrganization, DatabaseMember, DatabaseError, DatabaseProfile, DatabaseMemberWithOrganization, CreateOrganizationError, NewProfileImage, DatabaseImage, ProfileImageType, DatabaseLink, NewProfileLink, NewProfile, OrganizationRole, UpdateProfile};
 use super::mapping::member::{
-    map_member,
-    map_member_with_organization,
-    MemberRow,
-    MemberWithOrganizationRow,
+    MemberRow, MemberWithOrganizationRow, map_member, map_member_with_organization,
 };
+use super::{
+    CreateOrganizationError, Database, DatabaseError, DatabaseImage, DatabaseLink, DatabaseMember,
+    DatabaseMemberWithOrganization, DatabaseOrganization, DatabaseProfile, NewMember,
+    NewOrganization, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole,
+    ProfileImageType, UpdateProfile,
+};
+use crate::storage::database::data::DatabasePosition;
+use crate::storage::database::mapping::position::{PositionRow, map_positions};
+use crate::storage::object::defaults::{default_banner, default_logo};
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use sqlx::{PgPool, Transaction};
 
 #[derive(Clone)]
 pub struct PostgresDatabase {
@@ -39,10 +41,12 @@ impl PostgresDatabase {
             organization.name,
             organization.slug,
         )
-            .fetch_one(&mut **tx)
-            .await;
+        .fetch_one(&mut **tx)
+        .await;
 
-        result.map_err(|err| { map_unique_violation(err, CreateOrganizationError::OrganizationSlugAlreadyExists, ) })
+        result.map_err(|err| {
+            map_unique_violation(err, CreateOrganizationError::OrganizationSlugAlreadyExists)
+        })
     }
 
     /// Creates a member in an existing organization and returns the member ID.
@@ -63,10 +67,10 @@ impl PostgresDatabase {
             member.password_hash,
             member.role.as_str(),
         )
-            .fetch_one(&mut **tx)
-            .await;
+        .fetch_one(&mut **tx)
+        .await;
 
-        result.map_err(|err| { map_unique_violation(err, CreateOrganizationError::MemberAlreadyExists) })
+        result.map_err(|err| map_unique_violation(err, CreateOrganizationError::MemberAlreadyExists))
     }
 
     /// Creates the profile belonging to an organization and returns its database ID.
@@ -87,8 +91,8 @@ impl PostgresDatabase {
             display_name,
             member_id,
         )
-            .fetch_one(&mut **tx)
-            .await?;
+        .fetch_one(&mut **tx)
+        .await?;
 
         let logo = default_logo(organization_id).map_err(|_| DatabaseError::InvalidDefaultProfileImage)?;
         let banner = default_banner(organization_id).map_err(|_| DatabaseError::InvalidDefaultProfileImage)?;
@@ -120,8 +124,8 @@ impl PostgresDatabase {
             image.height,
             image.file_size,
         )
-            .execute(&mut **tx)
-            .await?;
+        .execute(&mut **tx)
+        .await?;
 
         Ok(())
     }
@@ -140,7 +144,7 @@ fn map_unique_violation(err: sqlx::Error, mapped: CreateOrganizationError) -> Cr
 #[async_trait]
 impl Database for PostgresDatabase {
     /// Creates an organization, assigns its owner, and creates its default profile in a single transaction.
-    async fn create_organization_with_owner_and_profile(&self, organization: NewOrganization, owner: NewMember, ) -> Result<(i64, i64), CreateOrganizationError> {
+    async fn create_organization_with_owner_and_profile(&self, organization: NewOrganization, owner: NewMember) -> Result<(i64, i64), CreateOrganizationError> {
         let mut tx = self.pool.begin().await?;
 
         let profile = NewProfile {
@@ -163,8 +167,6 @@ impl Database for PostgresDatabase {
 
         Ok((organization_id, owner_id))
     }
-
-
 
     /// Finds an organization by its database ID.
     async fn find_organization_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseOrganization>, DatabaseError> {
@@ -214,7 +216,7 @@ impl Database for PostgresDatabase {
     /// (e.g., to JSON for an API response), the hash will be exposed. Consider
     /// splitting this into a query that returns only the fields needed per use case,
     /// or adding a separate method that omits the password_hash for non-auth flows.
-    async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError> {
+    async fn find_member_by_email(&self, email: &str, ) -> Result<Option<DatabaseMember>, DatabaseError> {
         let Some(row) = sqlx::query_as!(
             MemberRow,
             r#"
@@ -230,8 +232,10 @@ impl Database for PostgresDatabase {
             WHERE email = $1
             "#,
             email,
-            ).fetch_optional(&self.pool).await?
-        else { return Ok(None);};
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        else { return Ok(None); };
 
         Ok(Some(map_member(row)?))
     }
@@ -260,8 +264,10 @@ impl Database for PostgresDatabase {
             WHERE m.id = $1
             "#,
             member_id,
-        ).fetch_optional(&self.pool).await?
-        else { return Ok(None); };
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        else { return Ok(None);};
 
         Ok(Some(map_member_with_organization(row)?))
     }
@@ -285,8 +291,7 @@ impl Database for PostgresDatabase {
         )
         .fetch_optional(&self.pool)
         .await?
-
-        else { return Ok(None);};
+        else { return Ok(None); };
 
         let images = sqlx::query!(
             r#"
@@ -313,7 +318,7 @@ impl Database for PostgresDatabase {
         let mut banner: Option<DatabaseImage> = None;
 
         for image in images {
-            let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| { DatabaseError::InvalidProfileImageType(image.image_type.clone()) })?;
+            let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| DatabaseError::InvalidProfileImageType(image.image_type.clone()))?;
             let database_image = DatabaseImage {
                 id: image.id,
                 organization_id: image.organization_id,
@@ -334,15 +339,11 @@ impl Database for PostgresDatabase {
         }
 
         let logo = logo.ok_or_else(|| {
-            DatabaseError::Other(format!(
-                "Missing profile logo for organization {organization_id}"
-            ))
+            DatabaseError::Other(format!("Missing profile logo for organization {organization_id}"))
         })?;
 
         let banner = banner.ok_or_else(|| {
-            DatabaseError::Other(format!(
-                "Missing profile banner for organization {organization_id}"
-            ))
+            DatabaseError::Other(format!("Missing profile banner for organization {organization_id}"))
         })?;
 
         let links = sqlx::query_as!(
@@ -379,8 +380,7 @@ impl Database for PostgresDatabase {
         }))
     }
 
-    async fn find_positions_by_organization_id(&self, organization_id: i64, ) -> Result<Vec<DatabasePosition>, DatabaseError> {
-
+    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError> {
         let rows = sqlx::query_as!(
             PositionRow,
             r#"
@@ -410,8 +410,8 @@ impl Database for PostgresDatabase {
             "#,
             organization_id
         )
-            .fetch_all(&self.pool)
-            .await?;
+        .fetch_all(&self.pool)
+        .await?;
 
         map_positions(rows)
     }
@@ -433,11 +433,11 @@ impl Database for PostgresDatabase {
             profile.display_name,
             profile.about,
             member_id,
-        ).fetch_optional(&self.pool).await?;
+        )
+        .fetch_optional(&self.pool)
+        .await?;
 
-        let Some(_) = updated_profile_id else {
-            return Ok(None);
-        };
+        let Some(_) = updated_profile_id else { return Ok(None); };
 
         self.find_profile_by_organization_id(organization_id).await
     }
@@ -488,11 +488,12 @@ impl Database for PostgresDatabase {
             image.width,
             image.height,
             image.file_size,
-        ).fetch_optional(&self.pool).await?
-        else { return Ok(None);};
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        else { return Ok(None); };
 
-        let image_type = ProfileImageType::from_str(&image.image_type)
-            .ok_or_else(|| DatabaseError::InvalidProfileImageType(image.image_type))?;
+        let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| DatabaseError::InvalidProfileImageType(image.image_type))?;
 
         Ok(Some(DatabaseImage {
             id: image.id,
@@ -509,7 +510,7 @@ impl Database for PostgresDatabase {
     }
 
     /// Updates the profile links associated with an organization.
-    async fn update_profile_links(&self, organization_id: i64, links: Vec<NewProfileLink>, ) -> Result<Vec<DatabaseLink>, DatabaseError> {
+    async fn update_profile_links(&self, organization_id: i64, links: Vec<NewProfileLink>) -> Result<Vec<DatabaseLink>, DatabaseError> {
         let mut tx = self.pool.begin().await?;
 
         // Make sure the organization has a profile.
@@ -522,7 +523,9 @@ impl Database for PostgresDatabase {
             FOR UPDATE
             "#,
             organization_id,
-        ).fetch_optional(&mut *tx).await?;
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
 
         let Some(_) = profile_id else { return Ok(Vec::new()); };
 
@@ -533,7 +536,9 @@ impl Database for PostgresDatabase {
             WHERE organization_id = $1
             "#,
             organization_id,
-        ).execute(&mut *tx).await?;
+        )
+        .execute(&mut *tx)
+        .await?;
 
         // Insert the replacement links.
         for link in links {
@@ -551,7 +556,9 @@ impl Database for PostgresDatabase {
                 link.label,
                 link.url,
                 link.position,
-            ).execute(&mut *tx).await?;
+            )
+            .execute(&mut *tx)
+            .await?;
         }
 
         // Load the resulting links in display order.
@@ -571,7 +578,9 @@ impl Database for PostgresDatabase {
             ORDER BY position ASC
             "#,
             organization_id,
-        ).fetch_all(&mut *tx).await?;
+        )
+        .fetch_all(&mut *tx)
+        .await?;
 
         tx.commit().await?;
 

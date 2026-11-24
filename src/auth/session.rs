@@ -73,7 +73,6 @@ pub enum SessionError {
     /// The session could not be serialized or deserialized.
     #[error("session (de)serialization error")]
     Serialization(#[from] serde_json::Error),
-
     // Add other session-specific errors if they become necessary.
 }
 
@@ -103,7 +102,7 @@ impl SessionManager {
 
         let session = Session {
             id: session_id,
-            member_id
+            member_id,
         };
 
         // TODO(security): look into ways if needed encrypt the data in redis so no attacked can use / desqrilize data and use.
@@ -156,9 +155,9 @@ impl SessionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
     use std::collections::HashMap;
     use std::sync::Mutex;
-    use async_trait::async_trait;
 
     /// A fake, in-memory stand-in for Redis. Implements the same `Cache`
     /// trait `RedisCache` does, so `SessionManager` can't tell the
@@ -181,7 +180,10 @@ mod tests {
         }
 
         async fn set(&self, key: &str, value: &[u8], _ttl: Duration) -> Result<(), CacheError> {
-            self.store.lock().unwrap().insert(key.to_string(), value.to_vec());
+            self.store
+                .lock()
+                .unwrap()
+                .insert(key.to_string(), value.to_vec());
             Ok(())
         }
 
@@ -211,7 +213,10 @@ mod tests {
     async fn get_returns_none_for_unknown_session_id() {
         let manager = manager_with_fake_cache();
 
-        let result = manager.get("this-session-id-was-never-created").await.expect("get should not error");
+        let result = manager
+            .get("this-session-id-was-never-created")
+            .await
+            .expect("get should not error");
         assert!(result.is_none());
     }
 
@@ -220,9 +225,15 @@ mod tests {
         let manager = manager_with_fake_cache();
 
         let created = manager.create(1).await.expect("create should succeed");
-        manager.delete(&created.id).await.expect("delete should succeed");
+        manager
+            .delete(&created.id)
+            .await
+            .expect("delete should succeed");
 
-        let result = manager.get(&created.id).await.expect("get should not error");
+        let result = manager
+            .get(&created.id)
+            .await
+            .expect("get should not error");
         assert!(result.is_none(), "session should be gone after delete");
     }
 
@@ -241,7 +252,11 @@ mod tests {
         let manager = manager_with_fake_cache();
         let id = manager.generate_session_id();
 
-        assert_eq!(id.len(), 64, "32 random bytes hex-encoded should be 64 chars");
+        assert_eq!(
+            id.len(),
+            64,
+            "32 random bytes hex-encoded should be 64 chars"
+        );
         assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

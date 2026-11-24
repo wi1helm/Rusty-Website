@@ -1,11 +1,11 @@
 // auth/mod.rs
 
 mod authenticator;
-pub(crate) mod session;
-pub(crate) mod middleware;
 mod extractor;
+pub(crate) mod middleware;
+pub(crate) mod session;
 
-pub use authenticator::{Authenticator, AuthenticationError, LoginCredentials};
+pub use authenticator::{AuthenticationError, Authenticator, LoginCredentials};
 pub use extractor::CurrentUser;
 
 /// Represents the authenticated identity and organization context

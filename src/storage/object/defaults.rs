@@ -14,18 +14,13 @@ fn create_default_profile_image(organization_id: i64, image_type: ProfileImageTy
         .into_dimensions()
         .map_err(|error| error.to_string())?;
 
-    let width = i32::try_from(width)
-        .map_err(|error| error.to_string())?;
+    let width = i32::try_from(width).map_err(|error| error.to_string())?;
 
-    let height = i32::try_from(height)
-        .map_err(|error| error.to_string())?;
+    let height = i32::try_from(height).map_err(|error| error.to_string())?;
 
-    if width <= 0 || height <= 0 {
-        return Err("Image dimensions must be positive".to_string());
-    }
+    if width <= 0 || height <= 0 { return Err("Image dimensions must be positive".to_string()); }
 
-    let file_size = i64::try_from(data.len())
-        .map_err(|error| error.to_string())?;
+    let file_size = i64::try_from(data.len()).map_err(|error| error.to_string())?;
 
     Ok(NewProfileImage {
         organization_id,
@@ -47,7 +42,7 @@ pub fn default_logo(organization_id: i64) -> Result<NewProfileImage, String> {
     )
 }
 
-pub fn default_banner(organization_id: i64, ) -> Result<NewProfileImage, String> {
+pub fn default_banner(organization_id: i64) -> Result<NewProfileImage, String> {
     create_default_profile_image(
         organization_id,
         ProfileImageType::Banner,

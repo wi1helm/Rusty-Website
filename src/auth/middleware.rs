@@ -1,12 +1,31 @@
+use crate::Context;
+use crate::auth::session::SessionError;
+use crate::auth::session::SessionManager;
+use crate::auth::{AssociatedOrganization, AuthenticatedUser};
+use crate::storage::database::Database;
 use axum::{
-    extract::{Request, State},
+    extract::{FromRef, Request, State},
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::CookieJar;
-use crate::auth::{AssociatedOrganization, AuthenticatedUser};
-use crate::auth::session::SessionError;
-use crate::Context;
+use std::sync::Arc;
+
+/// The database and session store required only while authenticating requests.
+#[derive(Clone)]
+pub struct AuthState {
+    database: Arc<dyn Database>,
+    session_manager: Arc<SessionManager>,
+}
+
+impl FromRef<Context> for AuthState {
+    fn from_ref(context: &Context) -> Self {
+        Self {
+            database: context.database.clone(),
+            session_manager: context.session_manager.clone(),
+        }
+    }
+}
 
 /// Authentication middleware for protected routes.
 ///
@@ -30,7 +49,7 @@ use crate::Context;
 /// cookies, Redis, or the underlying `Session` type.
 ///
 /// Note: this middleware should only be put on protected routes.
-pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut request: Request, next: Next) -> Response {
+pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut request: Request, next: Next) -> Response {
     //TODO(security): Consider clearing the session cookie when the session is
     // missing or invalid. This avoids repeatedly sending a stale session ID.
     // This will require returning a response with an updated CookieJar rather
@@ -54,9 +73,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     //
     // No cookie means there is no session ID that we can use to authenticate
     // the request, so send the user to the login page.
-    let Some(cookie) = jar.get("session") else {
-        return Redirect::to("/login").into_response();
-    };
+    let Some(cookie) = jar.get("session") else { return Redirect::to("/login").into_response(); };
 
     let session_id = cookie.value();
 
@@ -65,7 +82,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     // The session itself is stored server-side. A successfully retrieved
     // session establishes which member and organization this request belongs
     // to.
-    let session = match context.session_manager.get(session_id).await {
+    let session = match state.session_manager.get(session_id).await {
         // The session exists and was successfully loaded.
         //
         // Authentication has succeeded. We continue below and use the session
@@ -83,9 +100,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
         //
         // This is not a server error. From the application's perspective,
         // the request simply isn't authenticated anymore.
-        Ok(None) => {
-            return Redirect::to("/login").into_response();
-        }
+        Ok(None) => { return Redirect::to("/login").into_response(); }
 
         // The session store itself could not be accessed.
         //
@@ -97,7 +112,6 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
         // out.
         Err(SessionError::Cache(error)) => {
             tracing::warn!("session cache error during authentication: {error}");
-
             return Redirect::to("/login?error=server-error").into_response();
         }
 
@@ -114,10 +128,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
             // IMPORTANT: Do not log the session ID. Application logs could
             // potentially be accessed by people or systems that should not
             // have access to authentication credentials.
-            tracing::error!(
-                "session serialization error during authentication: {error}"
-            );
-
+            tracing::error!("session serialization error during authentication: {error}");
             return Redirect::to("/login?error=server-error").into_response();
         }
     };
@@ -130,7 +141,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
     // Instead, resolve the organization referenced by the session and create
     // the application-level authentication context that handlers actually
     // need.
-    let member_with_organization = match context.database.find_member_with_organization_by_member_id(session.member_id).await {
+    let member_with_organization = match state.database.find_member_with_organization_by_member_id(session.member_id).await {
         // The member and its organization both exist.
         //
         // The INNER JOIN used by the database query guarantees that this
@@ -151,7 +162,7 @@ pub async fn require_auth(State(context): State<Context>, jar: CookieJar, mut re
         // The database lookup failed, so we cannot determine whether the
         // authenticated member still exists or which organization they belong to.
         Err(error) => {
-            tracing::error!(?error, member_id = session.member_id,"failed to load member and organization for authenticated request");
+            tracing::error!(?error,member_id = session.member_id,"failed to load member and organization for authenticated request");
             return Redirect::to("/login?error=server-error").into_response();
         }
     };

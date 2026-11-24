@@ -17,14 +17,11 @@
 //! Search terms: "Rust module structure conventions", "separation of concerns
 //! view models", "Axum route organization", "colocation principle Rust".
 
-use uuid::Uuid;
-use crate::storage::database::{
-    DatabaseOrganization,
-    DatabaseProfile,
-};
-use crate::Context;
+use crate::storage::database::{Database, DatabaseOrganization};
+use crate::storage::object::ObjectStorage;
 use serde::Serialize;
 use serde_json::Value;
+use uuid::Uuid;
 
 /// Information about the organization displayed on its profile page.
 pub struct OrganizationView {
@@ -78,17 +75,16 @@ pub struct StatusView {
     pub information: Value,
 }
 
-
 /// Loads the information needed to render an organization profile.
 ///
 /// Returns `None` if the profile cannot be loaded.
 /// The reason is logged, and callers should respond with a not-found page.
-pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganization) -> Option<ProfileView> {
-    let profile = match context.database.find_profile_by_organization_id(organization.id).await {
+pub async fn load_profile_view(database: &dyn Database, public_object_storage: &dyn ObjectStorage, organization: &DatabaseOrganization, ) -> Option<ProfileView> {
+    let profile = match database.find_profile_by_organization_id(organization.id).await {
         Ok(Some(profile)) => profile,
 
         Ok(None) => {
-            tracing::error!(organization_id = organization.id,"organization exists without a profile");
+            tracing::error!(organization_id = organization.id, "organization exists without a profile");
             return None;
         }
 
@@ -97,7 +93,6 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
             return None;
         }
     };
-
 
     let organization = OrganizationView {
         name: organization.name.clone(),
@@ -114,16 +109,19 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
         .collect();
 
     let logo = ImageView {
-        url: context.public_object_storage.url(&profile.logo.storage_key),
+        url: public_object_storage.url(&profile.logo.storage_key),
         alt: format!("{} logo", profile.display_name),
     };
 
     let banner = ImageView {
-        url: context.public_object_storage.url(&profile.banner.storage_key),
+        url: public_object_storage.url(&profile.banner.storage_key),
         alt: format!("{} banner", profile.display_name),
     };
 
-    let positions = match context.database.find_positions_by_organization_id(profile.organization_id).await {
+    let positions = match database
+        .find_positions_by_organization_id(profile.organization_id)
+        .await
+    {
         Ok(positions) => positions,
 
         Err(error) => {
@@ -159,9 +157,7 @@ pub async fn load_profile_view(context: &Context, organization: &DatabaseOrganiz
         links,
         logo,
         banner,
-        graph: GraphView {
-            positions,
-        },
+        graph: GraphView { positions },
     };
 
     Some(profile_view)

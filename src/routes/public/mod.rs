@@ -1,5 +1,5 @@
-use axum::{routing::get, Router};
 use crate::Context;
+use axum::{Router, routing::get};
 mod creation;
 mod login;
 mod organization;

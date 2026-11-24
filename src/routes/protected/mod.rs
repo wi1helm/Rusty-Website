@@ -1,7 +1,8 @@
-use axum::{middleware, routing::get, Router, };
+use axum::{Router, middleware, routing::get};
 
 use crate::Context;
-use crate::auth::middleware::require_auth;
+use crate::auth::middleware::{AuthState, require_auth};
+use axum::extract::FromRef;
 
 mod dashboard;
 mod profile;
@@ -14,8 +15,10 @@ mod profile;
 /// This lets us avoid adding authentication logic to every individual
 /// protected handler.
 pub fn router(context: Context) -> Router<Context> {
+    let auth_state = AuthState::from_ref(&context);
+
     Router::new()
         .route("/dashboard", get(dashboard::get_page))
         .route("/profile", get(profile::get_page))
-        .layer(middleware::from_fn_with_state(context, require_auth))
+        .layer(middleware::from_fn_with_state(auth_state, require_auth))
 }

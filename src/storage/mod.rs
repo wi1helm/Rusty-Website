@@ -1,5 +1,5 @@
 // storage/mod.rs
 
-pub mod database;
 pub mod cache;
+pub mod database;
 pub(crate) mod object;
