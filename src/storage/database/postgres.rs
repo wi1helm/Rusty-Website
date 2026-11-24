@@ -1,11 +1,13 @@
 use super::mapping::member::{
-    MemberRow, MemberWithOrganizationRow, map_member, map_member_with_organization,
+    MemberCredentialsRow, MemberWithOrganizationRow, map_member_credentials,
+    map_member_with_organization,
 };
 use super::{
-    CreateOrganizationError, Database, DatabaseError, DatabaseImage, DatabaseLink, DatabaseMember,
-    DatabaseMemberWithOrganization, DatabaseOrganization, DatabaseProfile, NewMember,
-    NewOrganization, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole,
-    ProfileImageType, UpdateProfile,
+    CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink,
+    DatabaseMemberWithOrganization, DatabaseOrganization, DatabaseProfile, MemberCredentials,
+    MemberRepository, NewMember, NewOrganization, NewProfile, NewProfileImage, NewProfileLink,
+    OrganizationRepository, OrganizationRole, PositionRepository, ProfileImageType,
+    ProfileRepository, UpdateProfile,
 };
 use crate::storage::database::data::DatabasePosition;
 use crate::storage::database::mapping::position::{PositionRow, map_positions};
@@ -142,7 +144,7 @@ fn map_unique_violation(err: sqlx::Error, mapped: CreateOrganizationError) -> Cr
 }
 
 #[async_trait]
-impl Database for PostgresDatabase {
+impl OrganizationRepository for PostgresDatabase {
     /// Creates an organization, assigns its owner, and creates its default profile in a single transaction.
     async fn create_organization_with_owner_and_profile(&self, organization: NewOrganization, owner: NewMember) -> Result<(i64, i64), CreateOrganizationError> {
         let mut tx = self.pool.begin().await?;
@@ -209,25 +211,17 @@ impl Database for PostgresDatabase {
 
         Ok(organization)
     }
+}
 
-    /// Finds a member by their email address.
-    /// TODO: This query returns password_hash, which is only needed for login
-    /// credential verification. If DatabaseMember is ever accidentally serialized
-    /// (e.g., to JSON for an API response), the hash will be exposed. Consider
-    /// splitting this into a query that returns only the fields needed per use case,
-    /// or adding a separate method that omits the password_hash for non-auth flows.
-    async fn find_member_by_email(&self, email: &str, ) -> Result<Option<DatabaseMember>, DatabaseError> {
+#[async_trait]
+impl MemberRepository for PostgresDatabase {
+    async fn find_member_credentials_by_email(&self, email: &str) -> Result<Option<MemberCredentials>, DatabaseError> {
         let Some(row) = sqlx::query_as!(
-            MemberRow,
+            MemberCredentialsRow,
             r#"
             SELECT
-                id,
-                organization_id,
-                email,
-                password_hash,
-                role,
-                created_at,
-                updated_at
+                id AS member_id,
+                password_hash
             FROM organization_members
             WHERE email = $1
             "#,
@@ -237,7 +231,7 @@ impl Database for PostgresDatabase {
         .await?
         else { return Ok(None); };
 
-        Ok(Some(map_member(row)?))
+        Ok(Some(map_member_credentials(row)))
     }
 
     /// Finds a member by their ID, including their organization.
@@ -249,7 +243,6 @@ impl Database for PostgresDatabase {
                 m.id AS member_id,
                 m.organization_id AS member_organization_id,
                 m.email AS member_email,
-                m.password_hash AS member_password_hash,
                 m.role AS member_role,
                 m.created_at AS member_created_at,
                 m.updated_at AS member_updated_at,
@@ -271,7 +264,10 @@ impl Database for PostgresDatabase {
 
         Ok(Some(map_member_with_organization(row)?))
     }
+}
 
+#[async_trait]
+impl ProfileRepository for PostgresDatabase {
     /// Finds the profile associated with an organization.
     async fn find_profile_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseProfile>, DatabaseError> {
         let Some(profile) = sqlx::query!(
@@ -378,42 +374,6 @@ impl Database for PostgresDatabase {
             created_at: profile.created_at,
             updated_at: profile.updated_at,
         }))
-    }
-
-    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError> {
-        let rows = sqlx::query_as!(
-            PositionRow,
-            r#"
-            SELECT
-                p.id,
-                p.organization_id,
-                p.title,
-                p.description,
-                p.current_status_id,
-                p.created_at,
-                p.updated_at,
-
-                s.id AS status_id,
-                s.position_id AS status_position_id,
-                s.status,
-                s.information,
-                s.created_at AS status_created_at
-
-            FROM organization_positions p
-
-            INNER JOIN organization_position_statuses s
-                ON s.position_id = p.id
-
-            WHERE p.organization_id = $1
-
-            ORDER BY p.created_at, p.id, s.created_at
-            "#,
-            organization_id
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        map_positions(rows)
     }
 
     /// Updates the profile associated with an organization.
@@ -585,5 +545,44 @@ impl Database for PostgresDatabase {
         tx.commit().await?;
 
         Ok(links)
+    }
+}
+
+#[async_trait]
+impl PositionRepository for PostgresDatabase {
+    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError> {
+        let rows = sqlx::query_as!(
+            PositionRow,
+            r#"
+            SELECT
+                p.id,
+                p.organization_id,
+                p.title,
+                p.description,
+                p.current_status_id,
+                p.created_at,
+                p.updated_at,
+
+                s.id AS status_id,
+                s.position_id AS status_position_id,
+                s.status,
+                s.information,
+                s.created_at AS status_created_at
+
+            FROM organization_positions p
+
+            INNER JOIN organization_position_statuses s
+                ON s.position_id = p.id
+
+            WHERE p.organization_id = $1
+
+            ORDER BY p.created_at, p.id, s.created_at
+            "#,
+            organization_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        map_positions(rows)
     }
 }

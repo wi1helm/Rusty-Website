@@ -3,6 +3,7 @@ mod app;
 mod auth;
 mod config;
 mod routes;
+mod services;
 mod storage;
 
 use axum::extract::FromRef;
@@ -39,15 +40,31 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 /// Handlers extract only the dependencies they need through `FromRef`.
 #[derive(Clone)]
 pub struct Context {
-    pub database: Arc<dyn storage::database::Database>,
+    pub organization_repository: Arc<dyn storage::database::OrganizationRepository>,
+    pub member_repository: Arc<dyn storage::database::MemberRepository>,
+    pub profile_repository: Arc<dyn storage::database::ProfileRepository>,
+    pub position_repository: Arc<dyn storage::database::PositionRepository>,
+    pub profile_service: Arc<services::profile::ProfileService>,
     pub public_object_storage: Arc<dyn storage::object::ObjectStorage>,
     pub authenticator: Arc<auth::Authenticator>,
     pub session_manager: Arc<auth::session::SessionManager>,
     pub cookies: config::CookieConfig,
 }
 
-impl FromRef<Context> for Arc<dyn storage::database::Database> {
-    fn from_ref(context: &Context) -> Self { context.database.clone() }
+impl FromRef<Context> for Arc<dyn storage::database::OrganizationRepository> {
+    fn from_ref(context: &Context) -> Self { context.organization_repository.clone() }
+}
+impl FromRef<Context> for Arc<dyn storage::database::MemberRepository> {
+    fn from_ref(context: &Context) -> Self { context.member_repository.clone() }
+}
+impl FromRef<Context> for Arc<dyn storage::database::ProfileRepository> {
+    fn from_ref(context: &Context) -> Self { context.profile_repository.clone() }
+}
+impl FromRef<Context> for Arc<dyn storage::database::PositionRepository> {
+    fn from_ref(context: &Context) -> Self { context.position_repository.clone() }
+}
+impl FromRef<Context> for Arc<services::profile::ProfileService> {
+    fn from_ref(context: &Context) -> Self { context.profile_service.clone() }
 }
 impl FromRef<Context> for Arc<dyn storage::object::ObjectStorage> {
     fn from_ref(context: &Context) -> Self { context.public_object_storage.clone() }

@@ -15,7 +15,7 @@ use crate::storage::database::NewProfileImage;
 use crate::{
     auth::CurrentUser,
     storage::{
-        database::{Database, ProfileImageType},
+        database::{ProfileImageType, ProfileRepository},
         object::ObjectStorage,
     },
 };
@@ -31,7 +31,7 @@ struct UploadedImage {
 // TODO: Add CSRF token validation to prevent cross-site request forgery.
 // SameSite=Lax protects top-level navigation but not POST requests.
 // See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-pub async fn upload(State(database): State<Arc<dyn Database>>, State(object_storage): State<Arc<dyn ObjectStorage>>, CurrentUser(user): CurrentUser, multipart: Multipart, ) -> impl IntoResponse {
+pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(object_storage): State<Arc<dyn ObjectStorage>>, CurrentUser(user): CurrentUser, multipart: Multipart, ) -> impl IntoResponse {
     let uploaded = match parse_multipart(multipart, user.organization.id).await {
         Ok(uploaded) => uploaded,
         Err(status) => return status.into_response(),
@@ -53,7 +53,7 @@ pub async fn upload(State(database): State<Arc<dyn Database>>, State(object_stor
         }
     };
 
-    let profile = match get_profile(database.as_ref(), user.organization.id).await {
+    let profile = match get_profile(profiles.as_ref(), user.organization.id).await {
         Ok(profile) => profile,
         Err(status) => return status.into_response(),
     };
@@ -80,7 +80,7 @@ pub async fn upload(State(database): State<Arc<dyn Database>>, State(object_stor
         file_size,
     };
 
-    let old_image = match database.update_profile_image(new_image).await {
+    let old_image = match profiles.update_profile_image(new_image).await {
         Ok(old_image) => old_image,
         Err(error) => {
             tracing::error!(?error, organization_id = user.organization.id, profile_id = profile.id, storage_key = %storage_key, "failed to save profile image to database");

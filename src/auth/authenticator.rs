@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::auth::session::{Session, SessionError, SessionManager};
-use crate::storage::database::{Database, DatabaseError};
+use crate::storage::database::{DatabaseError, MemberRepository};
 pub struct Authenticator {
-    database: Arc<dyn Database>,
+    members: Arc<dyn MemberRepository>,
     session_manager: Arc<SessionManager>,
 }
 
@@ -25,9 +25,9 @@ pub enum AuthenticationError {
 }
 
 impl Authenticator {
-    pub fn new(database: Arc<dyn Database>, session_manager: Arc<SessionManager>) -> Self {
+    pub fn new(members: Arc<dyn MemberRepository>, session_manager: Arc<SessionManager>) -> Self {
         Self {
-            database,
+            members,
             session_manager,
         }
     }
@@ -37,7 +37,7 @@ impl Authenticator {
         Ok(session)
     }
     pub async fn login(&self, credentials: LoginCredentials, ) -> Result<Session, AuthenticationError> {
-        let member = self.database.find_member_by_email(&credentials.email).await?.ok_or(AuthenticationError::InvalidCredentials)?;
+        let member = self.members.find_member_credentials_by_email(&credentials.email).await?.ok_or(AuthenticationError::InvalidCredentials)?;
 
         // TODO: Replace this with real password hash verification.
         if member.password_hash != credentials.password { return Err(AuthenticationError::InvalidCredentials); }
@@ -48,6 +48,6 @@ impl Authenticator {
         // old ones on each new login.
         // See: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-id-change
         // login member using member id and return result
-        self.login_member(member.id).await
+        self.login_member(member.member_id).await
     }
 }

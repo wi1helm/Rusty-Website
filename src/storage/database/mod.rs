@@ -1,23 +1,4 @@
-// database/mod.rs
 //! Database abstraction layer.
-//!
-//! TODO: Split this trait into focused repository traits.
-//! The `Database` trait currently has 10+ methods and keeps growing — every
-//! new domain concept (positions CRUD, member management, etc.) adds more
-//! methods to this single catch-all interface. This violates the Interface
-//! Segregation Principle and makes mocking in tests harder.
-//!
-//! Suggested split:
-//! - `OrganizationRepository` — org CRUD (create_organization, find_organization_*)
-//! - `MemberRepository` — member queries (find_member_*)
-//! - `ProfileRepository` — profile operations (find_profile, update_profile, update_profile_image, update_profile_links)
-//! - `PositionRepository` — position queries (find_positions_*)
-//!
-//! Each repository would be a separate field in Context, and handlers would
-//! depend only on the repositories they need. This also makes it easier to
-//! swap implementations per domain if needed.
-//! Search terms: "Repository pattern Rust", "Interface Segregation Principle",
-//! "split trait into multiple traits Rust", "domain driven design repositories".
 
 mod data;
 mod errors;
@@ -28,15 +9,15 @@ pub use errors::{CreateOrganizationError, DatabaseError};
 
 pub use data::{
     DatabaseImage, DatabaseLink, DatabaseMember, DatabaseMemberWithOrganization,
-    DatabaseOrganization, DatabaseProfile, NewMember, NewOrganization, NewProfile, NewProfileImage,
-    NewProfileLink, OrganizationRole, ProfileImageType, UpdateProfile,
+    DatabaseOrganization, DatabasePosition, DatabaseProfile, MemberCredentials, NewMember,
+    NewOrganization, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole,
+    ProfileImageType, UpdateProfile,
 };
 
-use crate::storage::database::data::DatabasePosition;
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait Database: Send + Sync {
+pub trait OrganizationRepository: Send + Sync {
     /// Creates a new organization, assigns the provided member the owner role,
     /// and creates a profile with default information.
     ///
@@ -55,12 +36,16 @@ pub trait Database: Send + Sync {
     /// Returns `Some(organization)` if the organization exists, or `None` if it does not.
     /// Returns an error if the database operation fails.
     async fn find_organization_by_slug(&self, slug: &str) -> Result<Option<DatabaseOrganization>, DatabaseError>;
+}
+
+#[async_trait]
+pub trait MemberRepository: Send + Sync {
     ///
-    /// Finds a member by their email address.
+    /// Finds authentication credentials for a member by their email address.
     ///
-    /// Returns `Some(member)` if a matching member exists, or `None` if no member is found.
+    /// Returns `Some(credentials)` if a matching member exists, or `None` if no member is found.
     /// Returns an error if the database operation fails.
-    async fn find_member_by_email(&self, email: &str) -> Result<Option<DatabaseMember>, DatabaseError>;
+    async fn find_member_credentials_by_email(&self, email: &str) -> Result<Option<MemberCredentials>, DatabaseError>;
     ///
     /// Finds a member by their ID and includes information about their organization.
     ///
@@ -68,19 +53,16 @@ pub trait Database: Send + Sync {
     /// or `None` if no matching member is found.
     /// Returns an error if the database operation fails.
     async fn find_member_with_organization_by_member_id(&self, member_id: i64) -> Result<Option<DatabaseMemberWithOrganization>, DatabaseError>;
+}
+
+#[async_trait]
+pub trait ProfileRepository: Send + Sync {
     ///
     /// Finds the profile associated with the specified organization.
     ///
     /// Returns `Some(profile)` if the organization has a profile, or `None` if no profile is found.
     /// Returns an error if the database operation fails.
     async fn find_profile_by_organization_id(&self, organization_id: i64) -> Result<Option<DatabaseProfile>, DatabaseError>;
-    ///
-    /// Finds a list of positions associated with the specified organization.
-    ///
-    /// Returns `Vec<DatabasePosition>` empty means no positions for this organization.
-    /// Returns an error if the database operation fails.
-    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError>;
-
     ///
     /// Updates the profile associated with the specified organization.
     ///
@@ -101,4 +83,13 @@ pub trait Database: Send + Sync {
     /// Returns the resulting collection of profile links.
     /// Returns an error if the database operation fails.
     async fn update_profile_links(&self, organization_id: i64, links: Vec<NewProfileLink>) -> Result<Vec<DatabaseLink>, DatabaseError>;
+}
+
+#[async_trait]
+pub trait PositionRepository: Send + Sync {
+    /// Finds positions associated with the specified organization.
+    ///
+    /// Returns an empty collection when the organization has no positions.
+    /// Returns an error if the database operation fails.
+    async fn find_positions_by_organization_id(&self, organization_id: i64) -> Result<Vec<DatabasePosition>, DatabaseError>;
 }

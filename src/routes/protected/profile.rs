@@ -1,9 +1,8 @@
 use crate::auth::CurrentUser;
 use crate::config::{APP_NAME, APP_YEAR};
 use crate::routes::errors::not_found;
-use crate::routes::profile::{ProfileView, load_profile_view};
-use crate::storage::database::Database;
-use crate::storage::object::ObjectStorage;
+use crate::routes::profile::ProfileView;
+use crate::services::profile::ProfileService;
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
@@ -22,17 +21,8 @@ pub struct ProfileTemplate {
     pub graph_json: String,
 }
 
-pub async fn get_page(State(database): State<Arc<dyn Database>>, State(object_storage): State<Arc<dyn ObjectStorage>>, CurrentUser(user): CurrentUser) -> Response {
-    let organization = match database.find_organization_by_organization_id(user.organization.id).await {
-        Ok(Some(organization)) => organization,
-        Ok(None) => return not_found::get_page(),
-        Err(error) => {
-            tracing::error!(?error, "failed to load organization");
-            return not_found::get_page();
-        }
-    };
-
-    let Some(profile) = load_profile_view(database.as_ref(), object_storage.as_ref(), &organization).await
+pub async fn get_page(State(profile_service): State<Arc<ProfileService>>, CurrentUser(user): CurrentUser) -> Response {
+    let Some(profile) = profile_service.load_by_organization_id(user.organization.id).await
     else { return not_found::get_page(); };
 
     let graph_json = match serde_json::to_string(&profile.graph) {
@@ -50,7 +40,7 @@ pub async fn get_page(State(database): State<Arc<dyn Database>>, State(object_st
     ProfileTemplate {
         app_name: APP_NAME,
         year: APP_YEAR,
-        organization_name: organization.name.clone(),
+        organization_name: profile.organization.name.clone(),
         profile_view: profile,
         graph_json,
     }

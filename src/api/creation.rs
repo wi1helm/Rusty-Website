@@ -21,7 +21,8 @@ use crate::auth::Authenticator;
 use crate::config::CookieConfig;
 use crate::routes::redirect_with_session_cookie;
 use crate::storage::database::{
-    CreateOrganizationError, Database, NewMember, NewOrganization, OrganizationRole,
+    CreateOrganizationError, NewMember, NewOrganization, OrganizationRepository,
+    OrganizationRole,
 };
 use axum::response::{IntoResponse, Redirect};
 use axum::{Form, extract::State};
@@ -82,7 +83,7 @@ impl CreationRequest {
 // TODO: Add CSRF token validation to prevent cross-site request forgery.
 // SameSite=Lax protects top-level navigation but not POST requests.
 // See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-pub async fn signup(State(database): State<Arc<dyn Database>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<CreationRequest>, ) -> impl IntoResponse {
+pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<CreationRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
         Err(CreationValidationError::InvalidEmail) => { return Redirect::to("/create?error=invalid-email").into_response(); }
@@ -104,7 +105,7 @@ pub async fn signup(State(database): State<Arc<dyn Database>>, State(authenticat
         role: OrganizationRole::Owner,
     };
 
-    let (_organization_id, owner_id) = match database.create_organization_with_owner_and_profile(organization, owner).await {
+    let (_organization_id, owner_id) = match organizations.create_organization_with_owner_and_profile(organization, owner).await {
         Ok(result) => result,
         Err(CreateOrganizationError::OrganizationSlugAlreadyExists) => { return Redirect::to("/create?error=invalid-slug").into_response(); }
         Err(CreateOrganizationError::MemberAlreadyExists) => { return Redirect::to("/create?error=email-taken").into_response(); }

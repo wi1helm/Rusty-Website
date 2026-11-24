@@ -14,9 +14,10 @@ use crate::{
     auth::{Authenticator, session::SessionManager},
     config::AppConfig,
     routes,
+    services::profile::ProfileService,
     storage::{
         cache::{Cache, redis::RedisCache},
-        database::{Database, postgres::PostgresDatabase},
+        database::{MemberRepository, OrganizationRepository, PositionRepository, ProfileRepository, postgres::PostgresDatabase},
         object::{ObjectStorage, s3::S3ObjectStorage},
     },
 };
@@ -33,15 +34,26 @@ impl App {
     pub async fn build(config: AppConfig) -> Result<Self, AppError> {
         info!(environment = ?config.environment, "Building application");
 
-        let database = Self::build_database(&config).await?;
+        let database = Arc::new(Self::build_database(&config).await?);
+        let organization_repository: Arc<dyn OrganizationRepository> = database.clone();
+        let member_repository: Arc<dyn MemberRepository> = database.clone();
+        let profile_repository: Arc<dyn ProfileRepository> = database.clone();
+        let position_repository: Arc<dyn PositionRepository> = database;
+
         let cache = Self::build_cache(&config).await?;
         let object_storage = Self::build_object_storage(&config).await?;
 
         let session_manager = Self::build_session_manager(cache.clone());
-        let authenticator = Self::build_authenticator(database.clone(), session_manager.clone());
+        let authenticator = Self::build_authenticator(member_repository.clone(), session_manager.clone());
+
+        let profile_service = Arc::new(ProfileService::new(organization_repository.clone(), profile_repository.clone(), position_repository.clone(), object_storage.clone()));
 
         let context = Context {
-            database,
+            organization_repository,
+            member_repository,
+            profile_repository,
+            position_repository,
+            profile_service,
             public_object_storage: object_storage,
             authenticator,
             session_manager,
@@ -76,7 +88,7 @@ impl App {
     // Infrastructure
     // ─────────────────────────────────────────
 
-    async fn build_database(config: &AppConfig) -> Result<Arc<dyn Database>, AppError> {
+    async fn build_database(config: &AppConfig) -> Result<PostgresDatabase, AppError> {
         info!("Connecting to PostgreSQL");
 
         let database = PostgresDatabase::new(&config.database.url)
@@ -85,7 +97,7 @@ impl App {
 
         info!("Connected to PostgreSQL");
 
-        Ok(Arc::new(database))
+        Ok(database)
     }
 
     async fn build_cache(config: &AppConfig) -> Result<Arc<dyn Cache>, AppError> {
@@ -127,9 +139,9 @@ impl App {
         Arc::new(SessionManager::new(cache))
     }
 
-    fn build_authenticator(database: Arc<dyn Database>, session_manager: Arc<SessionManager>) -> Arc<Authenticator> {
+    fn build_authenticator(members: Arc<dyn MemberRepository>, session_manager: Arc<SessionManager>) -> Arc<Authenticator> {
         info!("Initializing authenticator");
-        Arc::new(Authenticator::new(database, session_manager))
+        Arc::new(Authenticator::new(members, session_manager))
     }
 }
 

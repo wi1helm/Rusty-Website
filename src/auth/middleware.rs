@@ -2,7 +2,7 @@ use crate::Context;
 use crate::auth::session::SessionError;
 use crate::auth::session::SessionManager;
 use crate::auth::{AssociatedOrganization, AuthenticatedUser};
-use crate::storage::database::Database;
+use crate::storage::database::MemberRepository;
 use axum::{
     extract::{FromRef, Request, State},
     middleware::Next,
@@ -14,14 +14,14 @@ use std::sync::Arc;
 /// The database and session store required only while authenticating requests.
 #[derive(Clone)]
 pub struct AuthState {
-    database: Arc<dyn Database>,
+    members: Arc<dyn MemberRepository>,
     session_manager: Arc<SessionManager>,
 }
 
 impl FromRef<Context> for AuthState {
     fn from_ref(context: &Context) -> Self {
         Self {
-            database: context.database.clone(),
+            members: context.member_repository.clone(),
             session_manager: context.session_manager.clone(),
         }
     }
@@ -141,7 +141,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     // Instead, resolve the organization referenced by the session and create
     // the application-level authentication context that handlers actually
     // need.
-    let member_with_organization = match state.database.find_member_with_organization_by_member_id(session.member_id).await {
+    let member_with_organization = match state.members.find_member_with_organization_by_member_id(session.member_id).await {
         // The member and its organization both exist.
         //
         // The INNER JOIN used by the database query guarantees that this

@@ -73,7 +73,7 @@ pub struct DatabaseOrganization {
     pub created_at: DateTime<Utc>,
 }
 
-/// Represents a member retrieved from the database.
+/// Represents a member retrieved for regular application use.
 #[derive(Debug, Clone)]
 pub struct DatabaseMember {
     /// The unique identifier of the member.
@@ -82,14 +82,21 @@ pub struct DatabaseMember {
     pub organization_id: i64,
     /// The member's email address.
     pub email: String,
-    /// The hashed password used to authenticate the member.
-    pub password_hash: String,
     /// The member's role within the organization.
     pub role: OrganizationRole,
     /// The timestamp when the member was created.
     pub created_at: DateTime<Utc>,
     /// The timestamp when the member was last updated.
     pub updated_at: DateTime<Utc>,
+}
+
+/// Represents the credentials required to authenticate a member.
+#[derive(Debug, Clone)]
+pub struct MemberCredentials {
+    /// The unique identifier of the member.
+    pub member_id: i64,
+    /// The hashed password used to authenticate the member.
+    pub password_hash: String,
 }
 
 /// Represents a member together with the organization they belong to.

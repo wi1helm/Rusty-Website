@@ -1,6 +1,6 @@
 use crate::Context;
 use crate::auth::middleware::{AuthState, require_auth};
-use crate::storage::database::{Database, DatabaseProfile};
+use crate::storage::database::{DatabaseProfile, ProfileRepository};
 use axum::extract::DefaultBodyLimit;
 use axum::extract::FromRef;
 use axum::http::StatusCode;
@@ -19,15 +19,12 @@ pub fn router(context: Context) -> Router<Context> {
 
     Router::new()
         .route("/update", post(profile::update))
-        .route(
-            "/image",
-            post(image::image::upload).layer(DefaultBodyLimit::max(image::MAX_REQUEST_SIZE)),
-        )
+        .route("/image", post(image::image::upload).layer(DefaultBodyLimit::max(image::MAX_REQUEST_SIZE)), )
         .layer(middleware::from_fn_with_state(auth_state, require_auth))
 }
 
-pub async fn get_profile(database: &dyn Database, organization_id: i64, ) -> Result<DatabaseProfile, StatusCode> {
-    match database.find_profile_by_organization_id(organization_id).await {
+pub async fn get_profile(profiles: &dyn ProfileRepository, organization_id: i64) -> Result<DatabaseProfile, StatusCode> {
+    match profiles.find_profile_by_organization_id(organization_id).await {
         Ok(Some(profile)) => Ok(profile),
         Ok(None) => {
             tracing::error!(organization_id, "organization exists without a profile");

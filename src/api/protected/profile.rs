@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::api::protected::get_profile;
 use crate::api::validation::{is_valid_name, is_valid_url};
 use crate::auth::CurrentUser;
-use crate::storage::database::{Database, DatabaseProfile, NewProfileLink, UpdateProfile};
+use crate::storage::database::{DatabaseProfile, NewProfileLink, ProfileRepository, UpdateProfile};
 
 #[derive(Debug)]
 pub enum UpdateRequestValidationError {
@@ -88,7 +88,7 @@ impl PartialEq<ValidatedUpdateRequest> for DatabaseProfile {
 // TODO: Add CSRF token validation to prevent cross-site request forgery.
 // SameSite=Lax protects top-level navigation but not POST requests.
 // See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-pub async fn update(State(database): State<Arc<dyn Database>>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
+pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(validated) => validated,
         Err(UpdateRequestValidationError::InvalidDisplayName) => { return Redirect::to("/profile?error=invalid-display-name").into_response(); }
@@ -96,7 +96,7 @@ pub async fn update(State(database): State<Arc<dyn Database>>, CurrentUser(user)
         Err(UpdateRequestValidationError::InvalidLink) => { return Redirect::to("/profile?error=invalid-link").into_response(); }
     };
     //TODo use the old profile to check if we actually need to update this profile.
-    let old_profile = match get_profile(database.as_ref(), user.organization.id).await {
+    let old_profile = match get_profile(profiles.as_ref(), user.organization.id).await {
         Ok(profile) => profile,
         Err(status) => return status.into_response(),
     };
@@ -123,11 +123,11 @@ pub async fn update(State(database): State<Arc<dyn Database>>, CurrentUser(user)
     // but old links — an inconsistent state. Wrap both in a database transaction so
     // they either both succeed or both roll back.
     // See: https://www.postgresql.org/docs/current/transaction-iso.html
-    if let Err(error) = database.update_profile(user.organization.id, user.member_id, new_profile).await {
+    if let Err(error) = profiles.update_profile(user.organization.id, user.member_id, new_profile).await {
         tracing::error!(?error,profile_id = old_profile.id,"failed to update profile");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
-    if let Err(error) = database.update_profile_links(user.organization.id, new_links).await {
+    if let Err(error) = profiles.update_profile_links(user.organization.id, new_links).await {
         tracing::error!(?error,profile_id = old_profile.id,"failed to update profile links");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
