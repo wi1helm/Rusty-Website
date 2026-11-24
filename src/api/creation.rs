@@ -80,9 +80,6 @@ impl CreationRequest {
 // TODO: Add rate limiting to prevent spam organization creation.
 // Without it, an attacker can create unlimited organizations automatically.
 // See: https://en.wikipedia.org/wiki/Rate_limiting
-// TODO: Add CSRF token validation to prevent cross-site request forgery.
-// SameSite=Lax protects top-level navigation but not POST requests.
-// See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<CreationRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
@@ -198,5 +195,57 @@ mod tests {
     #[test]
     fn empty_name_produces_empty_slug() {
         assert_eq!(create_slug(""), "");
+    }
+
+    fn valid_creation_request() -> CreationRequest {
+        CreationRequest {
+            name: "Example Organization".to_owned(),
+            email: "owner@example.com".to_owned(),
+            password: "long-enough-password".to_owned(),
+            confirm: "long-enough-password".to_owned(),
+        }
+    }
+
+    #[test]
+    fn validates_a_well_formed_creation_request() {
+        let validated = valid_creation_request()
+            .validate()
+            .expect("valid signup fields should pass validation");
+
+        assert_eq!(validated.name, "Example Organization");
+        assert_eq!(validated.email, "owner@example.com");
+        assert_eq!(validated.password, "long-enough-password");
+    }
+
+    #[test]
+    fn rejects_invalid_organization_name() {
+        let mut request = valid_creation_request();
+        request.name = "A".to_owned();
+
+        assert!(matches!(request.validate(), Err(CreationValidationError::InvalidName)));
+    }
+
+    #[test]
+    fn rejects_invalid_email() {
+        let mut request = valid_creation_request();
+        request.email = "not-an-email".to_owned();
+
+        assert!(matches!(request.validate(), Err(CreationValidationError::InvalidEmail)));
+    }
+
+    #[test]
+    fn rejects_invalid_password() {
+        let mut request = valid_creation_request();
+        request.password = "short".to_owned();
+
+        assert!(matches!(request.validate(), Err(CreationValidationError::InvalidPassword)));
+    }
+
+    #[test]
+    fn rejects_password_confirmation_mismatch() {
+        let mut request = valid_creation_request();
+        request.confirm = "a-different-valid-password".to_owned();
+
+        assert!(matches!(request.validate(), Err(CreationValidationError::PasswordMismatch)));
     }
 }

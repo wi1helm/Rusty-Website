@@ -44,6 +44,15 @@ pub fn is_valid_name(name: &str) -> bool {
     true
 }
 
+/// Checks whether profile about text is within the application's length limit.
+///
+/// The limit is measured in Unicode code points rather than UTF-8 bytes.
+pub fn is_valid_about(about: &str) -> bool {
+    const MAX_ABOUT_LENGTH: usize = 5000;
+
+    about.chars().count() <= MAX_ABOUT_LENGTH
+}
+
 /// Performs basic structural validation of an email address.
 ///
 /// This does not verify that the email address actually exists or that
@@ -247,7 +256,6 @@ pub fn is_valid_url(url: &str) -> bool {
     //
     // This does not guarantee that the destination exists, is trustworthy,
     // or will remain safe. It only validates the URL's accepted format.
-    //TODO check if there is more to reject here.
     true
 }
 
@@ -311,6 +319,20 @@ mod tests {
         // e.g. "Alice Smith" -- internal whitespace is fine,
         // only leading/trailing is rejected.
         assert!(is_valid_name("Alice Smith"));
+    }
+
+    // ---- is_valid_about ----
+
+    #[test]
+    fn accepts_about_at_maximum_character_length() {
+        let about = "é".repeat(5000);
+        assert!(is_valid_about(&about));
+    }
+
+    #[test]
+    fn rejects_about_above_maximum_character_length() {
+        let about = "é".repeat(5001);
+        assert!(!is_valid_about(&about));
     }
 
     // ---- is_valid_email ----

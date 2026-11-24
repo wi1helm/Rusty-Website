@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::api::protected::get_profile;
-use crate::api::validation::{is_valid_name, is_valid_url};
+use crate::api::validation::{is_valid_about, is_valid_name, is_valid_url};
 use crate::auth::CurrentUser;
 use crate::storage::database::{DatabaseProfile, NewProfileLink, ProfileRepository, UpdateProfile};
 
@@ -47,8 +47,7 @@ impl UpdateRequest {
         if !is_valid_name(&self.display_name) {
             return Err(UpdateRequestValidationError::InvalidDisplayName);
         }
-        //TODO add this check inside a function in validation file
-        if self.about.len() > 5000 {
+        if !is_valid_about(&self.about) {
             return Err(UpdateRequestValidationError::InvalidAbout);
         }
 
@@ -85,9 +84,6 @@ impl PartialEq<ValidatedUpdateRequest> for DatabaseProfile {
     }
 }
 
-// TODO: Add CSRF token validation to prevent cross-site request forgery.
-// SameSite=Lax protects top-level navigation but not POST requests.
-// See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(validated) => validated,
@@ -133,4 +129,65 @@ pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentU
     }
 
     Redirect::to("/profile").into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_update_request() -> UpdateRequest {
+        UpdateRequest {
+            display_name: "Example Organization".to_owned(),
+            about: "About this organization".to_owned(),
+            links: vec![ProfileLink {
+                label: "Website".to_owned(),
+                url: "https://example.com".to_owned(),
+            }],
+        }
+    }
+
+    #[test]
+    fn accepts_valid_profile_update() {
+        let validated = valid_update_request()
+            .validate()
+            .expect("valid profile update should pass validation");
+
+        assert_eq!(validated.display_name, "Example Organization");
+        assert_eq!(validated.about, "About this organization");
+        assert_eq!(validated.links.len(), 1);
+        assert_eq!(validated.links[0].label, "Website");
+        assert_eq!(validated.links[0].url, "https://example.com");
+    }
+
+    #[test]
+    fn accepts_about_at_5000_unicode_characters() {
+        let mut request = valid_update_request();
+        request.about = "é".repeat(5000);
+
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_display_name() {
+        let mut request = valid_update_request();
+        request.display_name = "<script>".to_owned();
+
+        assert!(matches!(request.validate(), Err(UpdateRequestValidationError::InvalidDisplayName)));
+    }
+
+    #[test]
+    fn rejects_about_above_5000_unicode_characters() {
+        let mut request = valid_update_request();
+        request.about = "é".repeat(5001);
+
+        assert!(matches!(request.validate(), Err(UpdateRequestValidationError::InvalidAbout)));
+    }
+
+    #[test]
+    fn rejects_invalid_profile_links() {
+        let mut request = valid_update_request();
+        request.links[0].url = "javascript:alert(1)".to_owned();
+
+        assert!(matches!(request.validate(), Err(UpdateRequestValidationError::InvalidLink)));
+    }
 }

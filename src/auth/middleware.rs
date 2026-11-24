@@ -190,3 +190,85 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     // Pass the request to the next middleware or the final route handler.
     next.run(request).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::{
+        cache::{Cache, CacheError},
+        database::{DatabaseError, DatabaseMemberWithOrganization, MemberCredentials, MemberRepository},
+    };
+    use async_trait::async_trait;
+    use axum::{body::Body, http::{Request, StatusCode, header}, middleware, routing::get, Router};
+    use std::time::Duration;
+    use tower::ServiceExt;
+
+    struct EmptyCache;
+
+    #[async_trait]
+    impl Cache for EmptyCache {
+        async fn get(&self, _key: &str) -> Result<Option<Vec<u8>>, CacheError> {
+            Ok(None)
+        }
+
+        async fn set(&self, _key: &str, _value: &[u8], _ttl: Duration) -> Result<(), CacheError> {
+            Ok(())
+        }
+
+        async fn delete(&self, _key: &str) -> Result<(), CacheError> {
+            Ok(())
+        }
+    }
+
+    struct EmptyMembers;
+
+    #[async_trait]
+    impl MemberRepository for EmptyMembers {
+        async fn find_member_credentials_by_email(&self, _email: &str) -> Result<Option<MemberCredentials>, DatabaseError> {
+            Ok(None)
+        }
+
+        async fn find_member_with_organization_by_member_id(&self, _member_id: i64) -> Result<Option<DatabaseMemberWithOrganization>, DatabaseError> {
+            Ok(None)
+        }
+    }
+
+    fn protected_router() -> Router {
+        let state = AuthState {
+            members: Arc::new(EmptyMembers),
+            session_manager: Arc::new(SessionManager::new(Arc::new(EmptyCache))),
+        };
+
+        Router::new()
+            .route("/private", get(|| async { StatusCode::NO_CONTENT }))
+            .layer(middleware::from_fn_with_state(state, require_auth))
+    }
+
+    async fn request_private(cookie: Option<&str>) -> Response {
+        let mut request = Request::builder().uri("/private");
+        if let Some(cookie) = cookie {
+            request = request.header(header::COOKIE, cookie);
+        }
+
+        protected_router()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn protected_route_redirects_when_session_cookie_is_missing() {
+        let response = request_private(None).await;
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(response.headers()[header::LOCATION], "/login");
+    }
+
+    #[tokio::test]
+    async fn protected_route_redirects_when_session_does_not_exist() {
+        let response = request_private(Some("session=unknown-session")).await;
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(response.headers()[header::LOCATION], "/login");
+    }
+}

@@ -7,6 +7,7 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
     extract::State,
+    http::StatusCode,
     response::{IntoResponse, Response},
 };
 use std::sync::Arc;
@@ -33,7 +34,7 @@ pub async fn get_page(State(profile_service): State<Arc<ProfileService>>, Curren
 
         Err(error) => {
             tracing::error!(?error, "failed to serialize organization graph");
-            return not_found::get_page();
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 

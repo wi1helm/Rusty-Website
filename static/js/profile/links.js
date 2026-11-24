@@ -35,7 +35,7 @@ function normalizeLinkUrl(value) {
         throw new Error("Please enter a valid URL, including https://.");
     }
 
-    // TODO: Allowing HTTP (non-encrypted) URLs is a security risk. Links rendered with target="_blank" on public profiles can lead to unencrypted sites where an attacker on the same network can intercept or modify the connection. Consider rejecting HTTP URLs and requiring HTTPS only.
+    // TODO: Decide whether to disallow HTTP links; unlike HTTPS, their content can be modified in transit.
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
         throw new Error("Only HTTP and HTTPS links are supported.");
     }
@@ -128,7 +128,6 @@ export function initLinks(state) {
 
         const removeButton = makeButton(`Remove ${link.label}`, "trash", "profile-link-action");
         removeButton.addEventListener("click", () => {
-            // TODO: window.confirm() displays the link label directly in a browser dialog. If the label contains user-controlled data, an attacker could craft a misleading confirmation message that tricks the user into deleting something. Use a custom dialog with properly escaped content instead.
             if (!window.confirm(`Remove "${link.label}" from your profile?`)) {
                 return;
             }

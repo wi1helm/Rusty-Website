@@ -607,7 +607,7 @@ function getPositionFromForm(
     const title = getField(form, "title");
     const description = getField(form, "description");
 
-    // TODO: No client-side validation for empty titles or descriptions. The HTML template has "required" on the title field, but this function silently accepts empty strings if called programmatically or if JavaScript bypasses the form. Add validation here to prevent saving positions with missing required fields.
+    // TODO: Enforce position validation in the graph API when persistence is implemented; form constraints are client-side only.
 
     const statuses = existingPosition
         ? [...(existingPosition.statuses ?? [])]

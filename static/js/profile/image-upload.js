@@ -110,9 +110,8 @@ export function initImageUpload() {
             return;
         }
 
-        // TODO: No file size limit is checked before uploading. A very large file could exhaust server memory or cause slow uploads with no feedback. Add a maximum file size check (e.g., 10MB) and reject files that exceed it with a user-friendly message.
+        // TODO: Add a client-side size check for faster feedback; the server enforces the upload limits.
         if (!ALLOWED_TYPES.includes(file.type)) {
-            // TODO: window.alert() is a blocking dialog that can be spoofed by malicious pages to trick users. If error messages ever include user-controlled data, they could be used for phishing. Replace with non-blocking in-page notifications that are properly escaped.
             window.alert("Please choose a JPEG, PNG, or WebP image.");
             return;
         }
@@ -218,7 +217,6 @@ export function initImageUpload() {
             submitButton.disabled = true;
 
             try {
-                // TODO: This fetch request sends no CSRF token. An attacker could force an authenticated user's browser to upload arbitrary images to their profile. Add CSRF protection consistent with other state-changing requests.
                 const formData = new FormData();
                 formData.append("image", selectedFile);
                 formData.append("image_type", currentImageType);
@@ -237,7 +235,6 @@ export function initImageUpload() {
                 window.location.reload();
             } catch (error) {
                 console.error("Profile image upload failed:", error);
-                // TODO: window.alert() is a blocking dialog that can be spoofed. Replace with non-blocking in-page notifications.
                 window.alert("Failed to upload image. Please try again.");
             } finally {
                 submitButton.disabled = false;

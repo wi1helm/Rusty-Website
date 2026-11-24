@@ -44,7 +44,6 @@ export function initDisplayName(state) {
 
         state.displayName = nextName;
         nameElement.textContent = nextName;
-        // TODO: The display name is inserted directly into document.title without sanitization. If the name contains special characters like angle brackets, it may break the browser tab title rendering. Additionally, if this title value is ever logged or embedded in other pages, it could become an injection vector. Consider sanitizing the name before setting the title.
         document.title = `${nextName} - Profile`;
 
         closeDialog(dialog);

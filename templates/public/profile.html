@@ -61,7 +61,6 @@
 
         {% if !profile_view.links.is_empty() %}
 
-        <!-- TODO: The data-url attribute below renders user-controlled URL values. If a URL contains special characters like quotes or angle brackets, it could break HTML attribute parsing. Ensure the template engine properly escapes attribute values. -->
         <nav class="profile-link-bar" aria-label="Organization links">
 
             {% for link in profile_view.links %}

@@ -48,9 +48,6 @@ impl LoginRequest {
 // TODO: Add rate limiting to prevent brute-force attacks.
 // Without it, an attacker can try unlimited password combinations.
 // See: https://en.wikipedia.org/wiki/Rate_limiting
-// TODO: Add CSRF token validation to prevent cross-site request forgery.
-// SameSite=Lax protects top-level navigation but not POST requests.
-// See: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<LoginRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
@@ -78,5 +75,43 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
             }
             Redirect::to("/login?error=server-error").into_response()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validates_login_with_valid_credentials_format() {
+        let request = LoginRequest {
+            email: "member@example.com".to_owned(),
+            password: "long-enough-password".to_owned(),
+        };
+
+        let validated = request.validate().expect("valid credentials should pass validation");
+
+        assert_eq!(validated.email, "member@example.com");
+        assert_eq!(validated.password, "long-enough-password");
+    }
+
+    #[test]
+    fn rejects_invalid_email() {
+        let request = LoginRequest {
+            email: "not-an-email".to_owned(),
+            password: "long-enough-password".to_owned(),
+        };
+
+        assert!(matches!(request.validate(), Err(LoginValidationError::InvalidEmail)));
+    }
+
+    #[test]
+    fn rejects_invalid_password() {
+        let request = LoginRequest {
+            email: "member@example.com".to_owned(),
+            password: "short".to_owned(),
+        };
+
+        assert!(matches!(request.validate(), Err(LoginValidationError::InvalidPassword)));
     }
 }

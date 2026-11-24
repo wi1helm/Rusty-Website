@@ -1,5 +1,6 @@
 use askama::Template;
 use askama_web::WebTemplate;
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
 use crate::config::{APP_NAME, APP_YEAR};
@@ -12,13 +13,22 @@ pub struct NotFoundTemplate {
 }
 
 pub fn get_page() -> Response {
-    // TODO: Return HTTP 404 status code instead of 200 OK. Currently .into_response()
-    // produces a 200 status, which is incorrect HTTP semantics and can cause SEO/caching
-    // issues. Use (StatusCode::NOT_FOUND, template).into_response() or similar.
-    // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
-    NotFoundTemplate {
-        app_name: APP_NAME,
-        year: APP_YEAR,
+    (
+        StatusCode::NOT_FOUND,
+        NotFoundTemplate {
+            app_name: APP_NAME,
+            year: APP_YEAR,
+        },
+    ).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::StatusCode;
+
+    #[test]
+    fn not_found_page_returns_not_found_status() {
+        assert_eq!(get_page().status(), StatusCode::NOT_FOUND);
     }
-    .into_response()
 }

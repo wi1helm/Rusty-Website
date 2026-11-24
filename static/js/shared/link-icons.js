@@ -28,14 +28,12 @@ export function getLinkIconType(url) {
     if (hostMatches(hostname, "facebook.com") || hostname === "fb.com") return "facebook";
     if (hostMatches(hostname, "youtube.com") || hostname === "youtu.be") return "youtube";
     if (hostMatches(hostname, "x.com") || hostMatches(hostname, "twitter.com")) return "x";
-    /*TODO check if this is bad downloadig favicon etc. could make own website with favicon etc bad stuff maby*/
+    // TODO: This sends the external link's hostname to Google; consider a local favicon cache or generic icon to avoid third-party disclosure.
     return "favicon";
 }
 
 
 export function getFaviconUrl(url) {
-    // TODO: This function sends the target domain to Google's favicon service (google.com/s2/favicons) on every profile view. This means Google can see which external links users have on their profiles — a privacy leak. Additionally, the "domain" parameter could potentially be abused for open redirects. Consider hosting favicons yourself or using a privacy-respecting alternative.
-    // TODO: new URL(url) can throw if the URL is malformed. While the caller (renderLinkIcon) wraps this in a try-catch, this function itself is not safe to call independently without error handling. Consider adding internal error handling or documenting that callers must wrap calls in try-catch.
     const parsed = new URL(url);
 
     const faviconUrl = new URL("https://www.google.com/s2/favicons");

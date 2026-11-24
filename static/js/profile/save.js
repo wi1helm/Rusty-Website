@@ -7,7 +7,6 @@ import { showStatus } from "./status.js";
 
 
 async function postJson(url, body = undefined) {
-    // TODO: No CSRF token is sent with these requests. An attacker could craft a malicious webpage that forces an authenticated user's browser to make unauthorized changes to their profile, upload images, or modify graph data. Add a CSRF token (e.g., via a meta tag or cookie) and include it in a header on every state-changing request.
     const options = {
         method: "POST",
         credentials: "same-origin",
@@ -38,7 +37,7 @@ async function saveProfileData(state) {
 
 
 async function saveOrganizationGraph() {
-    // TODO: Replace with actual graph state once implemented.
+    // TODO: Graph changes are not persisted yet: this sends an empty body to an unregistered route.
     return postJson("/api/profile/update-graph", {});
 }
 
@@ -62,7 +61,6 @@ export function initSave(state) {
                 profileResponse.redirected &&
                 new URL(profileResponse.url).searchParams.has("error")
             ) {
-                // TODO: Navigating to a server-provided redirect URL is dangerous if the URL can contain user-controlled data. An attacker could craft a response that redirects the user to a malicious site (open redirect). Validate the redirect URL against a whitelist of allowed paths before navigating.
                 window.location.assign(profileResponse.url);
                 return;
             }
@@ -75,7 +73,7 @@ export function initSave(state) {
             const graphResponse = await saveOrganizationGraph();
 
             if (!graphResponse.ok) {
-                // TODO: If the graph save fails here, the profile save above already succeeded. The user sees an error but their profile changes are already persisted — there is no way to roll back the profile save. Consider using a transactional approach or informing the user that profile was saved but graph failed.
+                // TODO: Once graph persistence exists, make the two saves atomic or clearly report partial success.
                 throw new Error(`Graph save failed with status ${graphResponse.status}.`);
             }
 

@@ -21,6 +21,7 @@ impl ProfileService {
         Self { organizations, profiles, positions, object_storage }
     }
 
+    // TODO: Return repository failures separately from missing profiles; callers currently treat both as 404s.
     pub async fn load_by_slug(&self, slug: &str) -> Option<ProfileView> {
         let organization = match self.organizations.find_organization_by_slug(slug).await {
             Ok(Some(organization)) => organization,
