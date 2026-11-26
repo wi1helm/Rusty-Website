@@ -43,6 +43,19 @@
     color: var(--muted);
 }
 
+.image-upload-error {
+    padding: 0.75rem 1rem;
+    margin: -0.5rem 0 1rem;
+    color: #7a1f1a;
+    background: #fdecea;
+    border-left: 4px solid #c0392b;
+    border-radius: 6px;
+}
+
+.image-upload-error[hidden] {
+    display: none;
+}
+
 .image-upload-close {
     position: absolute;
     top: 0.75rem;

@@ -4,16 +4,14 @@
 
 import { $ } from "../shared/helpers.js";
 import { getCurrentStatus } from "../shared/graph/graph.js";
+import { apiFetch } from "../shared/api.js";
 import { showStatus } from "./status.js";
 
 
 async function postJson(url, body = undefined) {
     const options = {
         method: "POST",
-        credentials: "same-origin",
-        headers: {
-            "Accept": "text/html, application/json"
-        }
+        headers: {}
     };
 
     if (body !== undefined) {
@@ -21,7 +19,8 @@ async function postJson(url, body = undefined) {
         options.body = JSON.stringify(body);
     }
 
-    return fetch(url, options);
+    const { response } = await apiFetch(url, options);
+    return response;
 }
 
 
@@ -74,14 +73,6 @@ export function initSave(state) {
             // Save profile information.
             const profileResponse = await saveProfileData(state);
 
-            if (
-                profileResponse.redirected &&
-                new URL(profileResponse.url).searchParams.has("error")
-            ) {
-                window.location.assign(profileResponse.url);
-                return;
-            }
-
             if (!profileResponse.ok) {
                 throw new Error(`Profile save failed with status ${profileResponse.status}.`);
             }
@@ -100,8 +91,8 @@ export function initSave(state) {
         } catch (error) {
             console.error("Save failed:", error);
             showStatus(profileSaved
-                ? "Profile details were saved, but the organization graph could not be saved. Please try again."
-                : "Could not save your profile. Please try again.");
+                ? `Profile details were saved, but the organization graph could not be saved. ${error.message}`
+                : error.message || "Could not save your profile. Please try again.");
 
         } finally {
             saveButton.disabled = false;

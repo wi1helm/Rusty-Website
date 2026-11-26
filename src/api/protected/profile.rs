@@ -2,7 +2,7 @@ use askama_web::__askama_web_impl::axum_core_0_5::IntoResponse;
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::response::Redirect;
+use crate::api::error::api_error;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -87,17 +87,23 @@ impl PartialEq<ValidatedUpdateRequest> for DatabaseProfile {
 pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(validated) => validated,
-        Err(UpdateRequestValidationError::InvalidDisplayName) => { return Redirect::to("/profile?error=invalid-display-name").into_response(); }
-        Err(UpdateRequestValidationError::InvalidAbout) => { return Redirect::to("/profile?error=invalid-about").into_response(); }
-        Err(UpdateRequestValidationError::InvalidLink) => { return Redirect::to("/profile?error=invalid-link").into_response(); }
+        Err(UpdateRequestValidationError::InvalidDisplayName) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-display-name", "Please enter a valid display name.");
+        }
+        Err(UpdateRequestValidationError::InvalidAbout) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-about", "The about section is too long.");
+        }
+        Err(UpdateRequestValidationError::InvalidLink) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-link", "Please check the profile links and try again.");
+        }
     };
     //TODo use the old profile to check if we actually need to update this profile.
     let old_profile = match get_profile(profiles.as_ref(), user.organization.id).await {
         Ok(profile) => profile,
-        Err(status) => return status.into_response(),
+        Err(response) => return response,
     };
     // If nothing changed from what's already in db disregard this request
-    if old_profile == validated { return Redirect::to("/profile").into_response(); }
+    if old_profile == validated { return StatusCode::OK.into_response(); }
 
     let new_links = validated
         .links
@@ -121,14 +127,14 @@ pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentU
     // Reference: POST /api/profile/update; ProfileRepository::update_profile and update_profile_links.
     if let Err(error) = profiles.update_profile(user.organization.id, user.member_id, new_profile).await {
         tracing::error!(?error,profile_id = old_profile.id,"failed to update profile");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
     }
     if let Err(error) = profiles.update_profile_links(user.organization.id, new_links).await {
         tracing::error!(?error,profile_id = old_profile.id,"failed to update profile links");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
     }
 
-    Redirect::to("/profile").into_response()
+    StatusCode::OK.into_response()
 }
 
 #[cfg(test)]

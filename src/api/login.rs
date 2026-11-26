@@ -3,10 +3,12 @@ use crate::api::validation::{is_valid_email, is_valid_password};
 use crate::auth::Authenticator;
 use crate::auth::session::SessionError;
 use crate::auth::{AuthenticationError, LoginCredentials};
+use crate::api::error::{ApiSuccessResponse, api_error};
 use crate::config::CookieConfig;
-use crate::routes::redirect_with_session_cookie;
-use axum::response::{IntoResponse, Redirect};
-use axum::{Form, extract::State};
+use crate::routes::with_session_cookie;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::{Json, extract::State};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -50,11 +52,12 @@ impl LoginRequest {
 // Impact: Attackers can brute-force credentials and drive expensive password verification work.
 // Suggested fix: Add distributed per-IP/account throttling and alerting without revealing account state.
 // Reference: POST /api/auth/login; Authenticator::login.
-pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<LoginRequest>) -> impl IntoResponse {
+pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<LoginRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
-        Err(LoginValidationError::InvalidEmail) => { return Redirect::to("/login?error=invalid-credentials").into_response(); }
-        Err(LoginValidationError::InvalidPassword) => { return Redirect::to("/login?error=invalid-credentials").into_response(); }
+        Err(LoginValidationError::InvalidEmail | LoginValidationError::InvalidPassword) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-credentials", "Enter a valid email address and password.");
+        }
     };
 
     let credentials = LoginCredentials {
@@ -63,9 +66,18 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
     };
 
     match authenticator.login(credentials).await {
-        Ok(session) => redirect_with_session_cookie("/dashboard", &session.id, &cookies),
-        Err(AuthenticationError::InvalidCredentials) => { Redirect::to("/login?error=invalid-credentials").into_response() }
-        Err(AuthenticationError::Database(_)) => { Redirect::to("/login?error=server-error").into_response() }
+        Ok(session) => with_session_cookie(
+            (StatusCode::OK, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(),
+            &session.id,
+            &cookies,
+        ),
+        Err(AuthenticationError::InvalidCredentials) => {
+            api_error(StatusCode::UNAUTHORIZED, "invalid-credentials", "Incorrect email or password.")
+        }
+        Err(AuthenticationError::Database(error)) => {
+            tracing::error!(?error, "database error during login");
+            api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")
+        }
 
         // Credentials were correct, but we couldn't establish a session
         // (e.g. Redis unavailable). The account/credentials are fine —
@@ -75,11 +87,11 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
                 SessionError::Cache(_) => { tracing::warn!("session cache error during login: {session_err}") }
                 SessionError::Serialization(_) => { tracing::error!("session serialization bug during login: {session_err}") }
             }
-            Redirect::to("/login?error=server-error").into_response()
+            api_error(StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again.")
         }
         Err(AuthenticationError::PasswordHash(error)) => {
             tracing::error!(?error, "password verification failed");
-            Redirect::to("/login?error=server-error").into_response()
+            api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")
         }
     }
 }

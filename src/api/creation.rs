@@ -1,32 +1,18 @@
 // routes/pages/creation
 //! API endpoints for organization creation and signup.
 //!
-//! TODO: API handlers currently return `Redirect::to("/path?error=...")` for
-//! every error case. This couples API endpoints to frontend routing and makes
-//! the API unusable as a real REST API. For API routes, return proper JSON
-//! error responses with appropriate HTTP status codes (e.g., 400 for validation
-//! errors, 409 for conflicts, 500 for server errors). Reserve redirects for
-//! HTML page routes. This separates concerns and makes the API testable with
-//! `curl` or automated tests.
-//!
-//! To fix: Add `#[derive(Serialize)]` to `CreationValidationError` and return
-//! JSON responses like `(StatusCode::BAD_REQUEST, JSON(error))` instead of
-//! redirects. Consider creating a shared error response type in a common module.
-//! Search terms: "Axum JSON error responses", "REST API error handling Rust",
-//! "separate API from HTML routes Axum", "problem_details RFC 7807 Rust".
-
 use crate::api::validation::{is_valid_email, is_valid_name, is_valid_password};
-use crate::auth::AuthenticationError;
+use crate::api::error::{ApiSuccessResponse, api_error};
 use crate::auth::Authenticator;
-use crate::auth::password::hash_password;
 use crate::config::CookieConfig;
-use crate::routes::redirect_with_session_cookie;
+use crate::routes::{is_reserved_organization_slug, with_session_cookie};
+use crate::services::registration::{self, RegistrationError};
 use crate::storage::database::{
-    CreateOrganizationError, NewMember, NewOrganization, OrganizationRepository,
-    OrganizationRole,
+    CreateOrganizationError, NewOrganization, OrganizationRepository,
 };
-use axum::response::{IntoResponse, Redirect};
-use axum::{Form, extract::State};
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::{Json, extract::State};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -83,18 +69,26 @@ impl CreationRequest {
 // Impact: Automated signups can consume database and password-hashing resources.
 // Suggested fix: Apply shared signup throttles and abuse controls before creating records.
 // Reference: POST /api/organizations/create; signup.
-pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Form(input): Form<CreationRequest>, ) -> impl IntoResponse {
+pub async fn create(State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<CreationRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
-        Err(CreationValidationError::InvalidEmail) => { return Redirect::to("/create?error=invalid-email").into_response(); }
-        Err(CreationValidationError::InvalidPassword) => { return Redirect::to("/create?error=invalid-password").into_response(); }
-        Err(CreationValidationError::InvalidName) => { return Redirect::to("/create?error=invalid-name").into_response(); }
-        Err(CreationValidationError::PasswordMismatch) => { return Redirect::to("/create?error=passwords-mismatch").into_response(); }
+        Err(CreationValidationError::InvalidEmail) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-email", "Please enter a valid email address.");
+        }
+        Err(CreationValidationError::InvalidPassword) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-password", "Password must be at least 8 characters long.");
+        }
+        Err(CreationValidationError::InvalidName) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-name", "Please enter a valid organization name.");
+        }
+        Err(CreationValidationError::PasswordMismatch) => {
+            return api_error(StatusCode::BAD_REQUEST, "passwords-mismatch", "Passwords do not match.");
+        }
     };
 
     let slug = create_slug(&validated.name);
-    if crate::routes::is_reserved_organization_slug(&slug) {
-        return Redirect::to("/create?error=invalid-slug").into_response();
+    if is_reserved_organization_slug(&slug) {
+        return api_error(StatusCode::BAD_REQUEST, "invalid-slug", "That organization name uses a reserved URL. Please choose another name.");
     }
 
     let organization = NewOrganization {
@@ -102,74 +96,48 @@ pub async fn signup(State(organizations): State<Arc<dyn OrganizationRepository>>
         slug,
     };
 
-    let password_hash = match hash_password(validated.password).await {
-        Ok(password_hash) => password_hash,
-        Err(error) => {
+    let session = match registration::create_organization(organizations.as_ref(), authenticator.as_ref(), organization, validated.email, validated.password, ).await {
+        Ok(session) => session,
+        Err(RegistrationError::Organization(error)) => {
+            let (status, code, message) = create_error(error);
+            return api_error(status, code, message);
+        }
+        Err(RegistrationError::PasswordHash(error)) => {
             tracing::error!(?error, "failed to hash signup password");
-            return Redirect::to("/create?error=server-error").into_response();
+            return api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
+        }
+        Err(RegistrationError::AccountCreatedWithoutSession) => {
+            return api_error(StatusCode::SERVICE_UNAVAILABLE, "account-created", "Your account is ready, but we couldn't sign you in. Please log in.");
+        }
+        Err(RegistrationError::Authentication(error)) => {
+            tracing::error!(?error, "failed to establish signup session");
+            return api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
     };
 
-    let owner = NewMember {
-        email: validated.email,
-        password_hash,
-        role: OrganizationRole::Owner,
-    };
-
-    let (_organization_id, owner_id) = match organizations.create_organization_with_owner_and_profile(organization, owner).await {
-        Ok(result) => result,
-        Err(error) => { return Redirect::to(signup_error_redirect_location(error)).into_response(); }
-    };
-
-    // The organization and owner member have now been successfully created
-    // in the database. We now create an authenticated session for that member.
-    //
-    // This is intentionally a separate step from account creation:
-    // - PostgreSQL is responsible for creating and storing the account.
-    // - The authenticator is responsible for establishing the logged-in state.
-    // - The session is stored in Cache(Redis as of writing) and represented to the
-    //   browser by a session cookie.
-    //
-    // If session creation fails, the account has still been created successfully.
-    // We should NOT try to delete/roll back the account just because Redis failed.
-    // The user can simply be sent to the login page and log in normally later.
-    //
-    // `Ok(session)` means authentication/session creation succeeded. The session
-    // will later be put into a cookie and the user redirected to the dashboard.
-    //
-    // `AuthenticationError::Session(_)` means the account exists, but we could
-    // not create its session (for example, Redis could be unavailable).
-    //
-    // The final `Err(_)` catches any other authentication error. Most of these
-    // should not normally be possible here because we are logging in a member
-    // by ID that was just created, rather than checking credentials again.
-    // In theory the database could be unavailable directly after creating the org + owner
-    // and login could therefor not access the database(password hash)
-    // todo handle all of the rest Authentication errors and remove Err(_)
-    match authenticator.login_member(owner_id).await {
-        Ok(session) => redirect_with_session_cookie("/dashboard", &session.id, &cookies),
-        // Session(_) means we don't care what specific session error happened just that we could not
-        // establish a session (for example, Redis could be down etc.)
-        Err(AuthenticationError::Session(_)) => {
-            //TODO add logging for bug / bad errors such as serilization
-            //The session ID is effectively a bearer credential. Someone who obtains a valid session ID may be able to authenticate as that user.
-            // IMPORTANT TO NOT LOG the id, application logs could potentially be access
-            // The account exists, but we could not create the session.
-            Redirect::to("/login?error=account-created").into_response()
-        }
-
-        Err(_) => {
-            // Unexpected authentication error.
-            Redirect::to("/create?error=server-error").into_response()
-        }
-    }
+    with_session_cookie((StatusCode::CREATED, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &cookies, )
 }
 
-fn signup_error_redirect_location(error: CreateOrganizationError) -> &'static str {
+fn create_error(error: CreateOrganizationError) -> (StatusCode, &'static str, &'static str) {
     match error {
-        CreateOrganizationError::OrganizationSlugAlreadyExists => "/create?error=invalid-slug",
-        CreateOrganizationError::MemberAlreadyExists => "/create?error=signup-failed",
-        CreateOrganizationError::Database(_) => "/create?error=server-error",
+        CreateOrganizationError::OrganizationSlugAlreadyExists => (
+            StatusCode::CONFLICT,
+            "organization-exists",
+            "An organization with that URL already exists.",
+        ),
+        CreateOrganizationError::MemberAlreadyExists => (
+            StatusCode::CONFLICT,
+            "signup-failed",
+            "We couldn't complete signup. Please try again, or log in if you already have access.",
+        ),
+        CreateOrganizationError::Database(error) => {
+            tracing::error!(?error, "database error during signup");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "server-error",
+                "Something went wrong. Please try again.",
+            )
+        }
     }
 }
 
@@ -238,11 +206,12 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_email_uses_a_neutral_signup_error() {
-        let location = signup_error_redirect_location(CreateOrganizationError::MemberAlreadyExists);
+    fn duplicate_email_uses_a_neutral_structured_signup_error() {
+        let (status, code, message) = create_error(CreateOrganizationError::MemberAlreadyExists);
 
-        assert_eq!(location, "/create?error=signup-failed");
-        assert!(!location.contains("email"));
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(code, "signup-failed");
+        assert!(!message.contains("email"));
     }
 
     #[test]

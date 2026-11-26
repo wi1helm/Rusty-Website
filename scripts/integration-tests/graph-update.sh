@@ -12,8 +12,8 @@ http_request "${TEST_ID}-unauthenticated-graph-update" \
   --header 'Content-Type: application/json' \
   --data '{"positions":[],"connections":[]}' \
   "$BASE_URL/api/profile/update-graph"
-assert_status 303 "$HTTP_STATUS" "Unauthenticated graph update"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /login'
+assert_status 401 "$HTTP_STATUS" "Unauthenticated graph update"
+assert_body_contains "$RESPONSE_BODY" '"code":"authentication-required"'
 
 INITIAL_PAYLOAD="$(python3 -c '
 import json,sys

@@ -1,10 +1,12 @@
 use crate::Context;
+use crate::api::error::api_error;
 use crate::auth::session::SessionError;
 use crate::auth::session::SessionManager;
 use crate::auth::{AssociatedOrganization, AuthenticatedUser};
 use crate::storage::database::MemberRepository;
 use axum::{
     extract::{FromRef, Request, State},
+    http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
@@ -50,6 +52,7 @@ impl FromRef<Context> for AuthState {
 ///
 /// Note: this middleware should only be put on protected routes.
 pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut request: Request, next: Next) -> Response {
+    let is_api_request = request.extensions().get::<crate::api::ApiRequest>().is_some();
     //TODO(security): Consider clearing the session cookie when the session is
     // missing or invalid. This avoids repeatedly sending a stale session ID.
     // This will require returning a response with an updated CookieJar rather
@@ -73,7 +76,9 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     //
     // No cookie means there is no session ID that we can use to authenticate
     // the request, so send the user to the login page.
-    let Some(cookie) = jar.get("session") else { return Redirect::to("/login").into_response(); };
+    let Some(cookie) = jar.get("session") else {
+        return authentication_response(is_api_request, StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.");
+    };
 
     let session_id = cookie.value();
 
@@ -100,7 +105,9 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         //
         // This is not a server error. From the application's perspective,
         // the request simply isn't authenticated anymore.
-        Ok(None) => { return Redirect::to("/login").into_response(); }
+        Ok(None) => {
+            return authentication_response(is_api_request, StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.");
+        }
 
         // The session store itself could not be accessed.
         //
@@ -112,7 +119,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         // out.
         Err(SessionError::Cache(error)) => {
             tracing::warn!("session cache error during authentication: {error}");
-            return Redirect::to("/login?error=server-error").into_response();
+            return authentication_response(is_api_request, StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again.");
         }
 
         // The session data existed, but we could not deserialize it.
@@ -129,7 +136,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
             // potentially be accessed by people or systems that should not
             // have access to authentication credentials.
             tracing::error!("session serialization error during authentication: {error}");
-            return Redirect::to("/login?error=server-error").into_response();
+            return authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
     };
 
@@ -156,14 +163,14 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         Ok(None) => {
             //TODO remove stale cookie and stale Redis value as this session id is invalid
             tracing::warn!(member_id = session.member_id,"authenticated session references a missing member");
-            return Redirect::to("/login?error=server-error").into_response();
+            return authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
 
         // The database lookup failed, so we cannot determine whether the
         // authenticated member still exists or which organization they belong to.
         Err(error) => {
             tracing::error!(?error,member_id = session.member_id,"failed to load member and organization for authenticated request");
-            return Redirect::to("/login?error=server-error").into_response();
+            return authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
     };
 
@@ -189,6 +196,21 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     //
     // Pass the request to the next middleware or the final route handler.
     next.run(request).await
+}
+
+fn authentication_response(
+    is_api_request: bool,
+    status: StatusCode,
+    code: &'static str,
+    message: &'static str,
+) -> Response {
+    if is_api_request {
+        api_error(status, code, message)
+    } else if status == StatusCode::UNAUTHORIZED {
+        Redirect::to("/login").into_response()
+    } else {
+        status.into_response()
+    }
 }
 
 #[cfg(test)]
@@ -239,13 +261,23 @@ mod tests {
             session_manager: Arc::new(SessionManager::new(Arc::new(EmptyCache))),
         };
 
+        let api_router = Router::new()
+            .route("/api/private", get(|| async { StatusCode::NO_CONTENT }))
+            .layer(middleware::from_fn_with_state(state.clone(), require_auth))
+            .layer(middleware::from_fn(crate::api::mark_api_request));
+
         Router::new()
             .route("/private", get(|| async { StatusCode::NO_CONTENT }))
             .layer(middleware::from_fn_with_state(state, require_auth))
+            .merge(api_router)
     }
 
     async fn request_private(cookie: Option<&str>) -> Response {
-        let mut request = Request::builder().uri("/private");
+        request_private_path("/private", cookie).await
+    }
+
+    async fn request_private_path(path: &str, cookie: Option<&str>) -> Response {
+        let mut request = Request::builder().uri(path);
         if let Some(cookie) = cookie {
             request = request.header(header::COOKIE, cookie);
         }
@@ -270,5 +302,16 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::SEE_OTHER);
         assert_eq!(response.headers()[header::LOCATION], "/login");
+    }
+
+    #[tokio::test]
+    async fn protected_api_returns_a_structured_unauthorized_error() {
+        let response = request_private_path("/api/private", None).await;
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "authentication-required");
     }
 }

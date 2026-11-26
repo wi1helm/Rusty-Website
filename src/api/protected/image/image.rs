@@ -3,7 +3,6 @@ use axum::{
     extract::multipart::Field,
     extract::{Multipart, State},
     http::StatusCode,
-    response::Redirect,
 };
 use std::sync::Arc;
 
@@ -120,7 +119,7 @@ pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(ob
         }
     }
 
-    Redirect::to("/profile").into_response()
+    StatusCode::NO_CONTENT.into_response()
 }
 
 async fn parse_multipart(mut multipart: Multipart, organization_id: i64) -> Result<UploadedImage, StatusCode> {

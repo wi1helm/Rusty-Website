@@ -13,7 +13,7 @@ export function createGraph() {
 }
 
 /*
- * Read initial graph data from the HTML document.
+ * Read initial graph data from the hidden HTML data container.
  */
 export function getGraph(root = document) {
     const element = root.querySelector("#organization-graph-data");

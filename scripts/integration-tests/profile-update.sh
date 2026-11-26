@@ -20,8 +20,7 @@ http_request "${TEST_ID}-profile-update" \
   --cookie "$COOKIE_JAR" \
   --data "$PROFILE_PAYLOAD" \
   "$BASE_URL/api/profile/update"
-assert_status 303 "$HTTP_STATUS" "Profile update"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /profile'
+assert_status 200 "$HTTP_STATUS" "Profile update"
 
 http_request "${TEST_ID}-invalid-profile-update" \
   --request POST \
@@ -30,8 +29,8 @@ http_request "${TEST_ID}-invalid-profile-update" \
   --cookie "$COOKIE_JAR" \
   --data '{"display_name":"<script>","about":"","links":[]}' \
   "$BASE_URL/api/profile/update"
-assert_status 303 "$HTTP_STATUS" "Invalid profile update"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /profile?error=invalid-display-name'
+assert_status 400 "$HTTP_STATUS" "Invalid profile update"
+assert_body_contains "$RESPONSE_BODY" '"code":"invalid-display-name"'
 
 http_request "${TEST_ID}-no-change-profile-update" \
   --request POST \
@@ -40,8 +39,7 @@ http_request "${TEST_ID}-no-change-profile-update" \
   --cookie "$COOKIE_JAR" \
   --data "$PROFILE_PAYLOAD" \
   "$BASE_URL/api/profile/update"
-assert_status 303 "$HTTP_STATUS" "Duplicate profile update"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /profile'
+assert_status 200 "$HTTP_STATUS" "Duplicate profile update"
 
 http_request "${TEST_ID}-updated-public-profile" "$BASE_URL/$ORGANIZATION_SLUG"
 assert_status 200 "$HTTP_STATUS" "Updated public profile"

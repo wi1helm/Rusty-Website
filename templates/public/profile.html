@@ -189,7 +189,7 @@
                     </div>
 
                     <!-- Graph JSON escapes <, >, and & server-side before rendering. -->
-                    <script type="application/json" id="organization-graph-data">{{ graph_json|safe }}</script>
+                    <div id="organization-graph-data" hidden>{{ graph_json|safe }}</div>
                 </div>
 
             </section>

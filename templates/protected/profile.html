@@ -258,7 +258,7 @@
 
           <!-- Server-rendered initial graph data -->
           <!-- graph_json escapes <, >, and & server-side before this JSON is rendered as safe HTML. -->
-          <script type="application/json" id="organization-graph-data">{{ graph_json|safe }}</script>
+          <div id="organization-graph-data" hidden>{{ graph_json|safe }}</div>
         </div>
       </section>
 
@@ -631,6 +631,8 @@
     >
       Choose an image or drag one here.
     </p>
+
+    <p id="image-upload-error" class="image-upload-error" role="alert" hidden></p>
 
     <label class="image-upload-dropzone" for="image-upload-input">
       <input

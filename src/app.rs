@@ -341,6 +341,9 @@ mod tests {
         assert_eq!(login.status(), StatusCode::OK);
         assert!(login.headers()[header::CONTENT_TYPE].to_str().unwrap().starts_with("text/html"));
         assert!(login.headers().contains_key(header::CONTENT_SECURITY_POLICY));
+        let body = axum::body::to_bytes(login.into_body(), usize::MAX).await.unwrap();
+        let html = std::str::from_utf8(&body).unwrap();
+        assert!(html.contains("action=\"/api/auth/login\""));
 
         let dashboard = app.clone()
             .oneshot(Request::builder().uri("/dashboard").body(Body::empty()).unwrap())
@@ -353,20 +356,201 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn login_api_returns_a_structured_invalid_credentials_error() {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/auth/login")
+            .header(header::HOST, "app.example")
+            .header(header::ORIGIN, "http://app.example")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"email":"member@example.com","password":"long-enough-password"}"#))
+            .unwrap();
+
+        let response = test_router().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "invalid-credentials");
+        assert_eq!(body["error"]["message"], "Incorrect email or password.");
+    }
+
+    #[tokio::test]
+    async fn signup_api_sets_session_cookie_and_returns_redirect_destination() {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/organizations/create")
+            .header(header::HOST, "app.example")
+            .header(header::ORIGIN, "http://app.example")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"name":"Example Organization","email":"owner@example.com","password":"long-enough-password","confirm":"long-enough-password"}"#))
+            .unwrap();
+
+        let response = test_router().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        assert!(response.headers()[header::SET_COOKIE].to_str().unwrap().contains("HttpOnly"));
+        assert!(response.headers()[header::SET_COOKIE].to_str().unwrap().contains("SameSite=Lax"));
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["redirectTo"], "/dashboard");
+    }
+
+    #[tokio::test]
+    async fn malformed_api_json_is_normalized_to_a_structured_error() {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/auth/login")
+            .header(header::HOST, "app.example")
+            .header(header::ORIGIN, "http://app.example")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from("{"))
+            .unwrap();
+
+        let response = test_router().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "invalid-request");
+    }
+
+    #[tokio::test]
+    async fn browser_navigation_errors_render_html_instead_of_framework_text() {
+        let response = test_router()
+            .oneshot(
+                Request::builder()
+                    .uri("/not/a-profile")
+                    .header(header::ACCEPT, "text/html")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "location: {:?}", response.headers().get(header::LOCATION));
+        assert!(response.headers()[header::CONTENT_TYPE].to_str().unwrap().starts_with("text/html"));
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let html = std::str::from_utf8(&body).unwrap();
+        assert!(html.contains("Page not found"));
+        assert!(html.contains("class=\"not-found\""));
+        assert!(html.contains("href=\"/organization\""));
+        assert!(!html.contains("404 Not Found"));
+    }
+
+    #[tokio::test]
+    async fn api_csrf_errors_remain_structured_json() {
+        let response = test_router()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/login")
+                    .header(header::ACCEPT, "application/json")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "forbidden");
+    }
+
+    #[tokio::test]
+    async fn creation_page_has_an_api_form_action_without_error_query_state() {
+        let response = test_router()
+            .oneshot(
+                Request::builder()
+                    .uri("/create")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let html = std::str::from_utf8(&body).unwrap();
+        assert!(!html.contains("An organization with that URL already exists."));
+        assert!(html.contains("action=\"/api/organizations/create\""));
+        assert!(!html.contains("data-api-action"));
+    }
+
+    #[tokio::test]
+    async fn composed_router_serves_favicon_without_not_found() {
+        let response = test_router()
+            .oneshot(Request::builder().uri("/favicon.ico").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "image/svg+xml");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert!(std::str::from_utf8(&body).unwrap().contains("<svg"));
+    }
+
+    #[tokio::test]
     async fn composed_router_wires_api_state_and_csrf_middleware() {
         let request = Request::builder()
             .method("POST")
             .uri("/api/auth/login")
             .header(header::HOST, "app.example")
             .header(header::ORIGIN, "http://app.example")
-            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-            .body(Body::from("email=member%40example.com&password=long-enough-password"))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"email":"member@example.com","password":"long-enough-password"}"#))
             .unwrap();
 
         let response = test_router().oneshot(request).await.unwrap();
 
-        assert_eq!(response.status(), StatusCode::SEE_OTHER);
-        assert_eq!(response.headers()[header::LOCATION], "/login?error=invalid-credentials");
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
         assert!(response.headers().contains_key(header::X_CONTENT_TYPE_OPTIONS));
+    }
+
+    #[tokio::test]
+    async fn composed_router_returns_json_for_unauthenticated_api_requests() {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/profile/update")
+            .header(header::HOST, "app.example")
+            .header(header::ORIGIN, "http://app.example")
+            .header(header::ACCEPT, "text/html")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"display_name":"Example","about":"","links":[]}"#))
+            .unwrap();
+
+        let response = test_router().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "authentication-required");
+    }
+
+    #[tokio::test]
+    async fn unknown_api_routes_return_json_not_the_html_not_found_page() {
+        let response = test_router()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/unknown")
+                    .header(header::ACCEPT, "text/html")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "not-found");
     }
 }

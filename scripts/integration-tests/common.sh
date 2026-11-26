@@ -84,15 +84,14 @@ signup_account() {
   http_request "${TEST_ID}-signup" \
     --request POST \
     --header "Origin: $BASE_URL" \
+    --header 'Content-Type: application/json' \
     --cookie-jar "$COOKIE_JAR" \
-    --data-urlencode "name=$ORGANIZATION_NAME" \
-    --data-urlencode "email=$TEST_EMAIL" \
-    --data-urlencode "password=$TEST_PASSWORD" \
-    --data-urlencode "confirm=$TEST_PASSWORD" \
+    --data "{\"name\":\"$ORGANIZATION_NAME\",\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\",\"confirm\":\"$TEST_PASSWORD\"}" \
     "$BASE_URL/api/organizations/create"
 
-  assert_status 303 "$HTTP_STATUS" "Signup"
-  assert_header_contains "$RESPONSE_HEADERS" 'location: /dashboard'
+  assert_status 201 "$HTTP_STATUS" "Signup"
+  assert_header_contains "$RESPONSE_HEADERS" 'content-type: application/json'
+  assert_body_contains "$RESPONSE_BODY" '"redirectTo":"/dashboard"'
   assert_header_contains "$RESPONSE_HEADERS" 'set-cookie: session='
   [[ -s "$COOKIE_JAR" ]] || fail "Signup did not store a session cookie."
   pass "Signup stored a session cookie"

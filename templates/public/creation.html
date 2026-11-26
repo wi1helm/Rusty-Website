@@ -17,7 +17,7 @@
       Set up your organization and create your owner account.
     </p>
 
-    <div id="form-error" class="error-banner" hidden></div>
+    <div id="form-error" class="error-banner" role="alert" hidden></div>
 
     <form action="/api/organizations/create" method="post" id="creation-form">
 
@@ -86,5 +86,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/assets/js/creation.js"></script>
+<script type="module" src="/assets/js/creation.js"></script>
 {% endblock %}

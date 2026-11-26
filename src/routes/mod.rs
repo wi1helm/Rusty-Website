@@ -14,7 +14,7 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::get;
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 use url::Url;
 
 mod errors;
@@ -61,14 +61,75 @@ pub fn router(context: Context) -> Router {
         .merge(protected::router(context.clone()))
         .nest(API_PATH, api::router(context.clone()))
         .route(IMAGES_PATH, get(images::get_image))
+        .route_service("/favicon.ico", ServeFile::new("static/favicon.svg"))
         // Expose the local `static/` directory as `/assets/*` over HTTP.
         // The URL path is intentionally `/assets` rather than `/static` so the
         // filesystem layout stays an internal implementation detail.
         // For example: `/assets/shared/styles.css` -> `static/shared/styles.css`.
         .nest_service(ASSETS_PATH, ServeDir::new("static"))
+        .fallback(not_found_page)
         .with_state(context)
         .layer(middleware::from_fn(csrf_protection))
+        .layer(middleware::from_fn(normalize_api_errors))
+        .layer(middleware::from_fn(normalize_browser_errors))
         .layer(middleware::map_response(add_security_headers))
+}
+
+async fn normalize_api_errors(request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    let is_api_request = path == API_PATH || path.starts_with("/api/");
+    let response = next.run(request).await;
+
+    if is_api_request {
+        api::error::normalize_error_response(response).await
+    } else {
+        response
+    }
+}
+
+async fn not_found_page() -> Response {
+    errors::not_found::get_page()
+}
+
+async fn normalize_browser_errors(request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    let is_api_request = path == API_PATH || path.starts_with("/api/");
+    let wants_html = request.headers()
+        .get(header::ACCEPT)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|accept| accept.contains("text/html") || accept.contains("application/xhtml+xml"));
+    let response = next.run(request).await;
+
+    if !is_api_request
+        && wants_html
+        && (response.status().is_client_error() || response.status().is_server_error())
+    {
+        if response.status() == StatusCode::NOT_FOUND
+            && response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|content_type| content_type.starts_with("text/html"))
+        {
+            return response;
+        }
+
+        let mut html_response = errors::http_error::get_page(response.status());
+        for (name, value) in response.headers() {
+            if name == header::SET_COOKIE
+                || name == header::ALLOW
+                || name == header::RETRY_AFTER
+                || name == header::WWW_AUTHENTICATE
+            {
+                html_response
+                    .headers_mut()
+                    .append(name.clone(), value.clone());
+            }
+        }
+        html_response
+    } else {
+        response
+    }
 }
 
 /// Reject state-changing requests unless the browser identifies them as same-origin.
@@ -136,6 +197,10 @@ async fn add_security_headers(mut response: Response) -> Response {
 }
 
 pub fn redirect_with_session_cookie(location: &str, session_id: &str, config: &CookieConfig) -> Response {
+    with_session_cookie(Redirect::to(location).into_response(), session_id, config)
+}
+
+pub fn with_session_cookie(response: Response, session_id: &str, config: &CookieConfig) -> Response {
     let same_site = match config.same_site {
         CookieSameSite::Strict => SameSite::Strict,
         CookieSameSite::Lax => SameSite::Lax,
@@ -151,7 +216,7 @@ pub fn redirect_with_session_cookie(location: &str, session_id: &str, config: &C
 
     let jar = CookieJar::new().add(cookie);
 
-    (jar, Redirect::to(location)).into_response()
+    (jar, response).into_response()
 }
 
 #[cfg(test)]
@@ -256,6 +321,57 @@ mod tests {
         assert_eq!(response.headers()[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
         assert_eq!(response.headers()[header::X_FRAME_OPTIONS], "DENY");
         assert_eq!(response.headers()[header::STRICT_TRANSPORT_SECURITY], "max-age=31536000");
+    }
+
+    #[tokio::test]
+    async fn csrf_rejections_on_api_routes_return_structured_json() {
+        let app = Router::new()
+            .route("/api/change", post(|| async { StatusCode::NO_CONTENT }))
+            .layer(middleware::from_fn(csrf_protection))
+            .layer(middleware::from_fn(normalize_api_errors));
+        let request = axum::http::Request::builder()
+            .method("POST")
+            .uri("/api/change")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["error"]["code"], "forbidden");
+    }
+
+    #[tokio::test]
+    async fn browser_server_errors_render_html_without_framework_text() {
+        let app = Router::new()
+            .route(
+                "/failure",
+                get(|| async {
+                    (
+                        [(header::RETRY_AFTER, "60")],
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                    )
+                }),
+            )
+            .layer(middleware::from_fn(normalize_browser_errors));
+        let request = axum::http::Request::builder()
+            .uri("/failure")
+            .header(header::ACCEPT, "text/html")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(response.headers()[header::CONTENT_TYPE].to_str().unwrap().starts_with("text/html"));
+        assert_eq!(response.headers()[header::RETRY_AFTER], "60");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let html = std::str::from_utf8(&body).unwrap();
+        assert!(html.contains("Something went wrong"));
+        assert!(!html.contains("500 Internal Server Error"));
     }
 
     #[tokio::test]

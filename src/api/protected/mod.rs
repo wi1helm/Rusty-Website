@@ -5,6 +5,8 @@ use axum::extract::DefaultBodyLimit;
 use axum::extract::FromRef;
 use axum::http::StatusCode;
 use axum::{Router, middleware, routing::post};
+use axum::response::Response;
+use crate::api::error::api_error;
 
 mod image;
 mod graph;
@@ -25,16 +27,18 @@ pub fn router(context: Context) -> Router<Context> {
         .layer(middleware::from_fn_with_state(auth_state, require_auth))
 }
 
-pub async fn get_profile(profiles: &dyn ProfileRepository, organization_id: i64) -> Result<DatabaseProfile, StatusCode> {
+pub async fn get_profile(profiles: &dyn ProfileRepository, organization_id: i64) -> Result<DatabaseProfile, Response> {
     match profiles.find_profile_by_organization_id(organization_id).await {
         Ok(Some(profile)) => Ok(profile),
+
         Ok(None) => {
-            tracing::error!(organization_id, "organization exists without a profile");
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            tracing::error!(organization_id,"organization exists without a profile");
+            Err(api_error(StatusCode::INTERNAL_SERVER_ERROR, "profile-not-found", "The organization profile could not be found."))
         }
+
         Err(error) => {
             tracing::error!(?error,organization_id,"failed to load organization profile");
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again."))
         }
     }
 }

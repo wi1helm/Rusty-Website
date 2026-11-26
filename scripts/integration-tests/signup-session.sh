@@ -15,23 +15,19 @@ assert_body_contains "$RESPONSE_BODY" 'id="profile-display-name"'
 http_request "${TEST_ID}-duplicate-email" \
   --request POST \
   --header "Origin: $BASE_URL" \
-  --data-urlencode "name=Duplicate Email ${TEST_ID}" \
-  --data-urlencode "email=$TEST_EMAIL" \
-  --data-urlencode "password=$TEST_PASSWORD" \
-  --data-urlencode "confirm=$TEST_PASSWORD" \
+  --header 'Content-Type: application/json' \
+  --data "{\"name\":\"Duplicate Email ${TEST_ID}\",\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\",\"confirm\":\"$TEST_PASSWORD\"}" \
   "$BASE_URL/api/organizations/create"
-assert_status 303 "$HTTP_STATUS" "Duplicate-email signup response"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /create?error=signup-failed'
+assert_status 409 "$HTTP_STATUS" "Duplicate-email signup response"
+assert_body_contains "$RESPONSE_BODY" '"code":"signup-failed"'
 
 http_request "${TEST_ID}-reserved-slug" \
   --request POST \
   --header "Origin: $BASE_URL" \
-  --data-urlencode "name=Login" \
-  --data-urlencode "email=reserved-${TEST_ID}@example.test" \
-  --data-urlencode "password=$TEST_PASSWORD" \
-  --data-urlencode "confirm=$TEST_PASSWORD" \
+  --header 'Content-Type: application/json' \
+  --data "{\"name\":\"Login\",\"email\":\"reserved-${TEST_ID}@example.test\",\"password\":\"$TEST_PASSWORD\",\"confirm\":\"$TEST_PASSWORD\"}" \
   "$BASE_URL/api/organizations/create"
-assert_status 303 "$HTTP_STATUS" "Reserved-slug signup response"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /create?error=invalid-slug'
+assert_status 400 "$HTTP_STATUS" "Reserved-slug signup response"
+assert_body_contains "$RESPONSE_BODY" '"code":"invalid-slug"'
 
 pass "Signup, duplicate-email handling, reserved slugs, sessions, and public profiles"

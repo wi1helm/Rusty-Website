@@ -4,6 +4,7 @@
 ========================================================= */
 
 import { $, $$ } from "../shared/helpers.js";
+import { apiFetch } from "../shared/api.js";
 
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -17,6 +18,7 @@ export function initImageUpload() {
     const previewImage = preview ? $("img", preview) : null;
     const title = $("#image-upload-title");
     const description = $("#image-upload-description");
+    const errorMessage = $("#image-upload-error");
     const closeButton = $(".image-upload-close");
     const cancelButton = $("#image-upload-cancel");
     const submitButton = $("#image-upload-submit");
@@ -32,6 +34,20 @@ export function initImageUpload() {
         if (previewObjectUrl) {
             URL.revokeObjectURL(previewObjectUrl);
             previewObjectUrl = null;
+        }
+    }
+
+    function showUploadError(message) {
+        if (errorMessage) {
+            errorMessage.textContent = message;
+            errorMessage.hidden = false;
+        }
+    }
+
+    function clearUploadError() {
+        if (errorMessage) {
+            errorMessage.textContent = "";
+            errorMessage.hidden = true;
         }
     }
 
@@ -82,6 +98,7 @@ export function initImageUpload() {
         currentImageType = editor.dataset.imageType;
         currentUploadUrl = editor.dataset.uploadUrl;
         selectedFile = null;
+        clearUploadError();
 
         input.value = "";
         clearPreview();
@@ -112,6 +129,7 @@ export function initImageUpload() {
         }
 
         selectedFile = null;
+        clearUploadError();
         clearPreview();
 
         if (!ALLOWED_TYPES.includes(file.type)) {
@@ -119,7 +137,7 @@ export function initImageUpload() {
                 input.value = "";
             }
 
-            window.alert("Please choose a JPEG, PNG, or WebP image.");
+            showUploadError("Please choose a JPEG, PNG, or WebP image.");
             return;
         }
 
@@ -128,7 +146,7 @@ export function initImageUpload() {
                 input.value = "";
             }
 
-            window.alert("Please choose an image that is 10 MiB or smaller.");
+            showUploadError("Please choose an image that is 10 MiB or smaller.");
             return;
         }
 
@@ -219,25 +237,25 @@ export function initImageUpload() {
     if (submitButton) {
         submitButton.addEventListener("click", async () => {
             if (!selectedFile) {
-                window.alert("Please choose an image first.");
+                showUploadError("Please choose an image first.");
                 return;
             }
 
             if (!currentUploadUrl || !currentImageType) {
-                window.alert("The image upload configuration is missing.");
+                showUploadError("The image upload configuration is missing.");
                 return;
             }
 
             submitButton.disabled = true;
+            clearUploadError();
 
             try {
                 const formData = new FormData();
                 formData.append("image", selectedFile);
                 formData.append("image_type", currentImageType);
 
-                const response = await fetch(currentUploadUrl, {
+                const { response } = await apiFetch(currentUploadUrl, {
                     method: "POST",
-                    credentials: "same-origin",
                     body: formData
                 });
 
@@ -249,7 +267,7 @@ export function initImageUpload() {
                 window.location.reload();
             } catch (error) {
                 console.error("Profile image upload failed:", error);
-                window.alert("Failed to upload image. Please try again.");
+                showUploadError(error.message || "Failed to upload image. Please try again.");
             } finally {
                 submitButton.disabled = false;
             }

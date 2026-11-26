@@ -15,8 +15,7 @@ http_request "${TEST_ID}-image-upload" \
   --form 'image_type=logo' \
   --form "image=@$IMAGE_FILE;type=image/png" \
   "$BASE_URL/api/profile/image"
-assert_status 303 "$HTTP_STATUS" "Valid profile image upload"
-assert_header_contains "$RESPONSE_HEADERS" 'location: /profile'
+assert_status 204 "$HTTP_STATUS" "Valid profile image upload"
 
 IMAGE_RECORD="$(compose_exec exec -T postgres psql \
   -U "$POSTGRES_USER" \
@@ -58,6 +57,7 @@ http_request "${TEST_ID}-malformed-multipart" \
   --data-binary 'this is not a multipart body' \
   "$BASE_URL/api/profile/image"
 assert_status 400 "$HTTP_STATUS" "Malformed multipart upload"
+assert_body_contains "$RESPONSE_BODY" '"error"'
 
 UNSUPPORTED_FILE="$TEST_TMP_DIR/${TEST_ID}.txt"
 printf 'not an image' > "$UNSUPPORTED_FILE"

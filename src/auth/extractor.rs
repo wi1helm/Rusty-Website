@@ -1,7 +1,8 @@
 use crate::auth::AuthenticatedUser;
+use crate::api::error::api_error;
 use axum::{
     extract::FromRequestParts,
-    http::request::Parts,
+    http::{StatusCode, request::Parts},
     response::{IntoResponse, Redirect, Response},
 };
 
@@ -67,7 +68,11 @@ impl<S> FromRequestParts<S> for CurrentUser where S: Send + Sync {
             //
             // On correctly configured protected routes this should normally
             // be unreachable because `require_auth` runs before the handler.
-            return Err(Redirect::to("/login").into_response());
+            return Err(if parts.extensions.get::<crate::api::ApiRequest>().is_some() {
+                api_error(StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.")
+            } else {
+                Redirect::to("/login").into_response()
+            });
         };
 
         // Clone the authenticated context out of the request extensions.

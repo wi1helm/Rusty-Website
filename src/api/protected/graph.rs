@@ -4,11 +4,13 @@ use std::sync::Arc;
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use serde::Deserialize;
 use serde_json::Value;
 use uuid::Uuid;
 
 use crate::auth::CurrentUser;
+use crate::api::error::api_error;
 use crate::storage::database::{
     NewPosition, NewPositionConnection, NewPositionStatus, PositionRepository, PositionStatus,
 };
@@ -161,20 +163,17 @@ impl GraphUpdateRequest {
     }
 }
 
-pub async fn update(State(positions): State<Arc<dyn PositionRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<GraphUpdateRequest>) -> StatusCode {
+pub async fn update(State(positions): State<Arc<dyn PositionRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<GraphUpdateRequest>) -> impl IntoResponse {
     let (positions_input, connections) = match input.validate() {
         Ok(graph) => graph,
-        Err(()) => return StatusCode::BAD_REQUEST,
+        Err(()) => return api_error(StatusCode::BAD_REQUEST, "invalid-graph", "The organization graph contains invalid or unsupported data."),
     };
 
-    match positions
-        .replace_graph_by_organization_id(user.organization.id, positions_input, connections)
-        .await
-    {
-        Ok(()) => StatusCode::NO_CONTENT,
+    match positions.replace_graph_by_organization_id(user.organization.id, positions_input, connections).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(error) => {
             tracing::error!(?error, organization_id = user.organization.id, "failed to update organization graph");
-            StatusCode::INTERNAL_SERVER_ERROR
+            api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "The organization graph could not be saved. Please try again.")
         }
     }
 }

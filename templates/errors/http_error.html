@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/assets/css/not_found.css">
+{% endblock %}
+
+{% block content %}
+<main class="not-found">
+  <div class="not-found-card">
+    <p class="not-found-code">{{ status_code }}</p>
+
+    <h1>{{ title }}</h1>
+
+    <p class="muted">
+      {{ message }}
+    </p>
+
+    <a href="/login" class="button primary">
+      Go to sign in
+    </a>
+  </div>
+</main>
+{% endblock %}
