@@ -1,9 +1,11 @@
 use axum::{
     Json,
-    http::{StatusCode, header},
+    http::{HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
+
+use crate::services::rate_limiter::RateLimitError;
 
 #[derive(Serialize)]
 pub struct ApiErrorResponse {
@@ -30,6 +32,20 @@ impl ApiSuccessResponse {
 
 pub fn api_error(status: StatusCode, code: &'static str, message: &'static str) -> Response {
     (status, Json(ApiErrorResponse { error: ApiErrorDetail { code, message } })).into_response()
+}
+
+pub fn rate_limit_error(error: RateLimitError) -> Response {
+    match error {
+        RateLimitError::Unavailable => api_error(StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again."),
+        RateLimitError::Exceeded { retry_after, .. } => {
+            let mut response = api_error(StatusCode::TOO_MANY_REQUESTS, "rate-limited", "Too many attempts. Please try again later.");
+            let seconds = retry_after.as_secs().saturating_add(u64::from(retry_after.subsec_nanos() > 0)).max(1).to_string();
+            if let Ok(value) = HeaderValue::from_str(&seconds) {
+                response.headers_mut().insert(header::RETRY_AFTER, value);
+            }
+            response
+        }
+    }
 }
 
 pub async fn normalize_error_response(response: Response) -> Response {

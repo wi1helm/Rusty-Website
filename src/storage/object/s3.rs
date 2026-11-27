@@ -161,15 +161,7 @@ impl S3ObjectStorage {
 
             Err(_) => {
                 // Doesn't exist, so create it.
-                self.client
-                    .put_object()
-                    .bucket(&self.bucket)
-                    .key(key)
-                    .content_type(content_type)
-                    .body(ByteStream::from(data.to_vec()))
-                    .send()
-                    .await
-                    .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
+                self.client.put_object().bucket(&self.bucket).key(key).content_type(content_type).body(ByteStream::from(data.to_vec())).send().await.map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
                 Ok(())
             }

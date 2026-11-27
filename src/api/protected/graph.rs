@@ -155,14 +155,7 @@ mod tests {
     use serde_json::json;
 
     fn position(client_id: &str, status: &str) -> PositionInput {
-        PositionInput {
-            id: None,
-            client_id: client_id.to_owned(),
-            title: format!("{client_id} title"),
-            description: String::new(),
-            current_status: status.to_owned(),
-            statuses: vec![PositionStatusInput { status: status.to_owned(), information: json!({"information": ""}) }],
-        }
+        PositionInput { id: None, client_id: client_id.to_owned(), title: format!("{client_id} title"), description: String::new(), current_status: status.to_owned(), statuses: vec![PositionStatusInput { status: status.to_owned(), information: json!({"information": ""}) }] }
     }
 
     fn request(positions: Vec<PositionInput>, connections: Vec<ConnectionInput>) -> GraphUpdateRequest {
@@ -171,11 +164,7 @@ mod tests {
 
     #[test]
     fn accepts_a_valid_graph_with_connections() {
-        let result = request(
-            vec![position("manager", "open"), position("report", "FILLED")],
-            vec![ConnectionInput { from: "manager".to_owned(), to: "report".to_owned() }],
-        )
-        .validate();
+        let result = request(vec![position("manager", "open"), position("report", "FILLED")], vec![ConnectionInput { from: "manager".to_owned(), to: "report".to_owned() }]).validate();
 
         let (positions, connections) = result.expect("graph should be valid");
         assert_eq!(positions.len(), 2);
@@ -193,18 +182,11 @@ mod tests {
     fn rejects_cycles_and_duplicate_reverse_connections() {
         let cycle = request(
             vec![position("one", "open"), position("two", "open"), position("three", "open")],
-            vec![
-                ConnectionInput { from: "one".to_owned(), to: "two".to_owned() },
-                ConnectionInput { from: "two".to_owned(), to: "three".to_owned() },
-                ConnectionInput { from: "three".to_owned(), to: "one".to_owned() },
-            ],
+            vec![ConnectionInput { from: "one".to_owned(), to: "two".to_owned() }, ConnectionInput { from: "two".to_owned(), to: "three".to_owned() }, ConnectionInput { from: "three".to_owned(), to: "one".to_owned() }],
         );
         assert!(cycle.validate().is_err());
 
-        let reverse = request(
-            vec![position("one", "open"), position("two", "open")],
-            vec![ConnectionInput { from: "one".to_owned(), to: "two".to_owned() }, ConnectionInput { from: "two".to_owned(), to: "one".to_owned() }],
-        );
+        let reverse = request(vec![position("one", "open"), position("two", "open")], vec![ConnectionInput { from: "one".to_owned(), to: "two".to_owned() }, ConnectionInput { from: "two".to_owned(), to: "one".to_owned() }]);
         assert!(reverse.validate().is_err());
     }
 

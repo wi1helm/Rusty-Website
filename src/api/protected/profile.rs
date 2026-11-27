@@ -125,11 +125,7 @@ mod tests {
     use super::*;
 
     fn valid_update_request() -> UpdateRequest {
-        UpdateRequest {
-            display_name: "Example Organization".to_owned(),
-            about: "About this organization".to_owned(),
-            links: vec![ProfileLink { label: "Website".to_owned(), url: "https://example.com".to_owned() }],
-        }
+        UpdateRequest { display_name: "Example Organization".to_owned(), about: "About this organization".to_owned(), links: vec![ProfileLink { label: "Website".to_owned(), url: "https://example.com".to_owned() }] }
     }
 
     #[test]

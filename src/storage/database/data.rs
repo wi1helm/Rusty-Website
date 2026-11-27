@@ -207,29 +207,9 @@ impl ProfileImageType {
     /// Returns the validation and output rules for this image type.
     pub fn rules(&self) -> ImageRules {
         match self {
-            Self::Logo => ImageRules {
-                min_width: 200,
-                min_height: 200,
-                max_width: 5000,
-                max_height: 5000,
-                max_pixels: 25_000_000,
-                min_aspect_ratio: 0.75,
-                max_aspect_ratio: 1.33,
-                output_max_width: 1024,
-                output_max_height: 1024,
-            },
+            Self::Logo => ImageRules { min_width: 200, min_height: 200, max_width: 5000, max_height: 5000, max_pixels: 25_000_000, min_aspect_ratio: 0.75, max_aspect_ratio: 1.33, output_max_width: 1024, output_max_height: 1024 },
 
-            Self::Banner => ImageRules {
-                min_width: 800,
-                min_height: 200,
-                max_width: 5000,
-                max_height: 2500,
-                max_pixels: 25_000_000,
-                min_aspect_ratio: 2.0,
-                max_aspect_ratio: 5.0,
-                output_max_width: 2048,
-                output_max_height: 1024,
-            },
+            Self::Banner => ImageRules { min_width: 800, min_height: 200, max_width: 5000, max_height: 2500, max_pixels: 25_000_000, min_aspect_ratio: 2.0, max_aspect_ratio: 5.0, output_max_width: 2048, output_max_height: 1024 },
         }
     }
 }

@@ -1,18 +1,16 @@
 // routes/pages/creation
 //! API endpoints for organization creation and signup.
 //!
-use crate::api::error::{ApiSuccessResponse, api_error};
+use crate::Context;
+use crate::api::error::{ApiSuccessResponse, api_error, rate_limit_error};
 use crate::api::validation::{is_valid_email, is_valid_name, is_valid_password};
-use crate::auth::Authenticator;
-use crate::config::CookieConfig;
 use crate::routes::{is_reserved_organization_slug, with_session_cookie};
 use crate::services::registration::{self, RegistrationError};
-use crate::storage::database::{CreateOrganizationError, NewOrganization, OrganizationRepository};
+use crate::storage::database::{CreateOrganizationError, NewOrganization};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{Json, extract::State};
 use serde::Deserialize;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum CreationValidationError {
@@ -63,9 +61,7 @@ impl CreationRequest {
 // Impact: Automated signups can consume database and password-hashing resources.
 // Suggested fix: Apply shared signup throttles and abuse controls before creating records.
 // Reference: POST /api/organizations/create; signup.
-pub async fn create(
-    State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<CreationRequest>,
-) -> impl IntoResponse {
+pub async fn create(State(context): State<Context>, Json(input): Json<CreationRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
         Err(CreationValidationError::InvalidEmail) => {
@@ -87,9 +83,13 @@ pub async fn create(
         return api_error(StatusCode::BAD_REQUEST, "invalid-slug", "That organization name uses a reserved URL. Please choose another name.");
     }
 
+    if let Err(error) = context.rate_limiter.check_signup_email_attempt(&validated.email).await {
+        return rate_limit_error(error);
+    }
+
     let organization = NewOrganization { name: validated.name, slug };
 
-    let session = match registration::create_organization(organizations.as_ref(), authenticator.as_ref(), organization, validated.email, validated.password).await {
+    let session = match registration::create_organization(context.organization_repository.as_ref(), context.authenticator.as_ref(), context.password_service.as_ref(), organization, validated.email, validated.password).await {
         Ok(session) => session,
         Err(RegistrationError::Organization(error)) => {
             let (status, code, message) = create_error(error);
@@ -108,17 +108,13 @@ pub async fn create(
         }
     };
 
-    with_session_cookie((StatusCode::CREATED, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &cookies)
+    with_session_cookie((StatusCode::CREATED, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &context.cookies)
 }
 
 fn create_error(error: CreateOrganizationError) -> (StatusCode, &'static str, &'static str) {
     match error {
         CreateOrganizationError::OrganizationSlugAlreadyExists => (StatusCode::CONFLICT, "organization-exists", "An organization with that URL already exists."),
-        CreateOrganizationError::MemberAlreadyExists => (
-            StatusCode::CONFLICT,
-            "signup-failed",
-            "We couldn't complete signup. Please try again, or log in if you already have access.",
-        ),
+        CreateOrganizationError::MemberAlreadyExists => (StatusCode::CONFLICT, "signup-failed", "We couldn't complete signup. Please try again, or log in if you already have access."),
         CreateOrganizationError::Database(error) => {
             tracing::error!(?error, "database error during signup");
             (StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")

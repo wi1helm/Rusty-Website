@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use crate::auth::password::verify_password;
+use crate::auth::password::PasswordService;
 use crate::auth::session::{Session, SessionError, SessionManager};
 use crate::storage::database::{DatabaseError, MemberRepository};
 pub struct Authenticator {
     members: Arc<dyn MemberRepository>,
     session_manager: Arc<SessionManager>,
+    passwords: Arc<PasswordService>,
 }
 
 pub struct LoginCredentials {
@@ -28,8 +29,8 @@ pub enum AuthenticationError {
 }
 
 impl Authenticator {
-    pub fn new(members: Arc<dyn MemberRepository>, session_manager: Arc<SessionManager>) -> Self {
-        Self { members, session_manager }
+    pub(crate) fn new(members: Arc<dyn MemberRepository>, session_manager: Arc<SessionManager>, passwords: Arc<PasswordService>) -> Self {
+        Self { members, session_manager, passwords }
     }
 
     pub async fn login_member(&self, member_id: i64) -> Result<Session, AuthenticationError> {
@@ -39,7 +40,7 @@ impl Authenticator {
     pub async fn login(&self, credentials: LoginCredentials) -> Result<Session, AuthenticationError> {
         let member = self.members.find_member_credentials_by_email(&credentials.email).await?.ok_or(AuthenticationError::InvalidCredentials)?;
 
-        if !verify_password(credentials.password, member.password_hash).await.map_err(|error| AuthenticationError::PasswordHash(error.to_string()))? {
+        if !self.passwords.verify_password(credentials.password, member.password_hash).await.map_err(|error| AuthenticationError::PasswordHash(error.to_string()))? {
             return Err(AuthenticationError::InvalidCredentials);
         }
         // TODO: Invalidate all existing sessions for this member on login.

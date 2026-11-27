@@ -28,9 +28,7 @@ struct UploadedImage {
     content_type: String,
 }
 
-pub async fn upload(
-    State(profiles): State<Arc<dyn ProfileRepository>>, State(object_storage): State<Arc<dyn ObjectStorage>>, CurrentUser(user): CurrentUser, multipart: Multipart,
-) -> impl IntoResponse {
+pub async fn upload(State(profiles): State<Arc<dyn ProfileRepository>>, State(object_storage): State<Arc<dyn ObjectStorage>>, CurrentUser(user): CurrentUser, multipart: Multipart) -> impl IntoResponse {
     let uploaded = match parse_multipart(multipart, user.organization.id).await {
         Ok(uploaded) => uploaded,
         Err(status) => return status.into_response(),
@@ -78,15 +76,7 @@ pub async fn upload(
         }
     }
 
-    let new_image = NewProfileImage {
-        organization_id: user.organization.id,
-        image_type: normalized.image_type,
-        storage_key: storage_key.clone(),
-        content_type: normalized.content_type.to_string(),
-        width: normalized.width as i32,
-        height: normalized.height as i32,
-        file_size,
-    };
+    let new_image = NewProfileImage { organization_id: user.organization.id, image_type: normalized.image_type, storage_key: storage_key.clone(), content_type: normalized.content_type.to_string(), width: normalized.width as i32, height: normalized.height as i32, file_size };
 
     match profiles.update_profile_image(new_image).await {
         Ok(Some(_)) => {}
@@ -329,10 +319,7 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_duplicate_image_type() {
-        let body = multipart_body(
-            "test-boundary",
-            &[("image_type", "", b"logo", None), ("image_type", "", b"banner", None), ("image", "logo.png", b"fake image data", Some("image/png"))],
-        );
+        let body = multipart_body("test-boundary", &[("image_type", "", b"logo", None), ("image_type", "", b"banner", None), ("image", "logo.png", b"fake image data", Some("image/png"))]);
 
         let result = parse_test_multipart(body, "test-boundary").await;
 
@@ -341,10 +328,7 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_duplicate_image() {
-        let body = multipart_body(
-            "test-boundary",
-            &[("image_type", "", b"logo", None), ("image", "logo.png", b"first image", Some("image/png")), ("image", "logo2.png", b"second image", Some("image/png"))],
-        );
+        let body = multipart_body("test-boundary", &[("image_type", "", b"logo", None), ("image", "logo.png", b"first image", Some("image/png")), ("image", "logo2.png", b"second image", Some("image/png"))]);
 
         let result = parse_test_multipart(body, "test-boundary").await;
 
@@ -353,10 +337,7 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_unknown_field() {
-        let body = multipart_body(
-            "test-boundary",
-            &[("image_type", "", b"logo", None), ("image", "logo.png", b"fake image data", Some("image/png")), ("something_else", "", b"unexpected", None)],
-        );
+        let body = multipart_body("test-boundary", &[("image_type", "", b"logo", None), ("image", "logo.png", b"fake image data", Some("image/png")), ("something_else", "", b"unexpected", None)]);
 
         let result = parse_test_multipart(body, "test-boundary").await;
 
@@ -367,10 +348,7 @@ mod tests {
     async fn rejects_image_type_that_is_too_long() {
         let image_type = "a".repeat(MAX_LENGTH_OF_IMAGE_TYPE + 1);
 
-        let body = multipart_body(
-            "test-boundary",
-            &[("image_type", "", image_type.as_bytes(), None), ("image", "logo.png", b"fake image data", Some("image/png"))],
-        );
+        let body = multipart_body("test-boundary", &[("image_type", "", image_type.as_bytes(), None), ("image", "logo.png", b"fake image data", Some("image/png"))]);
 
         let result = parse_test_multipart(body, "test-boundary").await;
 
@@ -379,10 +357,7 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_invalid_image_type() {
-        let body = multipart_body(
-            "test-boundary",
-            &[("image_type", "", b"something_else", None), ("image", "logo.png", b"fake image data", Some("image/png"))],
-        );
+        let body = multipart_body("test-boundary", &[("image_type", "", b"something_else", None), ("image", "logo.png", b"fake image data", Some("image/png"))]);
 
         let result = parse_test_multipart(body, "test-boundary").await;
 

@@ -116,12 +116,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         // out.
         Err(SessionError::Cache(error)) => {
             tracing::warn!("session cache error during authentication: {error}");
-            return create_authentication_response(
-                is_api_request,
-                StatusCode::SERVICE_UNAVAILABLE,
-                "service-unavailable",
-                "The service is temporarily unavailable. Please try again.",
-            );
+            return create_authentication_response(is_api_request, StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again.");
         }
 
         // The session data existed, but we could not deserialize it.
@@ -181,10 +176,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     // `Session` remains an internal authentication concern. Downstream
     // handlers receive `AuthenticatedUser` instead, which contains only the
     // identity and organization context they need.
-    let authenticated_user = AuthenticatedUser {
-        member_id: member_with_organization.member.id,
-        organization: AssociatedOrganization { id: member_with_organization.organization.id, name: member_with_organization.organization.name },
-    };
+    let authenticated_user = AuthenticatedUser { member_id: member_with_organization.member.id, organization: AssociatedOrganization { id: member_with_organization.organization.id, name: member_with_organization.organization.name } };
 
     // Store the authenticated user context in the request's extensions so
     // downstream handlers can extract it without needing to read the session
@@ -240,6 +232,14 @@ mod tests {
         async fn delete(&self, _key: &str) -> Result<(), CacheError> {
             Ok(())
         }
+
+        async fn increment_with_expiry(&self, _key: &str, ttl: Duration) -> Result<(u64, Duration), CacheError> {
+            Ok((1, ttl))
+        }
+
+        async fn decrement(&self, _key: &str) -> Result<(), CacheError> {
+            Ok(())
+        }
     }
 
     struct EmptyMembers;
@@ -258,10 +258,7 @@ mod tests {
     fn protected_router() -> Router {
         let state = AuthState { members: Arc::new(EmptyMembers), session_manager: Arc::new(SessionManager::new(Arc::new(EmptyCache))) };
 
-        let api_router = Router::new()
-            .route("/api/private", get(|| async { StatusCode::NO_CONTENT }))
-            .layer(middleware::from_fn_with_state(state.clone(), require_auth))
-            .layer(middleware::from_fn(crate::api::mark_as_api_request));
+        let api_router = Router::new().route("/api/private", get(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn_with_state(state.clone(), require_auth)).layer(middleware::from_fn(crate::api::mark_as_api_request));
 
         Router::new().route("/private", get(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn_with_state(state, require_auth)).merge(api_router)
     }

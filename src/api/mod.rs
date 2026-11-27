@@ -1,6 +1,7 @@
 use crate::Context;
 use axum::{
     Router,
+    extract::DefaultBodyLimit,
     extract::Request,
     middleware::{self, Next},
     response::Response,
@@ -27,6 +28,9 @@ pub(crate) async fn mark_as_api_request(mut request: Request, next: Next) -> Res
 /// this is nested into the top-level router, which is the one that
 /// actually attaches `Context` via `.with_state(...)`.
 pub fn router(context: Context) -> Router<Context> {
+    let login_rate_limiter = context.rate_limiter.clone();
+    let signup_rate_limiter = context.rate_limiter.clone();
+
     Router::new()
         // Public API routes.
         //
@@ -36,8 +40,9 @@ pub fn router(context: Context) -> Router<Context> {
         // Impact: A user who forgets the owner password cannot regain organization access.
         // Suggested fix: Add single-use, expiring reset tokens, verified delivery, and abuse limits.
         // Reference: Public authentication routes; templates/public/login.html.
-        .route("/organizations/create", post(creation::create))
-        .route("/auth/login", post(login::login))
+        //TODO Move out the magic numbers? or just snaller or more generic seems long and messy now.
+        .route("/organizations/create", post(creation::create).layer(DefaultBodyLimit::max(16 * 1024)).route_layer(middleware::from_fn_with_state(signup_rate_limiter, crate::middleware::rate_limit::signup_ip_limit)))
+        .route("/auth/login", post(login::login).layer(DefaultBodyLimit::max(16 * 1024)).route_layer(middleware::from_fn_with_state(login_rate_limiter, crate::middleware::rate_limit::login_ip_limit)))
         // Protected API routes.
         //
         // The nested router applies authentication middleware to all

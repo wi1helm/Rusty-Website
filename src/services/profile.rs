@@ -78,26 +78,9 @@ impl ProfileService {
         let links = profile.links.into_iter().map(|link| LinkView { label: link.label, url: link.url }).collect();
         let logo = ImageView { url: self.object_storage.url(&profile.logo.storage_key), alt: format!("{} logo", profile.display_name) };
         let banner = ImageView { url: self.object_storage.url(&profile.banner.storage_key), alt: format!("{} banner", profile.display_name) };
-        let positions = positions
-            .into_iter()
-            .map(|position| PositionView {
-                id: position.id,
-                title: position.title,
-                description: position.description,
-                current_status_id: position.current_status_id,
-                statuses: position.statuses.into_iter().map(|status| StatusView { id: status.id, status: status.status.as_str().to_string(), information: status.information }).collect(),
-            })
-            .collect();
+        let positions = positions.into_iter().map(|position| PositionView { id: position.id, title: position.title, description: position.description, current_status_id: position.current_status_id, statuses: position.statuses.into_iter().map(|status| StatusView { id: status.id, status: status.status.as_str().to_string(), information: status.information }).collect() }).collect();
 
-        Some(ProfileView {
-            organization: OrganizationView { name: organization.name, slug: organization.slug },
-            display_name: profile.display_name,
-            about: profile.about,
-            links,
-            logo,
-            banner,
-            graph: GraphView { positions, connections: connections.into_iter().map(|connection| ConnectionView { from: connection.from, to: connection.to }).collect() },
-        })
+        Some(ProfileView { organization: OrganizationView { name: organization.name, slug: organization.slug }, display_name: profile.display_name, about: profile.about, links, logo, banner, graph: GraphView { positions, connections: connections.into_iter().map(|connection| ConnectionView { from: connection.from, to: connection.to }).collect() } })
     }
 }
 

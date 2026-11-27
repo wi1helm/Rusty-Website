@@ -28,7 +28,10 @@ pub fn router(context: Context) -> Router<Context> {
 }
 
 pub async fn get_profile(profiles: &dyn ProfileRepository, organization_id: i64) -> Result<DatabaseProfile, Response> {
-    match profiles.find_profile_by_organization_id(organization_id).await {
+    match profiles
+        .find_profile_by_organization_id(organization_id)
+        .await
+    {
         Ok(Some(profile)) => Ok(profile),
 
         Ok(None) => {

@@ -2,6 +2,7 @@ mod api;
 mod app;
 mod auth;
 mod config;
+mod middleware;
 mod routes;
 mod services;
 mod storage;
@@ -46,6 +47,8 @@ pub struct Context {
     pub profile_service: Arc<services::profile::ProfileService>,
     pub public_object_storage: Arc<dyn storage::object::ObjectStorage>,
     pub authenticator: Arc<auth::Authenticator>,
+    pub(crate) password_service: Arc<auth::password::PasswordService>,
+    pub rate_limiter: Arc<services::rate_limiter::RateLimiter>,
     pub session_manager: Arc<auth::session::SessionManager>,
     pub cookies: config::CookieConfig,
 }
@@ -83,6 +86,16 @@ impl FromRef<Context> for Arc<dyn storage::object::ObjectStorage> {
 impl FromRef<Context> for Arc<auth::Authenticator> {
     fn from_ref(context: &Context) -> Self {
         context.authenticator.clone()
+    }
+}
+impl FromRef<Context> for Arc<auth::password::PasswordService> {
+    fn from_ref(context: &Context) -> Self {
+        context.password_service.clone()
+    }
+}
+impl FromRef<Context> for Arc<services::rate_limiter::RateLimiter> {
+    fn from_ref(context: &Context) -> Self {
+        context.rate_limiter.clone()
     }
 }
 impl FromRef<Context> for config::CookieConfig {

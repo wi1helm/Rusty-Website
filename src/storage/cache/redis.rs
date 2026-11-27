@@ -96,4 +96,35 @@ impl Cache for RedisCache {
 
         Ok(())
     }
+
+    async fn increment_with_expiry(&self, key: &str, ttl: Duration) -> Result<(u64, Duration), CacheError> {
+        const SCRIPT: &str = r#"
+            local count = redis.call('INCR', KEYS[1])
+            if count == 1 then
+                redis.call('PEXPIRE', KEYS[1], ARGV[1])
+            end
+            return {count, redis.call('PTTL', KEYS[1])}
+        "#;
+
+        let mut connection = self.connection.clone();
+        let ttl_ms = ttl.as_millis().max(1).min(u64::MAX as u128) as u64;
+        let (count, remaining_ms): (u64, i64) = redis::Script::new(SCRIPT).key(key).arg(ttl_ms).invoke_async(&mut connection).await?;
+        Ok((count, Duration::from_millis(remaining_ms.max(1) as u64)))
+    }
+
+    async fn decrement(&self, key: &str) -> Result<(), CacheError> {
+        const SCRIPT: &str = r#"
+            if redis.call('EXISTS', KEYS[1]) == 1 then
+                local count = redis.call('DECR', KEYS[1])
+                if count <= 0 then
+                    redis.call('DEL', KEYS[1])
+                end
+            end
+            return 1
+        "#;
+
+        let mut connection = self.connection.clone();
+        let _: i32 = redis::Script::new(SCRIPT).key(key).invoke_async(&mut connection).await?;
+        Ok(())
+    }
 }

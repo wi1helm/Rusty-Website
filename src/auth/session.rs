@@ -185,6 +185,26 @@ mod tests {
             self.store.lock().unwrap().remove(key);
             Ok(())
         }
+
+        async fn increment_with_expiry(&self, key: &str, ttl: Duration) -> Result<(u64, Duration), CacheError> {
+            let mut store = self.store.lock().unwrap();
+            let count = store.get(key).and_then(|value| std::str::from_utf8(value).ok()).and_then(|value| value.parse::<u64>().ok()).unwrap_or_default() + 1;
+            store.insert(key.to_owned(), count.to_string().into_bytes());
+            Ok((count, ttl))
+        }
+
+        async fn decrement(&self, key: &str) -> Result<(), CacheError> {
+            let mut store = self.store.lock().unwrap();
+            if let Some(value) = store.get(key) {
+                let count = std::str::from_utf8(value).ok().and_then(|value| value.parse::<u64>().ok()).unwrap_or_default().saturating_sub(1);
+                if count == 0 {
+                    store.remove(key);
+                } else {
+                    store.insert(key.to_owned(), count.to_string().into_bytes());
+                }
+            }
+            Ok(())
+        }
     }
 
     fn manager_with_fake_cache() -> SessionManager {

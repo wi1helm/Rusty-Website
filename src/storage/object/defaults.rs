@@ -28,10 +28,5 @@ pub fn default_logo(organization_id: i64) -> Result<NewProfileImage, String> {
 }
 
 pub fn default_banner(organization_id: i64) -> Result<NewProfileImage, String> {
-    create_default_profile_image(
-        organization_id,
-        ProfileImageType::Banner,
-        DEFAULT_BANNER_KEY,
-        include_bytes!("../../../static/defaults/default_banner.webp"),
-    )
+    create_default_profile_image(organization_id, ProfileImageType::Banner, DEFAULT_BANNER_KEY, include_bytes!("../../../static/defaults/default_banner.webp"))
 }

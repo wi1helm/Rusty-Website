@@ -107,6 +107,7 @@ export CACHE_URL="redis://127.0.0.1:${REDIS_PORT}"
 export S3_ENDPOINT="http://127.0.0.1:${S3_PORT}"
 export S3_BUCKET=rusty-integration-test
 export RUST_LOG=info
+export RATE_LIMIT_HMAC_KEY=integration-tests-only-hmac-key-do-not-use-in-production
 
 report_section "Building the application"
 cargo build

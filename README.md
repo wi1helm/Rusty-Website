@@ -17,7 +17,7 @@ Handlers use repository traits rather than depending directly on PostgreSQL. `Pr
 | --- | --- |
 | `src/main.rs` | Process entry point and shared Axum `Context` |
 | `src/app.rs` | Infrastructure initialization, dependency wiring, and server startup |
-| `src/config.rs` | Environment parsing, validation, and cookie policy |
+| `src/config.rs` | Environment parsing, validation, cookie, rate-limit, and proxy policies |
 | `src/routes/` | HTML page routes, static files, CSRF checks, and response headers |
 | `src/api/` | Form/API handlers and request validation |
 | `src/auth/` | Credential authentication, session lifecycle, and protected-request middleware |
@@ -55,6 +55,15 @@ Handlers use repository traits rather than depending directly on PostgreSQL. `Pr
 | `S3_BUCKET` | Bucket used for application objects |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Object-storage credentials |
 | `RUST_LOG` | Optional tracing filter; defaults to `info` |
+| `RATE_LIMIT_HMAC_KEY` | Required secret of at least 32 bytes, used to HMAC rate-limit identities; keep identical across app instances |
+| `TRUSTED_PROXY_CIDRS` | Optional comma-separated proxy IPs/CIDRs allowed to supply `X-Forwarded-For`; empty means use the TCP peer address |
+| `ARGON2_MAX_CONCURRENCY` | Maximum simultaneous password hash/verify operations; defaults to `4` and should be benchmarked for the deployment hardware |
+
+The Redis-backed rate limiter uses atomic expiring counters shared across app instances. Defaults are `LOGIN_IP_LIMIT=10` per `LOGIN_IP_WINDOW_SECONDS=60`, `LOGIN_ACCOUNT_LIMIT=5` per `LOGIN_ACCOUNT_WINDOW_SECONDS=300`, and `LOGIN_IP_ACCOUNT_LIMIT=5` per `LOGIN_IP_ACCOUNT_WINDOW_SECONDS=300`. Signup defaults are `SIGNUP_IP_LIMIT=5` per `SIGNUP_IP_WINDOW_SECONDS=3600`, `SIGNUP_EMAIL_LIMIT=3` per `SIGNUP_EMAIL_WINDOW_SECONDS=3600`, and `SIGNUP_DAILY_IP_LIMIT=20` per `SIGNUP_DAILY_IP_WINDOW_SECONDS=86400`. All thresholds and windows are configurable through the correspondingly named environment variables. Rate-limiter Redis errors fail public login/signup closed with HTTP 503; exceeded limits return HTTP 429 and a `Retry-After` header.
+
+Rate-limit Redis keys contain only a policy name and an HMAC-SHA-256 digest; raw email addresses are not stored in keys. Email identities preserve the exact submitted string because PostgreSQL account lookup currently uses exact equality. Do not rotate `RATE_LIMIT_HMAC_KEY` casually: doing so resets active limiter windows.
+
+For reverse-proxy deployments, set `TRUSTED_PROXY_CIDRS` to only the immediate proxy addresses or networks that connect to the app (for Docker Compose, inspect the Caddy container's network and allow only the relevant subnet). Caddy should be the only public ingress and must append/overwrite `X-Forwarded-For` with the actual client address. Forwarding headers from untrusted TCP peers are ignored; trusting a broad network that clients can join allows IP spoofing. If no proxy CIDR is configured, requests are safely grouped by the direct TCP peer address instead.
 
 Browsers do not connect to object storage directly. Profile HTML uses root-relative `/images/{key}` URLs, served through the app's image proxy, so image requests stay on the same host, port, and scheme as the page. `S3_ENDPOINT` is only used for server-to-storage traffic; configure it to the address reachable from the app process (for example, `http://localhost:9000` for a host-run development app or `http://storage:9000` inside Compose).
 

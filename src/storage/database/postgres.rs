@@ -1,8 +1,7 @@
 use super::mapping::member::{MemberCredentialsRow, MemberWithOrganizationRow, map_member_credentials, map_member_with_organization};
 use super::{
-    CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink, DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePositionConnection, DatabaseProfile, MemberCredentials,
-    MemberRepository, NewMember, NewOrganization, NewPosition, NewPositionConnection, NewPositionStatus, NewProfile, NewProfileImage, NewProfileLink, OrganizationRepository, OrganizationRole,
-    PositionRepository, ProfileImageType, ProfileRepository, UpdateProfile,
+    CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink, DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePositionConnection, DatabaseProfile, MemberCredentials, MemberRepository, NewMember, NewOrganization, NewPosition, NewPositionConnection, NewPositionStatus, NewProfile, NewProfileImage, NewProfileLink, OrganizationRepository, OrganizationRole, PositionRepository,
+    ProfileImageType, ProfileRepository, UpdateProfile,
 };
 use crate::storage::database::data::DatabasePosition;
 use crate::storage::database::mapping::position::{PositionRow, map_positions};
@@ -310,18 +309,7 @@ impl ProfileRepository for PostgresDatabase {
 
         for image in images {
             let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| DatabaseError::InvalidProfileImageType(image.image_type.clone()))?;
-            let database_image = DatabaseImage {
-                id: image.id,
-                organization_id: image.organization_id,
-                image_type,
-                storage_key: image.storage_key,
-                content_type: image.content_type,
-                width: image.width,
-                height: image.height,
-                file_size: image.file_size,
-                created_at: image.created_at,
-                updated_at: image.updated_at,
-            };
+            let database_image = DatabaseImage { id: image.id, organization_id: image.organization_id, image_type, storage_key: image.storage_key, content_type: image.content_type, width: image.width, height: image.height, file_size: image.file_size, created_at: image.created_at, updated_at: image.updated_at };
 
             match image_type {
                 ProfileImageType::Logo => logo = Some(database_image),
@@ -652,11 +640,7 @@ impl PositionRepository for PostgresDatabase {
                     (status, status_id)
                 })
                 .collect::<Vec<(NewPositionStatus, Uuid)>>();
-            let current_status_id = statuses
-                .iter()
-                .find(|(status, _)| status.status == current_status)
-                .map(|(_, status_id)| *status_id)
-                .ok_or_else(|| DatabaseError::Other("graph position has no current status".to_owned()))?;
+            let current_status_id = statuses.iter().find(|(status, _)| status.status == current_status).map(|(_, status_id)| *status_id).ok_or_else(|| DatabaseError::Other("graph position has no current status".to_owned()))?;
 
             graph_position_ids.insert(client_id, id);
             persisted_positions.push((id, current_status_id, title, description, statuses));
@@ -678,11 +662,7 @@ impl PositionRepository for PostgresDatabase {
         .execute(&mut *tx)
         .await?;
 
-        sqlx::query("DELETE FROM organization_positions WHERE organization_id = $1 AND NOT (id = ANY($2))")
-            .bind(organization_id)
-            .bind(persisted_positions.iter().map(|(id, _, _, _, _)| *id).collect::<Vec<_>>())
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query("DELETE FROM organization_positions WHERE organization_id = $1 AND NOT (id = ANY($2))").bind(organization_id).bind(persisted_positions.iter().map(|(id, _, _, _, _)| *id).collect::<Vec<_>>()).execute(&mut *tx).await?;
 
         for (position_id, current_status_id, title, description, statuses) in persisted_positions {
             if existing_position_ids.contains(&position_id) {

@@ -49,16 +49,7 @@ pub fn map_positions(rows: Vec<PositionRow>) -> Result<Vec<DatabasePosition>, Da
             position.statuses.push(status);
         } else {
             // Create a new position.
-            positions.push(DatabasePosition {
-                id: row.id,
-                organization_id: row.organization_id,
-                title: row.title,
-                description: row.description,
-                current_status_id: row.current_status_id,
-                statuses: vec![status],
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-            });
+            positions.push(DatabasePosition { id: row.id, organization_id: row.organization_id, title: row.title, description: row.description, current_status_id: row.current_status_id, statuses: vec![status], created_at: row.created_at, updated_at: row.updated_at });
         }
     }
 

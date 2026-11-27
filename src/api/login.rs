@@ -1,16 +1,17 @@
 // routes/pages/login.rs
-use crate::api::error::{ApiSuccessResponse, api_error};
+use crate::Context;
+use crate::api::error::{ApiSuccessResponse, api_error, rate_limit_error};
 use crate::api::validation::{is_valid_email, is_valid_password};
-use crate::auth::Authenticator;
 use crate::auth::session::SessionError;
 use crate::auth::{AuthenticationError, LoginCredentials};
-use crate::config::CookieConfig;
 use crate::routes::with_session_cookie;
+use axum::extract::ConnectInfo;
+use axum::http::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{Json, extract::State};
 use serde::Deserialize;
-use std::sync::Arc;
+use std::net::SocketAddr;
 
 #[derive(Debug)]
 pub enum LoginValidationError {
@@ -49,7 +50,7 @@ impl LoginRequest {
 // Impact: Attackers can brute-force credentials and drive expensive password verification work.
 // Suggested fix: Add distributed per-IP/account throttling and alerting without revealing account state.
 // Reference: POST /api/auth/login; Authenticator::login.
-pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<LoginRequest>) -> impl IntoResponse {
+pub async fn login(State(context): State<Context>, ConnectInfo(peer): ConnectInfo<SocketAddr>, headers: HeaderMap, Json(input): Json<LoginRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
         Err(LoginValidationError::InvalidEmail) => {
@@ -60,12 +61,33 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
         }
     };
 
+    let client_ip = context.rate_limiter.client_ip(peer, headers.get("x-forwarded-for"));
+    if let Err(error) = context.rate_limiter.check_login_ip_account_request(client_ip, &validated.email).await {
+        return rate_limit_error(error);
+    }
+
+    let reservation = match context.rate_limiter.reserve_login_account(&validated.email).await {
+        Ok(reservation) => reservation,
+        Err(error) => return rate_limit_error(error),
+    };
     let credentials = LoginCredentials { email: validated.email, password: validated.password };
 
-    match authenticator.login(credentials).await {
-        Ok(session) => with_session_cookie((StatusCode::OK, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &cookies),
-        Err(AuthenticationError::InvalidCredentials) => api_error(StatusCode::UNAUTHORIZED, "invalid-credentials", "Incorrect email or password."),
+    match context.authenticator.login(credentials).await {
+        Ok(session) => {
+            if let Err(error) = reservation.release().await {
+                return rate_limit_error(error);
+            }
+            with_session_cookie((StatusCode::OK, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &context.cookies)
+        }
+        Err(AuthenticationError::InvalidCredentials) => {
+            let backoff = reservation.record_failure();
+            tokio::time::sleep(backoff).await;
+            api_error(StatusCode::UNAUTHORIZED, "invalid-credentials", "Incorrect email or password.")
+        }
         Err(AuthenticationError::Database(error)) => {
+            if let Err(error) = reservation.release().await {
+                return rate_limit_error(error);
+            }
             tracing::error!(?error, "database error during login");
             api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")
         }
@@ -74,6 +96,9 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
         // (e.g. Redis unavailable). The account/credentials are fine —
         // this is an infrastructure failure, not the user's fault.
         Err(AuthenticationError::Session(session_err)) => {
+            if let Err(error) = reservation.release().await {
+                return rate_limit_error(error);
+            }
             match &session_err {
                 SessionError::Cache(_) => {
                     tracing::warn!("session cache error during login: {session_err}")
@@ -85,6 +110,9 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
             api_error(StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again.")
         }
         Err(AuthenticationError::PasswordHash(error)) => {
+            if let Err(error) = reservation.release().await {
+                return rate_limit_error(error);
+            }
             tracing::error!(?error, "password verification failed");
             api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")
         }

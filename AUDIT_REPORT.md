@@ -1,14 +1,148 @@
-# Rusty-NoName Application Audit
+# Rusty-NoName Security & Architecture Review
 
-## 1. Executive summary
+**Last reviewed:** 2026-11-27 · **Review type:** Read-only source/configuration review with local dependency and unit-test checks. This is not a penetration test or production deployment assessment.
 
-The audit reviewed the Rust/Axum application, templates and JavaScript, PostgreSQL migrations, Redis session handling, S3-compatible storage, Docker/Compose deployment, README, dependency lockfile, and recent Git history. The supplied HTTP integration scenarios were run against disposable services using test-only credentials. Dependency remediation updated the AWS SDK, SQLx, lockfile versions, and image codec features without changing application routes, data contracts, or accepted upload formats.
+## Executive summary
 
-**Tracked application findings:** 13 total, including six resolved findings (`AUDIT-004`, `AUDIT-007`, `AUDIT-009`, `AUDIT-010`, `AUDIT-012`, and `AUDIT-013`); 7 remain open — 0 CRITICAL, 1 HIGH, 3 MEDIUM, 3 LOW, and 0 INFO. The 7 open findings comprise 5 CONFIRMED and 2 POTENTIAL items. The original audit reproduced an organization slug collision with `/login`; signup now rejects route-derived slugs. The current dependency scan reports zero vulnerable dependencies and two unmaintained-crate warnings.
+The application has useful foundational controls: Argon2 password hashing, high-entropy server-side sessions, same-origin checks for state-changing requests, security response headers, Askama HTML escaping, parameterized SQL, organization-scoped repository operations, and image/graph input validation. The reserved-route slug check, non-root runtime user, and RustFS digest pin from earlier work are present in this checkout.
 
-All five supplied HTTP integration scenarios passed against the remediated dependency graph; the signup/session scenario was rerun with the reserved-slug and duplicate-email checks and passed against disposable PostgreSQL, Redis, and RustFS services. `cargo test --locked` passes all 143 tests. Browser/visual testing and the JavaScript `npm test` entry point remain unavailable because `npm` is not installed; `cargo audit` was run against the committed lockfile with no ignore list.
+The most important remaining risks are missing throttles on public authentication endpoints and the default Compose Redis service having no authentication. There are also session-revocation and profile-update consistency gaps, plus lower-priority abuse, maintainability, and deployment-hardening items. No SQL injection, stored XSS, cross-organization data access, or CSRF bypass was established in this source review; that is not proof of their absence at runtime.
 
-## 2. Critical issues
+### Current verification snapshot
+
+| Check | Result |
+|---|---|
+| `cargo test --locked` | 156 passed, 0 failed. Rust emitted non-fatal style/dead-code warnings. |
+| `npm run test:js` | 11 passed, 0 failed. |
+| `cargo audit --no-fetch` | 323 locked dependencies scanned; 0 known vulnerabilities and 2 unmaintained-crate warnings (`basic-toml`, `chrono`). Uses the local advisory database snapshot; refresh before release. |
+| HTTP integration, live deployment, fault injection, browser/accessibility testing | Not run during this review. |
+
+### Priority guide
+
+- **P1 — Address before broad public use:** high-impact exposed weakness or basic abuse control.
+- **P2 — Near-term:** meaningful security, session, or data-integrity risk; validate deployment assumptions promptly.
+- **P3 — Backlog:** lower-impact bug, defense-in-depth, product-scope question, or maintainability improvement.
+
+Priorities are qualitative, not CVSS scores. “Confirmed” means visible in the reviewed source/configuration, not exploited in a live system.
+
+## Ranked current findings
+
+### P1 — Public login has no throttling (`AUDIT-001`)
+
+- **Severity/status:** High / confirmed.
+- **Evidence:** `src/api/login.rs` calls `Authenticator::login` for each valid-format request; no login rate limiter is applied in `src/api/mod.rs` or `src/routes/mod.rs`. Password verification uses Argon2 in `spawn_blocking`.
+- **Impact:** Online password guessing and avoidable CPU/worker-pool pressure.
+- **Recommendation:** Add distributed limits by source and normalized account identifier, with monitoring and gradual backoff. Keep responses generic and avoid permanent account lockouts that enable denial of service.
+
+### P2 — Public signup has no abuse budget (`AUDIT-002`)
+
+- **Severity/status:** Medium / confirmed.
+- **Evidence:** `src/api/creation.rs` accepts public organization creation and delegates to password hashing and durable organization/member/profile writes; no signup throttle or verification gate is wired.
+- **Impact:** Automated signup can consume hashing capacity, database connections, and persistent storage.
+- **Recommendation:** Apply shared signup limits before expensive work and persistence; add verification or other anti-abuse controls if public registration is intended. Define monitoring and cleanup/retention policy.
+
+### P2 — Compose Redis has no authentication (`AUDIT-014`)
+
+- **Severity/status:** Medium / confirmed for the Compose-defined Redis service; external deployments may differ.
+- **Evidence:** `compose.yaml` starts Redis with persistence but no ACL/password configuration. Staging does not publish Redis to the host, but services share the default internal network.
+- **Impact:** A compromised or misconfigured container on that network can access Redis. Session IDs are the Redis lookup keys (`session:<id>`) and are also serialized in the stored session object, so read access can expose active bearer credentials. Encrypting only the JSON payload would not hide the key/session ID.
+- **Recommendation:** Configure Redis ACLs/authentication, keep Redis on a private data network inaccessible to the proxy, use TLS across trust boundaries, and protect backups. Treat Redis read access as session compromise and document incident-driven session invalidation.
+
+### P2 — No logout or prompt session revocation (`AUDIT-003`)
+
+- **Severity/status:** Medium / confirmed.
+- **Evidence:** `SessionManager::delete` exists, but no logout route invokes it and `templates/protected/base.html` has no logout control. Server-side sessions have a 24-hour TTL.
+- **Impact:** Users cannot promptly end a session on a shared or lost device; a stolen session remains usable until expiry or manual cache intervention.
+- **Recommendation:** Add a same-origin POST logout handler that deletes the server-side session and expires the cookie with matching attributes. Consider a “revoke all sessions” path for password changes and account recovery.
+
+### P2 — Profile fields and links can partially commit (`AUDIT-005`)
+
+- **Severity/status:** Medium data-integrity bug / confirmed from call order; not fault-injected.
+- **Evidence:** `src/api/protected/profile.rs` writes profile fields and then links through separate repository operations. `update_profile_links` has a transaction, but it does not include the preceding profile write.
+- **Impact:** If the second operation fails, the request reports failure while the public profile contains a mixture of new and old data.
+- **Recommendation:** Move the entire profile update into one application use case/repository operation with one database transaction; add a failure-injection test asserting rollback.
+
+### P2 — CSRF origin calculation assumes trusted proxy headers (`AUDIT-018`)
+
+- **Severity/status:** Deployment assumption to validate; no bypass demonstrated.
+- **Evidence:** `src/routes/mod.rs` derives the expected scheme from `x-forwarded-proto` and authority from `Host`. `Caddyfile` is the staging edge, but the app does not authenticate which peer supplied forwarded headers.
+- **Impact:** Same-origin protection depends on direct app access being blocked and the edge overwriting forwarded headers. A different proxy/topology or exposed backend could violate that assumption.
+- **Recommendation:** Restrict the app listener to the trusted proxy/private network, ensure the proxy sanitizes forwarded headers, and consider a configured canonical origin or trusted-proxy policy. Test direct and proxied requests in deployment.
+
+### P3 — Profile link collection has no explicit item cap (`AUDIT-015`)
+
+- **Severity/status:** Low / confirmed missing validation; impact depends on request limits and account access.
+- **Evidence:** `UpdateRequest.links` is a `Vec`; validation checks each label and URL but not item count. The repository deletes existing links and inserts each submitted link in a loop. The JSON extractor has a body-size limit, so this is bounded by payload size, not literally unlimited.
+- **Impact:** An authenticated account can still submit many valid links, causing numerous rows and sequential database writes.
+- **Recommendation:** Set a product-level maximum link count, reject oversized arrays before database work, and test the boundary.
+
+### P3 — Concurrent image replacement can orphan objects (`AUDIT-011`)
+
+- **Severity/status:** Low / plausible race from code order; concurrency was not tested.
+- **Evidence:** `src/api/protected/image/image.rs` reads the old key, uploads a fresh UUID object, updates the database, then removes the previously read object. Concurrent uploads can both observe the same old key, leaving the losing new object unreferenced.
+- **Impact:** Orphaned S3 objects and avoidable storage cost; no cross-organization impact was identified.
+- **Recommendation:** Serialize replacements per organization/image type, or add cautious periodic reconciliation and a concurrent-upload test.
+
+### P3 — Workspace navigation points to missing routes (`AUDIT-006`)
+
+- **Severity/status:** Low UX bug / confirmed.
+- **Evidence:** `templates/protected/base.html` links to `/members` and `/settings`; `src/routes/protected/mod.rs` registers only `/dashboard` and `/profile`.
+- **Recommendation:** Hide the links until those pages exist, or implement the protected handlers.
+
+### P3 — Signup still permits partial email enumeration (`AUDIT-007`, residual)
+
+- **Severity/status:** Low / mitigated but not eliminated.
+- **Evidence:** Duplicate-member signup returns a generic `signup-failed` message, but still returns a conflict response while a new account returns a created response and session. Without verified email, an observer can distinguish those outcomes.
+- **Recommendation:** Accept the tradeoff if appropriate; if account privacy is important, use verified email with more uniform external responses. Generic wording alone does not fully resolve enumeration.
+
+### P3 — Recovery path is absent (`AUDIT-008`, product-scope dependent)
+
+- **Severity/status:** Potential product gap; no reset endpoint, page, or login link is registered.
+- **Impact:** A user who loses the owner password may permanently lose access.
+- **Recommendation:** If required, design single-use expiring reset tokens, verified delivery, generic responses, and rate limits. Revoke sessions after a successful reset.
+
+### P3 — Mutable base service tags reduce deployment reproducibility (`AUDIT-016`)
+
+- **Severity/status:** Low / confirmed configuration concern.
+- **Evidence:** Postgres and Redis in `compose.yaml`, and Caddy in `compose.staging.yaml`, use mutable major-version tags. RustFS is digest-pinned; the application runtime is non-root.
+- **Recommendation:** Pin production images by digest or an explicitly managed immutable release, then update through a reviewed automated process with vulnerability scanning and rollback notes.
+
+### P3 — Storage provisioning is coupled to application startup (`AUDIT-017`)
+
+- **Severity/status:** Informational least-privilege/design concern; not a demonstrated exploit.
+- **Evidence:** `S3ObjectStorage::new` calls `ensure_bucket`; any `head_bucket` error triggers a create attempt. Startup also checks and may upload default images. The adapter handles application object reads, writes, and deletes.
+- **Impact:** Runtime credentials may need provisioning permissions that steady-state serving does not need; transient, authorization, and not-found errors are conflated.
+- **Recommendation:** Provision bucket/defaults through deployment tooling and give the app only bucket-scoped runtime permissions. Distinguish missing resources from permission/network failures.
+
+## Architecture and future-thinking notes
+
+- **Image upload is a coordination hotspot.** `src/api/protected/image/image.rs` parses multipart data, validates and normalizes images, writes S3 objects, updates PostgreSQL, and compensates on failure. Move orchestration into an image application service with explicit stages and cleanup behavior; keep the handler focused on HTTP translation.
+- **Profile update spans repository boundaries.** The handler owns comparison, mapping, and two writes. A profile-update use case that owns the transaction would address `AUDIT-005` and simplify failure tests.
+- **Separate infrastructure bootstrap from runtime adapters.** S3 bucket creation/default seeding belongs in deployment or a one-shot bootstrap task, not ordinary request-serving credentials. Keep runtime repository/storage interfaces focused on application operations.
+- **Treat Redis as an authentication boundary.** Payload encryption alone does not protect against Redis readers while the bearer ID is present in the key and value. Prioritize ACL/network/backup controls; redesign key storage only if read-only cache exposure is in the threat model.
+- **Keep tenant identity server-derived.** Protected handlers obtain the organization from the authenticated session and repository operations bind organization IDs. Preserve this pattern; do not accept client-supplied organization IDs as authorization context.
+- **Observability multiplies abuse controls.** Record aggregate rate-limit/authentication events without logging passwords, session IDs, or secret-bearing URLs. Alert on signup/login spikes and Redis availability errors.
+
+## Suggested order of work
+
+1. Add login throttling and signup abuse controls; authenticate and network-restrict production Redis.
+2. Implement logout/session revocation and make profile updates atomic; add failure and revocation tests.
+3. Validate trusted-proxy assumptions in the actual deployment, cap profile links, and address image replacement cleanup.
+4. Remove dead navigation, decide account-recovery/email-verification scope, separate S3 bootstrap permissions, and pin production image digests.
+5. Add CI gates for `cargo test --locked`, JavaScript tests, a freshly updated `cargo audit`, and browser-driven auth/profile smoke tests.
+
+## Scope and limitations
+
+- Reviewed Rust routes/auth/config/storage, SQL migrations, Askama templates and JavaScript sinks, dependency manifest/lockfile, Docker/Compose, Caddy, README, and previous report claims. Targeted searches found no direct `innerHTML`, `outerHTML`, `document.write`, or `eval` use in project JavaScript; this is not a complete XSS proof.
+- `cargo audit --no-fetch` used the local advisory database snapshot and should be rerun with a refreshed database before release. The scan reported two unmaintained crates, not known vulnerabilities.
+- No live HTTP integration run, production/staging deployment review, Docker build, external-service test, browser/accessibility test, load test, or fault/concurrency injection was performed during this review.
+- Unit tests do not prove production proxy configuration, Redis ACLs, backup security, or multi-instance behavior.
+
+## Historical appendix — previous audit snapshot (superseded)
+
+The sections below preserve prior audit evidence and IDs for traceability. Their status counts, environment claims, test counts, and verification statements are historical only; use the current findings and verification snapshot above as authoritative.
+
+## Previous critical issues
 
 None identified.
 

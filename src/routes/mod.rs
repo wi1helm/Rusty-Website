@@ -28,9 +28,7 @@ const IMAGES_PATH: &str = "/images/{*key}";
 const ASSETS_PATH: &str = "/assets";
 
 pub(crate) fn is_reserved_organization_slug(slug: &str) -> bool {
-    [public::LOGIN_PATH, public::CREATE_PATH, public::ORGANIZATION_PATH, protected::DASHBOARD_PATH, protected::PROFILE_PATH, API_PATH, IMAGES_PATH, ASSETS_PATH]
-        .iter()
-        .any(|path| path.strip_prefix('/').and_then(|path| path.split('/').next()) == Some(slug))
+    [public::LOGIN_PATH, public::CREATE_PATH, public::ORGANIZATION_PATH, protected::DASHBOARD_PATH, protected::PROFILE_PATH, API_PATH, IMAGES_PATH, ASSETS_PATH].iter().any(|path| path.strip_prefix('/').and_then(|path| path.split('/').next()) == Some(slug))
 }
 
 /// Builds the complete application router.
@@ -83,9 +81,7 @@ async fn normalize_browser_errors(request: Request, next: Next) -> Response {
     let response = next.run(request).await;
 
     if !is_api_request && wants_html && (response.status().is_client_error() || response.status().is_server_error()) {
-        if response.status() == StatusCode::NOT_FOUND
-            && response.headers().get(header::CONTENT_TYPE).and_then(|value| value.to_str().ok()).is_some_and(|content_type| content_type.starts_with("text/html"))
-        {
+        if response.status() == StatusCode::NOT_FOUND && response.headers().get(header::CONTENT_TYPE).and_then(|value| value.to_str().ok()).is_some_and(|content_type| content_type.starts_with("text/html")) {
             return response;
         }
 
@@ -138,13 +134,7 @@ fn request_origin(request: &Request) -> Option<url::Origin> {
         return None;
     }
 
-    let authority = request
-        .headers()
-        .get(header::HOST)
-        .and_then(|value| value.to_str().ok())
-        .or_else(|| request.uri().authority().map(|authority| authority.as_str()))?
-        .parse::<axum::http::uri::Authority>()
-        .ok()?;
+    let authority = request.headers().get(header::HOST).and_then(|value| value.to_str().ok()).or_else(|| request.uri().authority().map(|authority| authority.as_str()))?.parse::<axum::http::uri::Authority>().ok()?;
 
     let target = Url::parse(&format!("{scheme}://{authority}")).ok()?;
     Some(target.origin())
@@ -154,9 +144,7 @@ async fn add_security_headers(mut response: Response) -> Response {
     let headers = response.headers_mut();
     headers.insert(
         header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static(
-            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
-        ),
+        HeaderValue::from_static("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"),
     );
     headers.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
