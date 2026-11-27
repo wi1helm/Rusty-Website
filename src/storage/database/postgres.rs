@@ -1,15 +1,8 @@
-use super::mapping::member::{
-    MemberCredentialsRow, MemberWithOrganizationRow, map_member_credentials,
-    map_member_with_organization,
-};
+use super::mapping::member::{MemberCredentialsRow, MemberWithOrganizationRow, map_member_credentials, map_member_with_organization};
 use super::{
-    CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink,
-    DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePositionConnection,
-    DatabaseProfile, MemberCredentials, MemberRepository, NewMember, NewOrganization,
-    NewPosition, NewPositionConnection, NewPositionStatus, NewProfile, NewProfileImage,
-    NewProfileLink,
-    OrganizationRepository, OrganizationRole, PositionRepository, ProfileImageType,
-    ProfileRepository, UpdateProfile,
+    CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink, DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePositionConnection, DatabaseProfile, MemberCredentials,
+    MemberRepository, NewMember, NewOrganization, NewPosition, NewPositionConnection, NewPositionStatus, NewProfile, NewProfileImage, NewProfileLink, OrganizationRepository, OrganizationRole,
+    PositionRepository, ProfileImageType, ProfileRepository, UpdateProfile,
 };
 use crate::storage::database::data::DatabasePosition;
 use crate::storage::database::mapping::position::{PositionRow, map_positions};
@@ -50,9 +43,7 @@ impl PostgresDatabase {
         .fetch_one(&mut **tx)
         .await;
 
-        result.map_err(|err| {
-            map_unique_violation(err, CreateOrganizationError::OrganizationSlugAlreadyExists)
-        })
+        result.map_err(|err| map_unique_violation(err, CreateOrganizationError::OrganizationSlugAlreadyExists))
     }
 
     /// Creates a member in an existing organization and returns the member ID.
@@ -153,15 +144,9 @@ impl OrganizationRepository for PostgresDatabase {
     async fn create_organization_with_owner_and_profile(&self, organization: NewOrganization, owner: NewMember) -> Result<(i64, i64), CreateOrganizationError> {
         let mut tx = self.pool.begin().await?;
 
-        let profile = NewProfile {
-            display_name: organization.name.clone(),
-        };
+        let profile = NewProfile { display_name: organization.name.clone() };
 
-        let member = NewMember {
-            email: owner.email,
-            password_hash: owner.password_hash,
-            role: OrganizationRole::Owner,
-        };
+        let member = NewMember { email: owner.email, password_hash: owner.password_hash, role: OrganizationRole::Owner };
 
         let organization_id = self.create_organization(&mut tx, organization).await?;
 
@@ -233,7 +218,9 @@ impl MemberRepository for PostgresDatabase {
         )
         .fetch_optional(&self.pool)
         .await?
-        else { return Ok(None); };
+        else {
+            return Ok(None);
+        };
 
         Ok(Some(map_member_credentials(row)))
     }
@@ -264,7 +251,9 @@ impl MemberRepository for PostgresDatabase {
         )
         .fetch_optional(&self.pool)
         .await?
-        else { return Ok(None);};
+        else {
+            return Ok(None);
+        };
 
         Ok(Some(map_member_with_organization(row)?))
     }
@@ -291,7 +280,9 @@ impl ProfileRepository for PostgresDatabase {
         )
         .fetch_optional(&self.pool)
         .await?
-        else { return Ok(None); };
+        else {
+            return Ok(None);
+        };
 
         let images = sqlx::query!(
             r#"
@@ -338,13 +329,9 @@ impl ProfileRepository for PostgresDatabase {
             }
         }
 
-        let logo = logo.ok_or_else(|| {
-            DatabaseError::Other(format!("Missing profile logo for organization {organization_id}"))
-        })?;
+        let logo = logo.ok_or_else(|| DatabaseError::Other(format!("Missing profile logo for organization {organization_id}")))?;
 
-        let banner = banner.ok_or_else(|| {
-            DatabaseError::Other(format!("Missing profile banner for organization {organization_id}"))
-        })?;
+        let banner = banner.ok_or_else(|| DatabaseError::Other(format!("Missing profile banner for organization {organization_id}")))?;
 
         let links = sqlx::query_as!(
             DatabaseLink,
@@ -401,7 +388,9 @@ impl ProfileRepository for PostgresDatabase {
         .fetch_optional(&self.pool)
         .await?;
 
-        let Some(_) = updated_profile_id else { return Ok(None); };
+        let Some(_) = updated_profile_id else {
+            return Ok(None);
+        };
 
         self.find_profile_by_organization_id(organization_id).await
     }
@@ -455,7 +444,9 @@ impl ProfileRepository for PostgresDatabase {
         )
         .fetch_optional(&self.pool)
         .await?
-        else { return Ok(None); };
+        else {
+            return Ok(None);
+        };
 
         let image_type = ProfileImageType::from_str(&image.image_type).ok_or_else(|| DatabaseError::InvalidProfileImageType(image.image_type))?;
 
@@ -491,7 +482,9 @@ impl ProfileRepository for PostgresDatabase {
         .fetch_optional(&mut *tx)
         .await?;
 
-        let Some(_) = profile_id else { return Ok(Vec::new()); };
+        let Some(_) = profile_id else {
+            return Ok(Vec::new());
+        };
 
         // Remove the existing links.
         sqlx::query!(
@@ -603,12 +596,7 @@ impl PositionRepository for PostgresDatabase {
         .fetch_all(&self.pool)
         .await?;
 
-        rows.into_iter()
-            .map(|row| Ok(DatabasePositionConnection {
-                from: row.try_get("source_position_id")?,
-                to: row.try_get("target_position_id")?,
-            }))
-            .collect()
+        rows.into_iter().map(|row| Ok(DatabasePositionConnection { from: row.try_get("source_position_id")?, to: row.try_get("target_position_id")? })).collect()
     }
 
     async fn replace_graph_by_organization_id(&self, organization_id: i64, positions: Vec<NewPosition>, connections: Vec<NewPositionConnection>) -> Result<(), DatabaseError> {
@@ -630,12 +618,7 @@ impl PositionRepository for PostgresDatabase {
             return Err(DatabaseError::Other(format!("missing profile for organization {organization_id}")));
         }
 
-        let existing_position_ids: Vec<Uuid> = sqlx::query_scalar(
-            "SELECT id FROM organization_positions WHERE organization_id = $1 FOR UPDATE",
-        )
-        .bind(organization_id)
-        .fetch_all(&mut *tx)
-        .await?;
+        let existing_position_ids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM organization_positions WHERE organization_id = $1 FOR UPDATE").bind(organization_id).fetch_all(&mut *tx).await?;
         let mut available_position_ids = existing_position_ids.iter().copied().collect::<HashSet<_>>();
 
         let existing_status_rows = sqlx::query(
@@ -660,24 +643,12 @@ impl PositionRepository for PostgresDatabase {
         let mut graph_position_ids = HashMap::new();
         let mut persisted_positions = Vec::with_capacity(positions.len());
         for position in positions {
-            let NewPosition {
-                id: requested_id,
-                client_id,
-                title,
-                description,
-                current_status,
-                statuses: input_statuses,
-            } = position;
-            let id = requested_id
-                .filter(|id| available_position_ids.remove(id))
-                .unwrap_or_else(Uuid::new_v4);
+            let NewPosition { id: requested_id, client_id, title, description, current_status, statuses: input_statuses } = position;
+            let id = requested_id.filter(|id| available_position_ids.remove(id)).unwrap_or_else(Uuid::new_v4);
             let statuses = input_statuses
                 .into_iter()
                 .map(|status| {
-                    let status_id = existing_status_ids
-                        .get(&(id, status.status.as_str().to_owned()))
-                        .copied()
-                        .unwrap_or_else(Uuid::new_v4);
+                    let status_id = existing_status_ids.get(&(id, status.status.as_str().to_owned())).copied().unwrap_or_else(Uuid::new_v4);
                     (status, status_id)
                 })
                 .collect::<Vec<(NewPositionStatus, Uuid)>>();
@@ -691,10 +662,7 @@ impl PositionRepository for PostgresDatabase {
             persisted_positions.push((id, current_status_id, title, description, statuses));
         }
 
-        sqlx::query("DELETE FROM organization_position_connections WHERE organization_id = $1")
-            .bind(organization_id)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query("DELETE FROM organization_position_connections WHERE organization_id = $1").bind(organization_id).execute(&mut *tx).await?;
 
         sqlx::query(
             r#"
@@ -706,22 +674,15 @@ impl PositionRepository for PostgresDatabase {
             "#,
         )
         .bind(organization_id)
-        .bind(
-            persisted_positions
-                .iter()
-                .flat_map(|(_, _, _, _, statuses)| statuses.iter().map(|(_, status_id)| *status_id))
-                .collect::<Vec<_>>(),
-        )
+        .bind(persisted_positions.iter().flat_map(|(_, _, _, _, statuses)| statuses.iter().map(|(_, status_id)| *status_id)).collect::<Vec<_>>())
         .execute(&mut *tx)
         .await?;
 
-        sqlx::query(
-            "DELETE FROM organization_positions WHERE organization_id = $1 AND NOT (id = ANY($2))",
-        )
-        .bind(organization_id)
-        .bind(persisted_positions.iter().map(|(id, _, _, _, _)| *id).collect::<Vec<_>>())
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query("DELETE FROM organization_positions WHERE organization_id = $1 AND NOT (id = ANY($2))")
+            .bind(organization_id)
+            .bind(persisted_positions.iter().map(|(id, _, _, _, _)| *id).collect::<Vec<_>>())
+            .execute(&mut *tx)
+            .await?;
 
         for (position_id, current_status_id, title, description, statuses) in persisted_positions {
             if existing_position_ids.contains(&position_id) {
@@ -776,14 +737,8 @@ impl PositionRepository for PostgresDatabase {
         }
 
         for connection in connections {
-            let source_position_id = graph_position_ids
-                .get(&connection.from)
-                .copied()
-                .ok_or_else(|| DatabaseError::Other("graph connection source was not found".to_owned()))?;
-            let target_position_id = graph_position_ids
-                .get(&connection.to)
-                .copied()
-                .ok_or_else(|| DatabaseError::Other("graph connection target was not found".to_owned()))?;
+            let source_position_id = graph_position_ids.get(&connection.from).copied().ok_or_else(|| DatabaseError::Other("graph connection source was not found".to_owned()))?;
+            let target_position_id = graph_position_ids.get(&connection.to).copied().ok_or_else(|| DatabaseError::Other("graph connection target was not found".to_owned()))?;
 
             sqlx::query(
                 r#"

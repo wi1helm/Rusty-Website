@@ -1,9 +1,9 @@
-use crate::Context;
 use crate::api::error::api_error;
 use crate::auth::session::SessionError;
 use crate::auth::session::SessionManager;
 use crate::auth::{AssociatedOrganization, AuthenticatedUser};
 use crate::storage::database::MemberRepository;
+use crate::{Context, api};
 use axum::{
     extract::{FromRef, Request, State},
     http::StatusCode,
@@ -22,10 +22,7 @@ pub struct AuthState {
 
 impl FromRef<Context> for AuthState {
     fn from_ref(context: &Context) -> Self {
-        Self {
-            members: context.member_repository.clone(),
-            session_manager: context.session_manager.clone(),
-        }
+        Self { members: context.member_repository.clone(), session_manager: context.session_manager.clone() }
     }
 }
 
@@ -52,7 +49,7 @@ impl FromRef<Context> for AuthState {
 ///
 /// Note: this middleware should only be put on protected routes.
 pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut request: Request, next: Next) -> Response {
-    let is_api_request = request.extensions().get::<crate::api::ApiRequest>().is_some();
+    let is_api_request = request.extensions().get::<api::ApiRequest>().is_some();
     //TODO(security): Consider clearing the session cookie when the session is
     // missing or invalid. This avoids repeatedly sending a stale session ID.
     // This will require returning a response with an updated CookieJar rather
@@ -77,7 +74,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     // No cookie means there is no session ID that we can use to authenticate
     // the request, so send the user to the login page.
     let Some(cookie) = jar.get("session") else {
-        return authentication_response(is_api_request, StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.");
+        return create_authentication_response(is_api_request, StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.");
     };
 
     let session_id = cookie.value();
@@ -106,7 +103,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         // This is not a server error. From the application's perspective,
         // the request simply isn't authenticated anymore.
         Ok(None) => {
-            return authentication_response(is_api_request, StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.");
+            return create_authentication_response(is_api_request, StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.");
         }
 
         // The session store itself could not be accessed.
@@ -119,7 +116,12 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         // out.
         Err(SessionError::Cache(error)) => {
             tracing::warn!("session cache error during authentication: {error}");
-            return authentication_response(is_api_request, StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again.");
+            return create_authentication_response(
+                is_api_request,
+                StatusCode::SERVICE_UNAVAILABLE,
+                "service-unavailable",
+                "The service is temporarily unavailable. Please try again.",
+            );
         }
 
         // The session data existed, but we could not deserialize it.
@@ -136,7 +138,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
             // potentially be accessed by people or systems that should not
             // have access to authentication credentials.
             tracing::error!("session serialization error during authentication: {error}");
-            return authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
+            return create_authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
     };
 
@@ -162,15 +164,15 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
         // and cannot be used to construct an authenticated request context.
         Ok(None) => {
             //TODO remove stale cookie and stale Redis value as this session id is invalid
-            tracing::warn!(member_id = session.member_id,"authenticated session references a missing member");
-            return authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
+            tracing::warn!(member_id = session.member_id, "authenticated session references a missing member");
+            return create_authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
 
         // The database lookup failed, so we cannot determine whether the
         // authenticated member still exists or which organization they belong to.
         Err(error) => {
-            tracing::error!(?error,member_id = session.member_id,"failed to load member and organization for authenticated request");
-            return authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
+            tracing::error!(?error, member_id = session.member_id, "failed to load member and organization for authenticated request");
+            return create_authentication_response(is_api_request, StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
         }
     };
 
@@ -181,10 +183,7 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     // identity and organization context they need.
     let authenticated_user = AuthenticatedUser {
         member_id: member_with_organization.member.id,
-        organization: AssociatedOrganization {
-            id: member_with_organization.organization.id,
-            name: member_with_organization.organization.name,
-        },
+        organization: AssociatedOrganization { id: member_with_organization.organization.id, name: member_with_organization.organization.name },
     };
 
     // Store the authenticated user context in the request's extensions so
@@ -198,19 +197,14 @@ pub async fn require_auth(State(state): State<AuthState>, jar: CookieJar, mut re
     next.run(request).await
 }
 
-fn authentication_response(
-    is_api_request: bool,
-    status: StatusCode,
-    code: &'static str,
-    message: &'static str,
-) -> Response {
+fn create_authentication_response(is_api_request: bool, status: StatusCode, code: &'static str, message: &'static str) -> Response {
     if is_api_request {
-        api_error(status, code, message)
-    } else if status == StatusCode::UNAUTHORIZED {
-        Redirect::to("/login").into_response()
-    } else {
-        status.into_response()
+        return api_error(status, code, message);
     }
+    if (status == StatusCode::UNAUTHORIZED) {
+        return Redirect::to("/login").into_response();
+    }
+    status.into_response()
 }
 
 #[cfg(test)]
@@ -221,7 +215,13 @@ mod tests {
         database::{DatabaseError, DatabaseMemberWithOrganization, MemberCredentials, MemberRepository},
     };
     use async_trait::async_trait;
-    use axum::{body::Body, http::{Request, StatusCode, header}, middleware, routing::get, Router};
+    use axum::{
+        Router,
+        body::Body,
+        http::{Request, StatusCode, header},
+        middleware,
+        routing::get,
+    };
     use std::time::Duration;
     use tower::ServiceExt;
 
@@ -256,20 +256,14 @@ mod tests {
     }
 
     fn protected_router() -> Router {
-        let state = AuthState {
-            members: Arc::new(EmptyMembers),
-            session_manager: Arc::new(SessionManager::new(Arc::new(EmptyCache))),
-        };
+        let state = AuthState { members: Arc::new(EmptyMembers), session_manager: Arc::new(SessionManager::new(Arc::new(EmptyCache))) };
 
         let api_router = Router::new()
             .route("/api/private", get(|| async { StatusCode::NO_CONTENT }))
             .layer(middleware::from_fn_with_state(state.clone(), require_auth))
-            .layer(middleware::from_fn(crate::api::mark_api_request));
+            .layer(middleware::from_fn(crate::api::mark_as_api_request));
 
-        Router::new()
-            .route("/private", get(|| async { StatusCode::NO_CONTENT }))
-            .layer(middleware::from_fn_with_state(state, require_auth))
-            .merge(api_router)
+        Router::new().route("/private", get(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn_with_state(state, require_auth)).merge(api_router)
     }
 
     async fn request_private(cookie: Option<&str>) -> Response {
@@ -282,10 +276,7 @@ mod tests {
             request = request.header(header::COOKIE, cookie);
         }
 
-        protected_router()
-            .oneshot(request.body(Body::empty()).unwrap())
-            .await
-            .unwrap()
+        protected_router().oneshot(request.body(Body::empty()).unwrap()).await.unwrap()
     }
 
     #[tokio::test]

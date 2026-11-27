@@ -20,8 +20,5 @@ pub(super) const PROFILE_PATH: &str = "/profile";
 pub fn router(context: Context) -> Router<Context> {
     let auth_state = AuthState::from_ref(&context);
 
-    Router::new()
-        .route(DASHBOARD_PATH, get(dashboard::get_page))
-        .route(PROFILE_PATH, get(profile::get_page))
-        .layer(middleware::from_fn_with_state(auth_state, require_auth))
+    Router::new().route(DASHBOARD_PATH, get(dashboard::get_page)).route(PROFILE_PATH, get(profile::get_page)).layer(middleware::from_fn_with_state(auth_state, require_auth))
 }

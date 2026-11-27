@@ -28,20 +28,9 @@ const IMAGES_PATH: &str = "/images/{*key}";
 const ASSETS_PATH: &str = "/assets";
 
 pub(crate) fn is_reserved_organization_slug(slug: &str) -> bool {
-    [
-        public::LOGIN_PATH,
-        public::CREATE_PATH,
-        public::ORGANIZATION_PATH,
-        protected::DASHBOARD_PATH,
-        protected::PROFILE_PATH,
-        API_PATH,
-        IMAGES_PATH,
-        ASSETS_PATH,
-    ]
-    .iter()
-    .any(|path| {
-        path.strip_prefix('/').and_then(|path| path.split('/').next()) == Some(slug)
-    })
+    [public::LOGIN_PATH, public::CREATE_PATH, public::ORGANIZATION_PATH, protected::DASHBOARD_PATH, protected::PROFILE_PATH, API_PATH, IMAGES_PATH, ASSETS_PATH]
+        .iter()
+        .any(|path| path.strip_prefix('/').and_then(|path| path.split('/').next()) == Some(slug))
 }
 
 /// Builds the complete application router.
@@ -80,11 +69,7 @@ async fn normalize_api_errors(request: Request, next: Next) -> Response {
     let is_api_request = path == API_PATH || path.starts_with("/api/");
     let response = next.run(request).await;
 
-    if is_api_request {
-        api::error::normalize_error_response(response).await
-    } else {
-        response
-    }
+    if is_api_request { api::error::normalize_error_response(response).await } else { response }
 }
 
 async fn not_found_page() -> Response {
@@ -94,36 +79,20 @@ async fn not_found_page() -> Response {
 async fn normalize_browser_errors(request: Request, next: Next) -> Response {
     let path = request.uri().path();
     let is_api_request = path == API_PATH || path.starts_with("/api/");
-    let wants_html = request.headers()
-        .get(header::ACCEPT)
-        .and_then(|value| value.to_str().ok())
-        .is_some_and(|accept| accept.contains("text/html") || accept.contains("application/xhtml+xml"));
+    let wants_html = request.headers().get(header::ACCEPT).and_then(|value| value.to_str().ok()).is_some_and(|accept| accept.contains("text/html") || accept.contains("application/xhtml+xml"));
     let response = next.run(request).await;
 
-    if !is_api_request
-        && wants_html
-        && (response.status().is_client_error() || response.status().is_server_error())
-    {
+    if !is_api_request && wants_html && (response.status().is_client_error() || response.status().is_server_error()) {
         if response.status() == StatusCode::NOT_FOUND
-            && response
-                .headers()
-                .get(header::CONTENT_TYPE)
-                .and_then(|value| value.to_str().ok())
-                .is_some_and(|content_type| content_type.starts_with("text/html"))
+            && response.headers().get(header::CONTENT_TYPE).and_then(|value| value.to_str().ok()).is_some_and(|content_type| content_type.starts_with("text/html"))
         {
             return response;
         }
 
         let mut html_response = errors::http_error::get_page(response.status());
         for (name, value) in response.headers() {
-            if name == header::SET_COOKIE
-                || name == header::ALLOW
-                || name == header::RETRY_AFTER
-                || name == header::WWW_AUTHENTICATE
-            {
-                html_response
-                    .headers_mut()
-                    .append(name.clone(), value.clone());
+            if name == header::SET_COOKIE || name == header::ALLOW || name == header::RETRY_AFTER || name == header::WWW_AUTHENTICATE {
+                html_response.headers_mut().append(name.clone(), value.clone());
             }
         }
         html_response
@@ -137,7 +106,9 @@ async fn csrf_protection(request: Request, next: Next) -> Response {
     let method = request.method();
     let state_changing = method != axum::http::Method::GET && method != axum::http::Method::HEAD && method != axum::http::Method::OPTIONS;
 
-    if state_changing && !is_same_origin_request(&request) { return StatusCode::FORBIDDEN.into_response(); }
+    if state_changing && !is_same_origin_request(&request) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
 
     next.run(request).await
 }
@@ -147,20 +118,11 @@ fn is_same_origin_request(request: &Request) -> bool {
         return false;
     }
 
-    let Some(source) = request
-        .headers()
-        .get(header::ORIGIN)
-        .or_else(|| request.headers().get(header::REFERER))
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| Url::parse(value).ok())
-    else {
+    let Some(source) = request.headers().get(header::ORIGIN).or_else(|| request.headers().get(header::REFERER)).and_then(|value| value.to_str().ok()).and_then(|value| Url::parse(value).ok()) else {
         return false;
     };
 
-    if !source.username().is_empty()
-        || source.password().is_some()
-        || !matches!(source.scheme(), "http" | "https")
-    {
+    if !source.username().is_empty() || source.password().is_some() || !matches!(source.scheme(), "http" | "https") {
         return false;
     }
 
@@ -172,13 +134,15 @@ fn request_origin(request: &Request) -> Option<url::Origin> {
         Some(value) => value.to_str().ok()?.trim(),
         None => request.uri().scheme_str().unwrap_or("http"),
     };
-    if !matches!(scheme, "http" | "https") { return None; }
+    if !matches!(scheme, "http" | "https") {
+        return None;
+    }
 
     let authority = request
         .headers()
         .get(header::HOST)
         .and_then(|value| value.to_str().ok())
-        .or_else(|| { request.uri().authority().map(|authority| authority.as_str()) })?
+        .or_else(|| request.uri().authority().map(|authority| authority.as_str()))?
         .parse::<axum::http::uri::Authority>()
         .ok()?;
 
@@ -188,7 +152,12 @@ fn request_origin(request: &Request) -> Option<url::Origin> {
 
 async fn add_security_headers(mut response: Response) -> Response {
     let headers = response.headers_mut();
-    headers.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"));
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static(
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+        ),
+    );
     headers.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(header::REFERRER_POLICY, HeaderValue::from_static("strict-origin-when-cross-origin"));
@@ -207,12 +176,7 @@ pub fn with_session_cookie(response: Response, session_id: &str, config: &Cookie
         CookieSameSite::None => SameSite::None,
     };
 
-    let cookie = Cookie::build(("session", session_id.to_owned()))
-        .http_only(config.http_only)
-        .secure(config.secure)
-        .same_site(same_site)
-        .path("/")
-        .build();
+    let cookie = Cookie::build(("session", session_id.to_owned())).http_only(config.http_only).secure(config.secure).same_site(same_site).path("/").build();
 
     let jar = CookieJar::new().add(cookie);
 
@@ -227,15 +191,9 @@ mod tests {
     use tower::ServiceExt;
 
     async fn post_status(origin: Option<&str>, referer: Option<&str>, fetch_site: Option<&str>) -> StatusCode {
-        let app = Router::new()
-            .route("/change", post(|| async { StatusCode::NO_CONTENT }))
-            .layer(middleware::from_fn(csrf_protection));
+        let app = Router::new().route("/change", post(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn(csrf_protection));
 
-        let mut request = axum::http::Request::builder()
-            .method("POST")
-            .uri("/change")
-            .header(header::HOST, "app.example")
-            .header("x-forwarded-proto", "https");
+        let mut request = axum::http::Request::builder().method("POST").uri("/change").header(header::HOST, "app.example").header("x-forwarded-proto", "https");
         if let Some(origin) = origin {
             request = request.header(header::ORIGIN, origin);
         }
@@ -246,42 +204,27 @@ mod tests {
             request = request.header("sec-fetch-site", fetch_site);
         }
 
-        app.oneshot(request.body(Body::empty()).unwrap())
-            .await
-            .unwrap()
-            .status()
+        app.oneshot(request.body(Body::empty()).unwrap()).await.unwrap().status()
     }
 
     #[tokio::test]
     async fn csrf_protection_allows_same_origin_posts() {
-        assert_eq!(
-            post_status(Some("https://app.example"), None, Some("same-origin")).await,
-            StatusCode::NO_CONTENT
-        );
+        assert_eq!(post_status(Some("https://app.example"), None, Some("same-origin")).await, StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]
     async fn csrf_protection_rejects_cross_origin_posts() {
-        assert_eq!(
-            post_status(Some("https://attacker.example"), None, Some("cross-site")).await,
-            StatusCode::FORBIDDEN
-        );
+        assert_eq!(post_status(Some("https://attacker.example"), None, Some("cross-site")).await, StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]
     async fn csrf_protection_rejects_same_site_cross_origin_posts() {
-        assert_eq!(
-            post_status(Some("https://other.app.example"), None, Some("same-site")).await,
-            StatusCode::FORBIDDEN
-        );
+        assert_eq!(post_status(Some("https://other.app.example"), None, Some("same-site")).await, StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]
     async fn csrf_protection_uses_same_origin_referer_when_origin_is_absent() {
-        assert_eq!(
-            post_status(None, Some("https://app.example/profile"), None).await,
-            StatusCode::NO_CONTENT
-        );
+        assert_eq!(post_status(None, Some("https://app.example/profile"), None).await, StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]
@@ -294,7 +237,10 @@ mod tests {
         let response = add_security_headers(Response::new(Body::empty())).await;
         let headers = response.headers();
 
-        assert_eq!(headers[header::CONTENT_SECURITY_POLICY], "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
+        assert_eq!(
+            headers[header::CONTENT_SECURITY_POLICY],
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data: blob:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"
+        );
         assert_eq!(headers[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
         assert_eq!(headers[header::X_FRAME_OPTIONS], "DENY");
         assert_eq!(headers[header::REFERRER_POLICY], "strict-origin-when-cross-origin");
@@ -303,17 +249,8 @@ mod tests {
 
     #[tokio::test]
     async fn security_headers_are_added_to_csrf_rejections() {
-        let app = Router::new()
-            .route("/change", post(|| async { StatusCode::NO_CONTENT }))
-            .layer(middleware::from_fn(csrf_protection))
-            .layer(middleware::map_response(add_security_headers));
-        let request = axum::http::Request::builder()
-            .method("POST")
-            .uri("/change")
-            .header(header::HOST, "app.example")
-            .header("x-forwarded-proto", "https")
-            .body(Body::empty())
-            .unwrap();
+        let app = Router::new().route("/change", post(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn(csrf_protection)).layer(middleware::map_response(add_security_headers));
+        let request = axum::http::Request::builder().method("POST").uri("/change").header(header::HOST, "app.example").header("x-forwarded-proto", "https").body(Body::empty()).unwrap();
 
         let response = app.oneshot(request).await.unwrap();
 
@@ -325,15 +262,8 @@ mod tests {
 
     #[tokio::test]
     async fn csrf_rejections_on_api_routes_return_structured_json() {
-        let app = Router::new()
-            .route("/api/change", post(|| async { StatusCode::NO_CONTENT }))
-            .layer(middleware::from_fn(csrf_protection))
-            .layer(middleware::from_fn(normalize_api_errors));
-        let request = axum::http::Request::builder()
-            .method("POST")
-            .uri("/api/change")
-            .body(Body::empty())
-            .unwrap();
+        let app = Router::new().route("/api/change", post(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn(csrf_protection)).layer(middleware::from_fn(normalize_api_errors));
+        let request = axum::http::Request::builder().method("POST").uri("/api/change").body(Body::empty()).unwrap();
 
         let response = app.oneshot(request).await.unwrap();
 
@@ -346,22 +276,8 @@ mod tests {
 
     #[tokio::test]
     async fn browser_server_errors_render_html_without_framework_text() {
-        let app = Router::new()
-            .route(
-                "/failure",
-                get(|| async {
-                    (
-                        [(header::RETRY_AFTER, "60")],
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                }),
-            )
-            .layer(middleware::from_fn(normalize_browser_errors));
-        let request = axum::http::Request::builder()
-            .uri("/failure")
-            .header(header::ACCEPT, "text/html")
-            .body(Body::empty())
-            .unwrap();
+        let app = Router::new().route("/failure", get(|| async { ([(header::RETRY_AFTER, "60")], StatusCode::INTERNAL_SERVER_ERROR) })).layer(middleware::from_fn(normalize_browser_errors));
+        let request = axum::http::Request::builder().uri("/failure").header(header::ACCEPT, "text/html").body(Body::empty()).unwrap();
 
         let response = app.oneshot(request).await.unwrap();
 
@@ -376,13 +292,8 @@ mod tests {
 
     #[tokio::test]
     async fn csrf_protection_allows_safe_get_without_origin_headers() {
-        let app = Router::new()
-            .route("/read", get(|| async { StatusCode::NO_CONTENT }))
-            .layer(middleware::from_fn(csrf_protection));
-        let request = axum::http::Request::builder()
-            .uri("/read")
-            .body(Body::empty())
-            .unwrap();
+        let app = Router::new().route("/read", get(|| async { StatusCode::NO_CONTENT })).layer(middleware::from_fn(csrf_protection));
+        let request = axum::http::Request::builder().uri("/read").body(Body::empty()).unwrap();
 
         let response = app.oneshot(request).await.unwrap();
 
@@ -391,57 +302,23 @@ mod tests {
 
     #[test]
     fn session_cookie_uses_configured_attributes() {
-        let config = CookieConfig {
-            secure: false,
-            http_only: false,
-            same_site: CookieSameSite::Strict,
-        };
+        let config = CookieConfig { secure: false, http_only: false, same_site: CookieSameSite::Strict };
         let response = redirect_with_session_cookie("/dashboard", "test-session", &config);
-        let cookie = response
-            .headers()
-            .get(header::SET_COOKIE)
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let cookie = response.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
 
-        assert!(
-            !cookie
-                .split(';')
-                .any(|attribute| attribute.trim().eq_ignore_ascii_case("secure"))
-        );
-        assert!(
-            !cookie
-                .split(';')
-                .any(|attribute| attribute.trim().eq_ignore_ascii_case("httponly"))
-        );
+        assert!(!cookie.split(';').any(|attribute| attribute.trim().eq_ignore_ascii_case("secure")));
+        assert!(!cookie.split(';').any(|attribute| attribute.trim().eq_ignore_ascii_case("httponly")));
         assert!(cookie.contains("SameSite=Strict"));
     }
 
     #[test]
     fn secure_session_cookie_sets_secure() {
-        let config = CookieConfig {
-            secure: true,
-            http_only: true,
-            same_site: CookieSameSite::Lax,
-        };
+        let config = CookieConfig { secure: true, http_only: true, same_site: CookieSameSite::Lax };
         let response = redirect_with_session_cookie("/dashboard", "test-session", &config);
-        let cookie = response
-            .headers()
-            .get(header::SET_COOKIE)
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let cookie = response.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
 
-        assert!(
-            cookie
-                .split(';')
-                .any(|attribute| attribute.trim().eq_ignore_ascii_case("secure"))
-        );
-        assert!(
-            cookie
-                .split(';')
-                .any(|attribute| attribute.trim().eq_ignore_ascii_case("httponly"))
-        );
+        assert!(cookie.split(';').any(|attribute| attribute.trim().eq_ignore_ascii_case("secure")));
+        assert!(cookie.split(';').any(|attribute| attribute.trim().eq_ignore_ascii_case("httponly")));
         assert!(cookie.contains("SameSite=Lax"));
     }
 }

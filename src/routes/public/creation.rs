@@ -10,8 +10,5 @@ pub struct CreationTemplate {
 
 // Todo add posiblity to input or choose slug.
 pub async fn get_page() -> CreationTemplate {
-    CreationTemplate {
-        app_name: crate::config::APP_NAME,
-        year: crate::config::APP_YEAR,
-    }
+    CreationTemplate { app_name: crate::config::APP_NAME, year: crate::config::APP_YEAR }
 }

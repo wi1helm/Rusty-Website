@@ -1,8 +1,8 @@
+use crate::api::error::api_error;
 use askama_web::__askama_web_impl::axum_core_0_5::IntoResponse;
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
-use crate::api::error::api_error;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -58,17 +58,10 @@ impl UpdateRequest {
                 return Err(UpdateRequestValidationError::InvalidLink);
             }
 
-            links.push(ValidatedLink {
-                label: link.label,
-                url: link.url,
-            });
+            links.push(ValidatedLink { label: link.label, url: link.url });
         }
 
-        Ok(ValidatedUpdateRequest {
-            display_name: self.display_name,
-            about: self.about,
-            links,
-        })
+        Ok(ValidatedUpdateRequest { display_name: self.display_name, about: self.about, links })
     }
 }
 
@@ -84,7 +77,7 @@ impl PartialEq<ValidatedUpdateRequest> for DatabaseProfile {
     }
 }
 
-pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>, ) -> impl IntoResponse {
+pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<UpdateRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(validated) => validated,
         Err(UpdateRequestValidationError::InvalidDisplayName) => {
@@ -103,34 +96,24 @@ pub async fn update(State(profiles): State<Arc<dyn ProfileRepository>>, CurrentU
         Err(response) => return response,
     };
     // If nothing changed from what's already in db disregard this request
-    if old_profile == validated { return StatusCode::OK.into_response(); }
+    if old_profile == validated {
+        return StatusCode::OK.into_response();
+    }
 
-    let new_links = validated
-        .links
-        .into_iter()
-        .enumerate()
-        .map(|(position, link)| NewProfileLink {
-            label: link.label,
-            url: link.url,
-            position: position as i32,
-        })
-        .collect();
+    let new_links = validated.links.into_iter().enumerate().map(|(position, link)| NewProfileLink { label: link.label, url: link.url, position: position as i32 }).collect();
 
-    let new_profile = UpdateProfile {
-        display_name: validated.display_name,
-        about: validated.about,
-    };
+    let new_profile = UpdateProfile { display_name: validated.display_name, about: validated.about };
     // TODO(AUDIT): [MEDIUM] Make profile fields and links update atomically (AUDIT-005)
     // Problem: Profile fields commit before links are written in a separate transaction.
     // Impact: A link-write failure leaves a partially updated public profile while returning an error.
     // Suggested fix: Move both repository writes into one database transaction.
     // Reference: POST /api/profile/update; ProfileRepository::update_profile and update_profile_links.
     if let Err(error) = profiles.update_profile(user.organization.id, user.member_id, new_profile).await {
-        tracing::error!(?error,profile_id = old_profile.id,"failed to update profile");
+        tracing::error!(?error, profile_id = old_profile.id, "failed to update profile");
         return api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
     }
     if let Err(error) = profiles.update_profile_links(user.organization.id, new_links).await {
-        tracing::error!(?error,profile_id = old_profile.id,"failed to update profile links");
+        tracing::error!(?error, profile_id = old_profile.id, "failed to update profile links");
         return api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.");
     }
 
@@ -145,18 +128,13 @@ mod tests {
         UpdateRequest {
             display_name: "Example Organization".to_owned(),
             about: "About this organization".to_owned(),
-            links: vec![ProfileLink {
-                label: "Website".to_owned(),
-                url: "https://example.com".to_owned(),
-            }],
+            links: vec![ProfileLink { label: "Website".to_owned(), url: "https://example.com".to_owned() }],
         }
     }
 
     #[test]
     fn accepts_valid_profile_update() {
-        let validated = valid_update_request()
-            .validate()
-            .expect("valid profile update should pass validation");
+        let validated = valid_update_request().validate().expect("valid profile update should pass validation");
 
         assert_eq!(validated.display_name, "Example Organization");
         assert_eq!(validated.about, "About this organization");

@@ -13,13 +13,7 @@ pub struct NotFoundTemplate {
 }
 
 pub fn get_page() -> Response {
-    (
-        StatusCode::NOT_FOUND,
-        NotFoundTemplate {
-            app_name: APP_NAME,
-            year: APP_YEAR,
-        },
-    ).into_response()
+    (StatusCode::NOT_FOUND, NotFoundTemplate { app_name: APP_NAME, year: APP_YEAR }).into_response()
 }
 
 #[cfg(test)]

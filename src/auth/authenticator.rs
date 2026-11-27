@@ -29,20 +29,19 @@ pub enum AuthenticationError {
 
 impl Authenticator {
     pub fn new(members: Arc<dyn MemberRepository>, session_manager: Arc<SessionManager>) -> Self {
-        Self {
-            members,
-            session_manager,
-        }
+        Self { members, session_manager }
     }
 
     pub async fn login_member(&self, member_id: i64) -> Result<Session, AuthenticationError> {
         let session = self.session_manager.create(member_id).await?;
         Ok(session)
     }
-    pub async fn login(&self, credentials: LoginCredentials, ) -> Result<Session, AuthenticationError> {
+    pub async fn login(&self, credentials: LoginCredentials) -> Result<Session, AuthenticationError> {
         let member = self.members.find_member_credentials_by_email(&credentials.email).await?.ok_or(AuthenticationError::InvalidCredentials)?;
 
-        if !verify_password(credentials.password, member.password_hash).await.map_err(|error| AuthenticationError::PasswordHash(error.to_string()))? { return Err(AuthenticationError::InvalidCredentials); }
+        if !verify_password(credentials.password, member.password_hash).await.map_err(|error| AuthenticationError::PasswordHash(error.to_string()))? {
+            return Err(AuthenticationError::InvalidCredentials);
+        }
         // TODO: Invalidate all existing sessions for this member on login.
         // Without session rotation, a stolen session remains valid even after
         // the user logs in from another device, and there's no "logout all devices"

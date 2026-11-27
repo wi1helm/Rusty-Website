@@ -72,24 +72,22 @@ impl AppConfig {
         let mut errors = Vec::new();
 
         // Application environment
-        let environment = required("APP_ENV", &mut errors).and_then(|value| {
-            match AppEnvironment::parse(&value) {
-                Ok(environment) => Some(environment),
-                Err(error) => {
-                    errors.push(format!("APP_ENV: {error}"));
-                    None
-                }
+        let environment = required("APP_ENV", &mut errors).and_then(|value| match AppEnvironment::parse(&value) {
+            Ok(environment) => Some(environment),
+            Err(error) => {
+                errors.push(format!("APP_ENV: {error}"));
+                None
             }
         });
 
         // Server
         let host = required("APP_HOST", &mut errors).and_then(|value| match value.parse::<IpAddr>() {
-                Ok(host) => Some(host),
-                Err(_) => {
-                    errors.push(format!("APP_HOST: invalid IP address '{value}'"));
-                    None
-                }
-            });
+            Ok(host) => Some(host),
+            Err(_) => {
+                errors.push(format!("APP_HOST: invalid IP address '{value}'"));
+                None
+            }
+        });
 
         let port = required("APP_PORT", &mut errors).and_then(|value| match value.parse::<u16>() {
             Ok(port) if port != 0 => Some(port),
@@ -115,29 +113,19 @@ impl AppConfig {
         let log_filter = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
 
         // Stop if configuration is invalid.
-        if !errors.is_empty() { return Err(ConfigError(errors)); }
+        if !errors.is_empty() {
+            return Err(ConfigError(errors));
+        }
 
         // Safe to unwrap: all required values were validated above.
         let environment = environment.unwrap();
 
         Ok(Self {
             environment,
-            server: ServerConfig {
-                host: host.unwrap(),
-                port: port.unwrap(),
-            },
-            database: DatabaseConfig {
-                url: database_url.unwrap(),
-            },
-            cache: CacheConfig {
-                url: cache_url.unwrap(),
-            },
-            object_storage: ObjectStorageConfig {
-                endpoint: s3_endpoint.unwrap(),
-                bucket: s3_bucket.unwrap(),
-                access_key: s3_access_key.unwrap(),
-                secret_key: s3_secret_key.unwrap(),
-            },
+            server: ServerConfig { host: host.unwrap(), port: port.unwrap() },
+            database: DatabaseConfig { url: database_url.unwrap() },
+            cache: CacheConfig { url: cache_url.unwrap() },
+            object_storage: ObjectStorageConfig { endpoint: s3_endpoint.unwrap(), bucket: s3_bucket.unwrap(), access_key: s3_access_key.unwrap(), secret_key: s3_secret_key.unwrap() },
             cookies: CookieConfig::for_environment(environment),
             log_filter,
         })
@@ -204,11 +192,7 @@ pub struct CookieConfig {
 
 impl CookieConfig {
     fn for_environment(environment: AppEnvironment) -> Self {
-        Self {
-            secure: !environment.is_development(),
-            http_only: true,
-            same_site: CookieSameSite::Lax,
-        }
+        Self { secure: !environment.is_development(), http_only: true, same_site: CookieSameSite::Lax }
     }
 }
 

@@ -8,11 +8,8 @@ pub mod postgres;
 pub use errors::{CreateOrganizationError, DatabaseError};
 
 pub use data::{
-    DatabaseImage, DatabaseLink, DatabaseMember, DatabaseMemberWithOrganization,
-    DatabaseOrganization, DatabasePosition, DatabasePositionConnection, DatabaseProfile,
-    MemberCredentials, NewMember, NewOrganization, NewPosition, NewPositionConnection,
-    NewPositionStatus, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole,
-    PositionStatus, ProfileImageType, UpdateProfile,
+    DatabaseImage, DatabaseLink, DatabaseMember, DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePosition, DatabasePositionConnection, DatabaseProfile, MemberCredentials, NewMember,
+    NewOrganization, NewPosition, NewPositionConnection, NewPositionStatus, NewProfile, NewProfileImage, NewProfileLink, OrganizationRole, PositionStatus, ProfileImageType, UpdateProfile,
 };
 
 use async_trait::async_trait;

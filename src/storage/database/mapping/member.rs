@@ -1,9 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::storage::database::{
-    DatabaseError, DatabaseMember, DatabaseMemberWithOrganization, DatabaseOrganization,
-    MemberCredentials, OrganizationRole,
-};
+use crate::storage::database::{DatabaseError, DatabaseMember, DatabaseMemberWithOrganization, DatabaseOrganization, MemberCredentials, OrganizationRole};
 
 pub struct MemberCredentialsRow {
     pub member_id: i64,
@@ -32,19 +29,7 @@ pub fn map_member_with_organization(row: MemberWithOrganizationRow) -> Result<Da
     let role = OrganizationRole::from_str(&row.member_role).ok_or_else(|| DatabaseError::InvalidOrganizationRole(row.member_role))?;
 
     Ok(DatabaseMemberWithOrganization {
-        member: DatabaseMember {
-            id: row.member_id,
-            organization_id: row.member_organization_id,
-            email: row.member_email,
-            role,
-            created_at: row.member_created_at,
-            updated_at: row.member_updated_at,
-        },
-        organization: DatabaseOrganization {
-            id: row.organization_id,
-            name: row.organization_name,
-            slug: row.organization_slug,
-            created_at: row.organization_created_at,
-        },
+        member: DatabaseMember { id: row.member_id, organization_id: row.member_organization_id, email: row.member_email, role, created_at: row.member_created_at, updated_at: row.member_updated_at },
+        organization: DatabaseOrganization { id: row.organization_id, name: row.organization_name, slug: row.organization_slug, created_at: row.organization_created_at },
     })
 }

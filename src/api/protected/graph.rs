@@ -9,11 +9,9 @@ use serde::Deserialize;
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::auth::CurrentUser;
 use crate::api::error::api_error;
-use crate::storage::database::{
-    NewPosition, NewPositionConnection, NewPositionStatus, PositionRepository, PositionStatus,
-};
+use crate::auth::CurrentUser;
+use crate::storage::database::{NewPosition, NewPositionConnection, NewPositionStatus, PositionRepository, PositionStatus};
 
 const MAX_POSITIONS: usize = 500;
 const MAX_CONNECTIONS: usize = 5_000;
@@ -79,37 +77,21 @@ impl GraphUpdateRequest {
 
             for status in position.statuses {
                 let status_name = PositionStatus::from_str(&status.status).ok_or(())?;
-                if !status_names.insert(status_name)
-                    || !status.information.is_object()
-                    || serde_json::to_vec(&status.information).map_err(|_| ())?.len() > MAX_STATUS_INFORMATION_SIZE
-                {
+                if !status_names.insert(status_name) || !status.information.is_object() || serde_json::to_vec(&status.information).map_err(|_| ())?.len() > MAX_STATUS_INFORMATION_SIZE {
                     return Err(());
                 }
 
-                statuses.push(NewPositionStatus {
-                    status: status_name,
-                    information: status.information,
-                });
+                statuses.push(NewPositionStatus { status: status_name, information: status.information });
             }
 
             if !status_names.contains(&current_status) {
                 return Err(());
             }
 
-            positions.push(NewPosition {
-                id: position.id,
-                client_id: position.client_id,
-                title: position.title,
-                description: position.description,
-                current_status,
-                statuses,
-            });
+            positions.push(NewPosition { id: position.id, client_id: position.client_id, title: position.title, description: position.description, current_status, statuses });
         }
 
-        let mut indegree = client_ids
-            .iter()
-            .map(|client_id| (client_id.clone(), 0usize))
-            .collect::<HashMap<_, _>>();
+        let mut indegree = client_ids.iter().map(|client_id| (client_id.clone(), 0usize)).collect::<HashMap<_, _>>();
         let mut children = HashMap::<String, Vec<String>>::new();
         let mut undirected_connections = HashSet::with_capacity(self.connections.len());
         let mut connections = Vec::with_capacity(self.connections.len());
@@ -119,30 +101,17 @@ impl GraphUpdateRequest {
                 return Err(());
             }
 
-            let pair = if connection.from < connection.to {
-                (connection.from.clone(), connection.to.clone())
-            } else {
-                (connection.to.clone(), connection.from.clone())
-            };
+            let pair = if connection.from < connection.to { (connection.from.clone(), connection.to.clone()) } else { (connection.to.clone(), connection.from.clone()) };
             if !undirected_connections.insert(pair) {
                 return Err(());
             }
 
             *indegree.get_mut(&connection.to).ok_or(())? += 1;
-            children
-                .entry(connection.from.clone())
-                .or_default()
-                .push(connection.to.clone());
-            connections.push(NewPositionConnection {
-                from: connection.from,
-                to: connection.to,
-            });
+            children.entry(connection.from.clone()).or_default().push(connection.to.clone());
+            connections.push(NewPositionConnection { from: connection.from, to: connection.to });
         }
 
-        let mut ready = indegree
-            .iter()
-            .filter_map(|(client_id, count)| (*count == 0).then_some(client_id.clone()))
-            .collect::<VecDeque<_>>();
+        let mut ready = indegree.iter().filter_map(|(client_id, count)| (*count == 0).then_some(client_id.clone())).collect::<VecDeque<_>>();
         let mut visited = 0;
         while let Some(client_id) = ready.pop_front() {
             visited += 1;
@@ -166,9 +135,11 @@ impl GraphUpdateRequest {
 pub async fn update(State(positions): State<Arc<dyn PositionRepository>>, CurrentUser(user): CurrentUser, Json(input): Json<GraphUpdateRequest>) -> impl IntoResponse {
     let (positions_input, connections) = match input.validate() {
         Ok(graph) => graph,
-        Err(()) => return api_error(StatusCode::BAD_REQUEST, "invalid-graph", "The organization graph contains invalid or unsupported data."),
+        Err(()) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-graph", "The organization graph contains invalid or unsupported data.");
+        }
     };
-
+    //TODO no content reponse isnt tis a ok one? wierd
     match positions.replace_graph_by_organization_id(user.organization.id, positions_input, connections).await {
         Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(error) => {
@@ -190,10 +161,7 @@ mod tests {
             title: format!("{client_id} title"),
             description: String::new(),
             current_status: status.to_owned(),
-            statuses: vec![PositionStatusInput {
-                status: status.to_owned(),
-                information: json!({"information": ""}),
-            }],
+            statuses: vec![PositionStatusInput { status: status.to_owned(), information: json!({"information": ""}) }],
         }
     }
 
@@ -205,10 +173,7 @@ mod tests {
     fn accepts_a_valid_graph_with_connections() {
         let result = request(
             vec![position("manager", "open"), position("report", "FILLED")],
-            vec![ConnectionInput {
-                from: "manager".to_owned(),
-                to: "report".to_owned(),
-            }],
+            vec![ConnectionInput { from: "manager".to_owned(), to: "report".to_owned() }],
         )
         .validate();
 
@@ -219,13 +184,7 @@ mod tests {
 
     #[test]
     fn rejects_connections_to_unknown_positions() {
-        let result = request(
-            vec![position("manager", "open")],
-            vec![ConnectionInput {
-                from: "manager".to_owned(),
-                to: "missing".to_owned(),
-            }],
-        );
+        let result = request(vec![position("manager", "open")], vec![ConnectionInput { from: "manager".to_owned(), to: "missing".to_owned() }]);
 
         assert!(result.validate().is_err());
     }
@@ -244,10 +203,7 @@ mod tests {
 
         let reverse = request(
             vec![position("one", "open"), position("two", "open")],
-            vec![
-                ConnectionInput { from: "one".to_owned(), to: "two".to_owned() },
-                ConnectionInput { from: "two".to_owned(), to: "one".to_owned() },
-            ],
+            vec![ConnectionInput { from: "one".to_owned(), to: "two".to_owned() }, ConnectionInput { from: "two".to_owned(), to: "one".to_owned() }],
         );
         assert!(reverse.validate().is_err());
     }

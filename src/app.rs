@@ -43,21 +43,11 @@ impl App {
         let cache = Self::build_cache(&config).await?;
         let object_storage = Self::build_object_storage(&config).await?;
 
-        let router = Self::build_router(AppDependencies {
-            organization_repository,
-            member_repository,
-            profile_repository,
-            position_repository,
-            cache,
-            object_storage,
-            cookies: config.cookies,
-        });
+        let router = Self::build_router(AppDependencies { organization_repository, member_repository, profile_repository, position_repository, cache, object_storage, cookies: config.cookies });
 
         let address = SocketAddr::new(config.server.host, config.server.port);
 
-        let listener = tokio::net::TcpListener::bind(address)
-            .await
-            .map_err(AppError::ServerBind)?;
+        let listener = tokio::net::TcpListener::bind(address).await.map_err(AppError::ServerBind)?;
 
         info!(address = %listener.local_addr().map_err(AppError::ServerBind)?, "Application built successfully");
 
@@ -70,9 +60,7 @@ impl App {
 
         info!(%address, "HTTP server started");
 
-        axum::serve(self.listener, self.router)
-            .await
-            .map_err(AppError::Server)
+        axum::serve(self.listener, self.router).await.map_err(AppError::Server)
     }
 
     // ─────────────────────────────────────────
@@ -82,9 +70,7 @@ impl App {
     async fn build_database(config: &AppConfig) -> Result<PostgresDatabase, AppError> {
         info!("Connecting to PostgreSQL");
 
-        let database = PostgresDatabase::new(&config.database.url)
-            .await
-            .map_err(|error| AppError::Database(Box::new(error)))?;
+        let database = PostgresDatabase::new(&config.database.url).await.map_err(|error| AppError::Database(Box::new(error)))?;
 
         info!("Connected to PostgreSQL");
 
@@ -94,9 +80,7 @@ impl App {
     async fn build_cache(config: &AppConfig) -> Result<Arc<dyn Cache>, AppError> {
         info!("Connecting to Redis");
 
-        let cache = RedisCache::new(&config.cache.url)
-            .await
-            .map_err(|error| AppError::Cache(Box::new(error)))?;
+        let cache = RedisCache::new(&config.cache.url).await.map_err(|error| AppError::Cache(Box::new(error)))?;
 
         info!("Connected to Redis");
 
@@ -199,19 +183,19 @@ mod tests {
     use crate::{
         config::CookieSameSite,
         storage::{
-            cache::{CacheError},
+            cache::CacheError,
             database::{
-                CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink,
-                DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePosition,
-                DatabasePositionConnection, DatabaseProfile, MemberCredentials, NewMember,
-                NewOrganization, NewPosition, NewPositionConnection, NewProfileImage,
-                NewProfileLink, UpdateProfile,
+                CreateOrganizationError, DatabaseError, DatabaseImage, DatabaseLink, DatabaseMemberWithOrganization, DatabaseOrganization, DatabasePosition, DatabasePositionConnection,
+                DatabaseProfile, MemberCredentials, NewMember, NewOrganization, NewPosition, NewPositionConnection, NewProfileImage, NewProfileLink, UpdateProfile,
             },
             object::ObjectStorageError,
         },
     };
     use async_trait::async_trait;
-    use axum::{body::Body, http::{Request, StatusCode, header}};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode, header},
+    };
     use std::time::Duration;
     use tower::ServiceExt;
 
@@ -320,11 +304,7 @@ mod tests {
             position_repository: fake.clone(),
             cache: fake.clone(),
             object_storage: fake,
-            cookies: CookieConfig {
-                secure: false,
-                http_only: true,
-                same_site: CookieSameSite::Lax,
-            },
+            cookies: CookieConfig { secure: false, http_only: true, same_site: CookieSameSite::Lax },
         };
 
         App::build_router(dependencies)
@@ -334,9 +314,7 @@ mod tests {
     async fn composed_router_serves_public_routes_and_protects_dashboard() {
         let app = test_router();
 
-        let login = app.clone().oneshot(Request::builder().uri("/login").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
+        let login = app.clone().oneshot(Request::builder().uri("/login").body(Body::empty()).unwrap()).await.unwrap();
 
         assert_eq!(login.status(), StatusCode::OK);
         assert!(login.headers()[header::CONTENT_TYPE].to_str().unwrap().starts_with("text/html"));
@@ -345,10 +323,7 @@ mod tests {
         let html = std::str::from_utf8(&body).unwrap();
         assert!(html.contains("action=\"/api/auth/login\""));
 
-        let dashboard = app.clone()
-            .oneshot(Request::builder().uri("/dashboard").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
+        let dashboard = app.clone().oneshot(Request::builder().uri("/dashboard").body(Body::empty()).unwrap()).await.unwrap();
 
         assert_eq!(dashboard.status(), StatusCode::SEE_OTHER);
         assert_eq!(dashboard.headers()[header::LOCATION], "/login");
@@ -384,7 +359,9 @@ mod tests {
             .header(header::HOST, "app.example")
             .header(header::ORIGIN, "http://app.example")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(r#"{"name":"Example Organization","email":"owner@example.com","password":"long-enough-password","confirm":"long-enough-password"}"#))
+            .body(Body::from(
+                r#"{"name":"Example Organization","email":"owner@example.com","password":"long-enough-password","confirm":"long-enough-password"}"#,
+            ))
             .unwrap();
 
         let response = test_router().oneshot(request).await.unwrap();
@@ -419,16 +396,7 @@ mod tests {
 
     #[tokio::test]
     async fn browser_navigation_errors_render_html_instead_of_framework_text() {
-        let response = test_router()
-            .oneshot(
-                Request::builder()
-                    .uri("/not/a-profile")
-                    .header(header::ACCEPT, "text/html")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = test_router().oneshot(Request::builder().uri("/not/a-profile").header(header::ACCEPT, "text/html").body(Body::empty()).unwrap()).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND, "location: {:?}", response.headers().get(header::LOCATION));
         assert!(response.headers()[header::CONTENT_TYPE].to_str().unwrap().starts_with("text/html"));
@@ -443,15 +411,7 @@ mod tests {
     #[tokio::test]
     async fn api_csrf_errors_remain_structured_json() {
         let response = test_router()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/auth/login")
-                    .header(header::ACCEPT, "application/json")
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::builder().method("POST").uri("/api/auth/login").header(header::ACCEPT, "application/json").header(header::CONTENT_TYPE, "application/json").body(Body::empty()).unwrap())
             .await
             .unwrap();
 
@@ -464,15 +424,7 @@ mod tests {
 
     #[tokio::test]
     async fn creation_page_has_an_api_form_action_without_error_query_state() {
-        let response = test_router()
-            .oneshot(
-                Request::builder()
-                    .uri("/create")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = test_router().oneshot(Request::builder().uri("/create").body(Body::empty()).unwrap()).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
@@ -484,10 +436,7 @@ mod tests {
 
     #[tokio::test]
     async fn composed_router_serves_favicon_without_not_found() {
-        let response = test_router()
-            .oneshot(Request::builder().uri("/favicon.ico").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
+        let response = test_router().oneshot(Request::builder().uri("/favicon.ico").body(Body::empty()).unwrap()).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(response.headers()[header::CONTENT_TYPE], "image/svg+xml");
@@ -536,16 +485,7 @@ mod tests {
 
     #[tokio::test]
     async fn unknown_api_routes_return_json_not_the_html_not_found_page() {
-        let response = test_router()
-            .oneshot(
-                Request::builder()
-                    .uri("/api/unknown")
-                    .header(header::ACCEPT, "text/html")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = test_router().oneshot(Request::builder().uri("/api/unknown").header(header::ACCEPT, "text/html").body(Body::empty()).unwrap()).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");

@@ -1,5 +1,6 @@
-use crate::auth::AuthenticatedUser;
+use crate::api;
 use crate::api::error::api_error;
+use crate::auth::AuthenticatedUser;
 use axum::{
     extract::FromRequestParts,
     http::{StatusCode, request::Parts},
@@ -43,7 +44,10 @@ pub struct CurrentUser(pub AuthenticatedUser);
 /// `S` is the application's router state (`Context` in this application).
 /// The extractor does not currently need the state itself, but Axum requires
 /// it as part of the `FromRequestParts` interface.
-impl<S> FromRequestParts<S> for CurrentUser where S: Send + Sync {
+impl<S> FromRequestParts<S> for CurrentUser
+where
+    S: Send + Sync,
+{
     /// The response returned if the authenticated user cannot be extracted.
     ///
     /// Normally this should not happen on protected routes because the
@@ -56,29 +60,13 @@ impl<S> FromRequestParts<S> for CurrentUser where S: Send + Sync {
     type Rejection = Response;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // `require_auth` inserts the resolved `AuthenticatedUser` into the
-        // request extensions after successfully validating the session and
-        // loading the associated organization.
-        //
-        // We borrow it here initially because the request owns the extension
-        // value.
         let Some(user) = parts.extensions.get::<AuthenticatedUser>() else {
-            // If no `AuthenticatedUser` exists, this extractor cannot provide
-            // the authenticated context required by the handler.
-            //
-            // On correctly configured protected routes this should normally
-            // be unreachable because `require_auth` runs before the handler.
-            return Err(if parts.extensions.get::<crate::api::ApiRequest>().is_some() {
-                api_error(StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue.")
-            } else {
-                Redirect::to("/login").into_response()
-            });
+            if parts.extensions.get::<api::ApiRequest>().is_some() {
+                return Err(api_error(StatusCode::UNAUTHORIZED, "authentication-required", "Please sign in to continue."));
+            }
+            return Err(Redirect::to("/login").into_response());
         };
 
-        // Clone the authenticated context out of the request extensions.
-        //
-        // This allows the handler to own its `CurrentUser` while the request
-        // continues through Axum's handler machinery.
         Ok(CurrentUser(user.clone()))
     }
 }

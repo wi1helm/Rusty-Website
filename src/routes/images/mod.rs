@@ -10,12 +10,16 @@ use crate::storage::object::{ObjectStorage, ObjectStorageError};
 
 pub async fn get_image(State(object_storage): State<Arc<dyn ObjectStorage>>, Path(key): Path<String>) -> Result<Response, StatusCode> {
     // We only serve WebP images.
-    if !key.ends_with(".webp") { return Err(StatusCode::NOT_FOUND); }
+    if !key.ends_with(".webp") {
+        return Err(StatusCode::NOT_FOUND);
+    }
 
     let bytes = match object_storage.get(&key).await {
         Ok(bytes) => bytes,
 
-        Err(ObjectStorageError::NotFound) => { return Err(StatusCode::NOT_FOUND); }
+        Err(ObjectStorageError::NotFound) => {
+            return Err(StatusCode::NOT_FOUND);
+        }
         Err(ObjectStorageError::Storage(error)) => {
             tracing::error!(image_key = %key, error = %error, "Failed to retrieve image from object storage");
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -35,7 +39,12 @@ pub async fn get_image(State(object_storage): State<Arc<dyn ObjectStorage>>, Pat
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::{Body, to_bytes}, http::{Request, header}, routing::get, Router};
+    use axum::{
+        Router,
+        body::{Body, to_bytes},
+        http::{Request, header},
+        routing::get,
+    };
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tower::ServiceExt;
 
@@ -77,22 +86,14 @@ mod tests {
 
     fn image_router(outcome: GetOutcome) -> (Router, Arc<AtomicUsize>) {
         let get_calls = Arc::new(AtomicUsize::new(0));
-        let storage: Arc<dyn ObjectStorage> = Arc::new(FakeObjectStorage {
-            outcome,
-            get_calls: get_calls.clone(),
-        });
-        let router = Router::new()
-            .route("/images/{*key}", get(get_image))
-            .with_state(storage);
+        let storage: Arc<dyn ObjectStorage> = Arc::new(FakeObjectStorage { outcome, get_calls: get_calls.clone() });
+        let router = Router::new().route("/images/{*key}", get(get_image)).with_state(storage);
 
         (router, get_calls)
     }
 
     async fn get_image_response(router: Router, path: &str) -> Response {
-        router
-            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
-            .await
-            .unwrap()
+        router.oneshot(Request::builder().uri(path).body(Body::empty()).unwrap()).await.unwrap()
     }
 
     #[tokio::test]
@@ -118,10 +119,7 @@ mod tests {
 
     #[tokio::test]
     async fn image_route_maps_storage_errors_to_http_statuses() {
-        for (outcome, expected_status) in [
-            (GetOutcome::Missing, StatusCode::NOT_FOUND),
-            (GetOutcome::Failed, StatusCode::INTERNAL_SERVER_ERROR),
-        ] {
+        for (outcome, expected_status) in [(GetOutcome::Missing, StatusCode::NOT_FOUND), (GetOutcome::Failed, StatusCode::INTERNAL_SERVER_ERROR)] {
             let (router, get_calls) = image_router(outcome);
             let response = get_image_response(router, "/images/logo.webp").await;
 

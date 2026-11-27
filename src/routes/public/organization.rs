@@ -9,8 +9,5 @@ pub struct OrganizationTemplate {
 }
 
 pub async fn get_page() -> OrganizationTemplate {
-    OrganizationTemplate {
-        app_name: crate::config::APP_NAME,
-        year: crate::config::APP_YEAR,
-    }
+    OrganizationTemplate { app_name: crate::config::APP_NAME, year: crate::config::APP_YEAR }
 }

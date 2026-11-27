@@ -14,9 +14,5 @@ pub(super) const ORGANIZATION_PATH: &str = "/organization";
 /// Organization profiles are exposed at the root using their unique slug,
 /// for example `/obama-robotics`.
 pub fn router() -> Router<Context> {
-    Router::new()
-        .route(LOGIN_PATH, get(login::get_page))
-        .route(CREATE_PATH, get(creation::get_page))
-        .route(ORGANIZATION_PATH, get(organization::get_page))
-        .route("/{slug}", get(profile::get_page))
+    Router::new().route(LOGIN_PATH, get(login::get_page)).route(CREATE_PATH, get(creation::get_page)).route(ORGANIZATION_PATH, get(organization::get_page)).route("/{slug}", get(profile::get_page))
 }

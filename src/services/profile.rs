@@ -4,9 +4,7 @@ use serde::Serialize;
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::storage::database::{
-    DatabaseOrganization, OrganizationRepository, PositionRepository, ProfileRepository,
-};
+use crate::storage::database::{DatabaseOrganization, OrganizationRepository, PositionRepository, ProfileRepository};
 use crate::storage::object::ObjectStorage;
 
 pub struct ProfileService {
@@ -78,25 +76,18 @@ impl ProfileService {
         };
 
         let links = profile.links.into_iter().map(|link| LinkView { label: link.label, url: link.url }).collect();
-        let logo = ImageView {
-            url: self.object_storage.url(&profile.logo.storage_key),
-            alt: format!("{} logo", profile.display_name),
-        };
-        let banner = ImageView {
-            url: self.object_storage.url(&profile.banner.storage_key),
-            alt: format!("{} banner", profile.display_name),
-        };
-        let positions = positions.into_iter().map(|position| PositionView {
-            id: position.id,
-            title: position.title,
-            description: position.description,
-            current_status_id: position.current_status_id,
-            statuses: position.statuses.into_iter().map(|status| StatusView {
-                id: status.id,
-                status: status.status.as_str().to_string(),
-                information: status.information,
-            }).collect(),
-        }).collect();
+        let logo = ImageView { url: self.object_storage.url(&profile.logo.storage_key), alt: format!("{} logo", profile.display_name) };
+        let banner = ImageView { url: self.object_storage.url(&profile.banner.storage_key), alt: format!("{} banner", profile.display_name) };
+        let positions = positions
+            .into_iter()
+            .map(|position| PositionView {
+                id: position.id,
+                title: position.title,
+                description: position.description,
+                current_status_id: position.current_status_id,
+                statuses: position.statuses.into_iter().map(|status| StatusView { id: status.id, status: status.status.as_str().to_string(), information: status.information }).collect(),
+            })
+            .collect();
 
         Some(ProfileView {
             organization: OrganizationView { name: organization.name, slug: organization.slug },
@@ -105,13 +96,7 @@ impl ProfileService {
             links,
             logo,
             banner,
-            graph: GraphView {
-                positions,
-                connections: connections.into_iter().map(|connection| ConnectionView {
-                    from: connection.from,
-                    to: connection.to,
-                }).collect(),
-            },
+            graph: GraphView { positions, connections: connections.into_iter().map(|connection| ConnectionView { from: connection.from, to: connection.to }).collect() },
         })
     }
 }

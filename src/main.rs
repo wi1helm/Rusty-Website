@@ -34,7 +34,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-
 /// Shared application state attached to the Axum router.
 ///
 /// Handlers extract only the dependencies they need through `FromRef`.
@@ -52,26 +51,42 @@ pub struct Context {
 }
 
 impl FromRef<Context> for Arc<dyn storage::database::OrganizationRepository> {
-    fn from_ref(context: &Context) -> Self { context.organization_repository.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.organization_repository.clone()
+    }
 }
 impl FromRef<Context> for Arc<dyn storage::database::MemberRepository> {
-    fn from_ref(context: &Context) -> Self { context.member_repository.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.member_repository.clone()
+    }
 }
 impl FromRef<Context> for Arc<dyn storage::database::ProfileRepository> {
-    fn from_ref(context: &Context) -> Self { context.profile_repository.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.profile_repository.clone()
+    }
 }
 impl FromRef<Context> for Arc<dyn storage::database::PositionRepository> {
-    fn from_ref(context: &Context) -> Self { context.position_repository.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.position_repository.clone()
+    }
 }
 impl FromRef<Context> for Arc<services::profile::ProfileService> {
-    fn from_ref(context: &Context) -> Self { context.profile_service.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.profile_service.clone()
+    }
 }
 impl FromRef<Context> for Arc<dyn storage::object::ObjectStorage> {
-    fn from_ref(context: &Context) -> Self { context.public_object_storage.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.public_object_storage.clone()
+    }
 }
 impl FromRef<Context> for Arc<auth::Authenticator> {
-    fn from_ref(context: &Context) -> Self { context.authenticator.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.authenticator.clone()
+    }
 }
 impl FromRef<Context> for config::CookieConfig {
-    fn from_ref(context: &Context) -> Self { context.cookies.clone() }
+    fn from_ref(context: &Context) -> Self {
+        context.cookies.clone()
+    }
 }

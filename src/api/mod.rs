@@ -16,7 +16,7 @@ mod validation;
 #[derive(Clone)]
 pub(crate) struct ApiRequest;
 
-pub(crate) async fn mark_api_request(mut request: Request, next: Next) -> Response {
+pub(crate) async fn mark_as_api_request(mut request: Request, next: Next) -> Response {
     request.extensions_mut().insert(ApiRequest);
     next.run(request).await
 }
@@ -43,5 +43,5 @@ pub fn router(context: Context) -> Router<Context> {
         // The nested router applies authentication middleware to all
         // routes defined inside it.
         .nest("/profile", protected::router(context))
-        .layer(middleware::from_fn(mark_api_request))
+        .layer(middleware::from_fn(mark_as_api_request))
 }

@@ -74,10 +74,7 @@ impl S3ObjectStorage {
         let client = Client::from_conf(config);
 
         // Create our storage object.
-        let storage = Self {
-            client,
-            bucket,
-        };
+        let storage = Self { client, bucket };
 
         // Make sure the bucket exists.
         storage.ensure_bucket().await?;
@@ -112,12 +109,7 @@ impl S3ObjectStorage {
                 // TODO:
                 // Eventually distinguish "bucket does not exist" from
                 // authentication/network/permission errors.
-                self.client
-                    .create_bucket()
-                    .bucket(&self.bucket)
-                    .send()
-                    .await
-                    .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
+                self.client.create_bucket().bucket(&self.bucket).send().await.map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
                 Ok(())
             }
@@ -145,45 +137,23 @@ impl S3ObjectStorage {
             bucket = self.bucket,
         );
 
-        self.client
-            .put_bucket_policy()
-            .bucket(&self.bucket)
-            .policy(policy)
-            .send()
-            .await
-            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
+        self.client.put_bucket_policy().bucket(&self.bucket).policy(policy).send().await.map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(())
     }
 
     /// Makes sure the application's default images exist.
     async fn ensure_default_objects(&self) -> Result<(), ObjectStorageError> {
-        self.ensure_default_object(
-            DEFAULT_LOGO_KEY,
-            include_bytes!("../../../static/defaults/default_logo.webp"),
-            "image/webp",
-        )
-        .await?;
+        self.ensure_default_object(DEFAULT_LOGO_KEY, include_bytes!("../../../static/defaults/default_logo.webp"), "image/webp").await?;
 
-        self.ensure_default_object(
-            DEFAULT_BANNER_KEY,
-            include_bytes!("../../../static/defaults/default_banner.webp"),
-            "image/webp",
-        )
-        .await?;
+        self.ensure_default_object(DEFAULT_BANNER_KEY, include_bytes!("../../../static/defaults/default_banner.webp"), "image/webp").await?;
 
         Ok(())
     }
 
     /// Makes sure a specific default object exists.
     async fn ensure_default_object(&self, key: &str, data: &[u8], content_type: &str) -> Result<(), ObjectStorageError> {
-        match self.client
-            .head_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-        {
+        match self.client.head_object().bucket(&self.bucket).key(key).send().await {
             Ok(_) => {
                 // Already exists.
                 Ok(())
@@ -211,55 +181,26 @@ impl S3ObjectStorage {
 impl ObjectStorage for S3ObjectStorage {
     /// Upload an object to the configured bucket.
     async fn put(&self, key: &str, data: Vec<u8>, content_type: &str) -> Result<(), ObjectStorageError> {
-        self.client
-            .put_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .content_type(content_type)
-            .body(ByteStream::from(data))
-            .send()
-            .await
-            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
+        self.client.put_object().bucket(&self.bucket).key(key).content_type(content_type).body(ByteStream::from(data)).send().await.map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(())
     }
 
     /// Download an object from the configured bucket.
     async fn get(&self, key: &str) -> Result<Vec<u8>, ObjectStorageError> {
-        let result = self
-            .client
-            .get_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-            .map_err(|error| {
-                // Distinguish a missing object from other storage failures.
-                if error.as_service_error()
-                    .and_then(|service_error| service_error.code()) == Some("NoSuchKey") {
-                    ObjectStorageError::NotFound
-                } else {
-                    ObjectStorageError::Storage(error.to_string())
-                }
-            })?;
+        let result = self.client.get_object().bucket(&self.bucket).key(key).send().await.map_err(|error| {
+            // Distinguish a missing object from other storage failures.
+            if error.as_service_error().and_then(|service_error| service_error.code()) == Some("NoSuchKey") { ObjectStorageError::NotFound } else { ObjectStorageError::Storage(error.to_string()) }
+        })?;
 
-        let data = result.body
-            .collect()
-            .await
-            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
+        let data = result.body.collect().await.map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(data.into_bytes().to_vec())
     }
 
     /// Delete an object from the configured bucket.
     async fn delete(&self, key: &str) -> Result<(), ObjectStorageError> {
-        self.client
-            .delete_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-            .map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
+        self.client.delete_object().bucket(&self.bucket).key(key).send().await.map_err(|error| ObjectStorageError::Storage(error.to_string()))?;
 
         Ok(())
     }
@@ -276,14 +217,8 @@ mod tests {
 
     #[test]
     fn image_urls_use_the_application_origin() {
-        let client_config = aws_sdk_s3::Config::builder()
-            .credentials_provider(Credentials::new("access", "secret", None, None, "test"))
-            .region(Region::new("eu-north-1"))
-            .build();
-        let storage = S3ObjectStorage {
-            client: Client::from_conf(client_config),
-            bucket: "rusty-dev".to_owned(),
-        };
+        let client_config = aws_sdk_s3::Config::builder().credentials_provider(Credentials::new("access", "secret", None, None, "test")).region(Region::new("eu-north-1")).build();
+        let storage = S3ObjectStorage { client: Client::from_conf(client_config), bucket: "rusty-dev".to_owned() };
 
         assert_eq!(storage.url("defaults/default_logo.webp"), "/images/defaults/default_logo.webp");
     }

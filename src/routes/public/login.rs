@@ -9,8 +9,5 @@ pub struct LoginTemplate {
 }
 
 pub async fn get_page() -> LoginTemplate {
-    LoginTemplate {
-        app_name: crate::config::APP_NAME,
-        year: crate::config::APP_YEAR,
-    }
+    LoginTemplate { app_name: crate::config::APP_NAME, year: crate::config::APP_YEAR }
 }

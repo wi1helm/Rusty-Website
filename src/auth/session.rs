@@ -100,10 +100,7 @@ impl SessionManager {
     pub async fn create(&self, member_id: i64) -> Result<Session, SessionError> {
         let session_id = self.generate_session_id();
 
-        let session = Session {
-            id: session_id,
-            member_id,
-        };
+        let session = Session { id: session_id, member_id };
 
         // TODO(security): look into ways if needed encrypt the data in Redis so no attacked can use / desqrilize data and use.
         let value = serde_json::to_vec(&session)?;
@@ -180,10 +177,7 @@ mod tests {
         }
 
         async fn set(&self, key: &str, value: &[u8], _ttl: Duration) -> Result<(), CacheError> {
-            self.store
-                .lock()
-                .unwrap()
-                .insert(key.to_string(), value.to_vec());
+            self.store.lock().unwrap().insert(key.to_string(), value.to_vec());
             Ok(())
         }
 
@@ -213,10 +207,7 @@ mod tests {
     async fn get_returns_none_for_unknown_session_id() {
         let manager = manager_with_fake_cache();
 
-        let result = manager
-            .get("this-session-id-was-never-created")
-            .await
-            .expect("get should not error");
+        let result = manager.get("this-session-id-was-never-created").await.expect("get should not error");
         assert!(result.is_none());
     }
 
@@ -225,15 +216,9 @@ mod tests {
         let manager = manager_with_fake_cache();
 
         let created = manager.create(1).await.expect("create should succeed");
-        manager
-            .delete(&created.id)
-            .await
-            .expect("delete should succeed");
+        manager.delete(&created.id).await.expect("delete should succeed");
 
-        let result = manager
-            .get(&created.id)
-            .await
-            .expect("get should not error");
+        let result = manager.get(&created.id).await.expect("get should not error");
         assert!(result.is_none(), "session should be gone after delete");
     }
 
@@ -252,11 +237,7 @@ mod tests {
         let manager = manager_with_fake_cache();
         let id = manager.generate_session_id();
 
-        assert_eq!(
-            id.len(),
-            64,
-            "32 random bytes hex-encoded should be 64 chars"
-        );
+        assert_eq!(id.len(), 64, "32 random bytes hex-encoded should be 64 chars");
         assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

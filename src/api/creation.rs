@@ -1,15 +1,13 @@
 // routes/pages/creation
 //! API endpoints for organization creation and signup.
 //!
-use crate::api::validation::{is_valid_email, is_valid_name, is_valid_password};
 use crate::api::error::{ApiSuccessResponse, api_error};
+use crate::api::validation::{is_valid_email, is_valid_name, is_valid_password};
 use crate::auth::Authenticator;
 use crate::config::CookieConfig;
 use crate::routes::{is_reserved_organization_slug, with_session_cookie};
 use crate::services::registration::{self, RegistrationError};
-use crate::storage::database::{
-    CreateOrganizationError, NewOrganization, OrganizationRepository,
-};
+use crate::storage::database::{CreateOrganizationError, NewOrganization, OrganizationRepository};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{Json, extract::State};
@@ -56,11 +54,7 @@ impl CreationRequest {
             return Err(CreationValidationError::PasswordMismatch);
         }
 
-        let validated = ValidatedCreation {
-            name: self.name.clone(),
-            email: self.email.clone(),
-            password: self.password.clone(),
-        };
+        let validated = ValidatedCreation { name: self.name.clone(), email: self.email.clone(), password: self.password.clone() };
         Ok(validated)
     }
 }
@@ -69,7 +63,9 @@ impl CreationRequest {
 // Impact: Automated signups can consume database and password-hashing resources.
 // Suggested fix: Apply shared signup throttles and abuse controls before creating records.
 // Reference: POST /api/organizations/create; signup.
-pub async fn create(State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<CreationRequest>) -> impl IntoResponse {
+pub async fn create(
+    State(organizations): State<Arc<dyn OrganizationRepository>>, State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<CreationRequest>,
+) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
         Err(CreationValidationError::InvalidEmail) => {
@@ -91,12 +87,9 @@ pub async fn create(State(organizations): State<Arc<dyn OrganizationRepository>>
         return api_error(StatusCode::BAD_REQUEST, "invalid-slug", "That organization name uses a reserved URL. Please choose another name.");
     }
 
-    let organization = NewOrganization {
-        name: validated.name,
-        slug,
-    };
+    let organization = NewOrganization { name: validated.name, slug };
 
-    let session = match registration::create_organization(organizations.as_ref(), authenticator.as_ref(), organization, validated.email, validated.password, ).await {
+    let session = match registration::create_organization(organizations.as_ref(), authenticator.as_ref(), organization, validated.email, validated.password).await {
         Ok(session) => session,
         Err(RegistrationError::Organization(error)) => {
             let (status, code, message) = create_error(error);
@@ -115,16 +108,12 @@ pub async fn create(State(organizations): State<Arc<dyn OrganizationRepository>>
         }
     };
 
-    with_session_cookie((StatusCode::CREATED, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &cookies, )
+    with_session_cookie((StatusCode::CREATED, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &cookies)
 }
 
 fn create_error(error: CreateOrganizationError) -> (StatusCode, &'static str, &'static str) {
     match error {
-        CreateOrganizationError::OrganizationSlugAlreadyExists => (
-            StatusCode::CONFLICT,
-            "organization-exists",
-            "An organization with that URL already exists.",
-        ),
+        CreateOrganizationError::OrganizationSlugAlreadyExists => (StatusCode::CONFLICT, "organization-exists", "An organization with that URL already exists."),
         CreateOrganizationError::MemberAlreadyExists => (
             StatusCode::CONFLICT,
             "signup-failed",
@@ -132,11 +121,7 @@ fn create_error(error: CreateOrganizationError) -> (StatusCode, &'static str, &'
         ),
         CreateOrganizationError::Database(error) => {
             tracing::error!(?error, "database error during signup");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "server-error",
-                "Something went wrong. Please try again.",
-            )
+            (StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")
         }
     }
 }
@@ -146,10 +131,7 @@ fn create_error(error: CreateOrganizationError) -> (StatusCode, &'static str, &'
 /// later on add ways to generate new unique slug instead like slug-1, slug-2!!
 // TODO handle non ascii char better then replacing with - "w-jerrest-l-ab" is not a nice slug fro "W Jerrestål AB"
 fn create_slug(name: &str) -> String {
-    name.to_lowercase()
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
-        .collect::<String>()
+    name.to_lowercase().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect::<String>()
 }
 
 #[cfg(test)]
@@ -183,20 +165,8 @@ mod tests {
 
     #[test]
     fn rejects_slugs_that_match_application_routes() {
-        for name in [
-            "Login",
-            "Create",
-            "Organization",
-            "Dashboard",
-            "Profile",
-            "API",
-            "Images",
-            "Assets",
-        ] {
-            assert!(
-                crate::routes::is_reserved_organization_slug(&create_slug(name)),
-                "{name} should not produce a usable organization slug"
-            );
+        for name in ["Login", "Create", "Organization", "Dashboard", "Profile", "API", "Images", "Assets"] {
+            assert!(crate::routes::is_reserved_organization_slug(&create_slug(name)), "{name} should not produce a usable organization slug");
         }
     }
 
@@ -220,19 +190,12 @@ mod tests {
     }
 
     fn valid_creation_request() -> CreationRequest {
-        CreationRequest {
-            name: "Example Organization".to_owned(),
-            email: "owner@example.com".to_owned(),
-            password: "long-enough-password".to_owned(),
-            confirm: "long-enough-password".to_owned(),
-        }
+        CreationRequest { name: "Example Organization".to_owned(), email: "owner@example.com".to_owned(), password: "long-enough-password".to_owned(), confirm: "long-enough-password".to_owned() }
     }
 
     #[test]
     fn validates_a_well_formed_creation_request() {
-        let validated = valid_creation_request()
-            .validate()
-            .expect("valid signup fields should pass validation");
+        let validated = valid_creation_request().validate().expect("valid signup fields should pass validation");
 
         assert_eq!(validated.name, "Example Organization");
         assert_eq!(validated.email, "owner@example.com");

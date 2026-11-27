@@ -58,9 +58,13 @@ pub struct ValidatedImage {
 pub struct ImageValidator;
 
 impl ImageValidator {
-    pub fn validate(image_type: ProfileImageType, data: Vec<u8>, content_type: &str, ) -> Result<ValidatedImage, ImageValidationError> {
-        if data.is_empty() { return Err(ImageValidationError::MissingImage); }
-        if data.len() > MAX_IMAGE_SIZE { return Err(ImageValidationError::FileTooLarge); }
+    pub fn validate(image_type: ProfileImageType, data: Vec<u8>, content_type: &str) -> Result<ValidatedImage, ImageValidationError> {
+        if data.is_empty() {
+            return Err(ImageValidationError::MissingImage);
+        }
+        if data.len() > MAX_IMAGE_SIZE {
+            return Err(ImageValidationError::FileTooLarge);
+        }
 
         let declared_content_type = Self::validate_content_type(content_type)?;
 
@@ -74,12 +78,7 @@ impl ImageValidator {
 
         let decoded = image::load_from_memory(&data).map_err(|_| ImageValidationError::InvalidImage)?;
 
-        Ok(ValidatedImage {
-            image_type,
-            image: decoded,
-            width,
-            height,
-        })
+        Ok(ValidatedImage { image_type, image: decoded, width, height })
     }
 
     fn validate_content_type(content_type: &str) -> Result<&'static str, ImageValidationError> {
@@ -99,7 +98,9 @@ impl ImageValidator {
             _ => false,
         };
 
-        if !matches { return Err(ImageValidationError::InvalidImageFormat); }
+        if !matches {
+            return Err(ImageValidationError::InvalidImageFormat);
+        }
 
         Ok(())
     }
@@ -107,26 +108,30 @@ impl ImageValidator {
     fn validate_dimensions(image_type: &ProfileImageType, width: u32, height: u32) -> Result<(), ImageValidationError> {
         let rules = image_type.rules();
 
-        if width < rules.min_width || height < rules.min_height { return Err(ImageValidationError::DimensionsTooSmall); }
-        if width > rules.max_width || height > rules.max_height { return Err(ImageValidationError::DimensionsTooLarge); }
+        if width < rules.min_width || height < rules.min_height {
+            return Err(ImageValidationError::DimensionsTooSmall);
+        }
+        if width > rules.max_width || height > rules.max_height {
+            return Err(ImageValidationError::DimensionsTooLarge);
+        }
 
         let pixels = u64::from(width) * u64::from(height);
 
-        if pixels > rules.max_pixels { return Err(ImageValidationError::TooManyPixels); }
+        if pixels > rules.max_pixels {
+            return Err(ImageValidationError::TooManyPixels);
+        }
 
         let aspect_ratio = width as f64 / height as f64;
 
-        if aspect_ratio < rules.min_aspect_ratio || aspect_ratio > rules.max_aspect_ratio { return Err(ImageValidationError::InvalidAspectRatio); }
+        if aspect_ratio < rules.min_aspect_ratio || aspect_ratio > rules.max_aspect_ratio {
+            return Err(ImageValidationError::InvalidAspectRatio);
+        }
 
         Ok(())
     }
 
     fn read_dimensions(data: &[u8]) -> Result<(u32, u32), ImageValidationError> {
-        ImageReader::new(Cursor::new(data))
-            .with_guessed_format()
-            .map_err(|_| ImageValidationError::InvalidImageFormat)?
-            .into_dimensions()
-            .map_err(|_| ImageValidationError::InvalidImage)
+        ImageReader::new(Cursor::new(data)).with_guessed_format().map_err(|_| ImageValidationError::InvalidImageFormat)?.into_dimensions().map_err(|_| ImageValidationError::InvalidImage)
     }
 }
 
@@ -183,11 +188,7 @@ mod tests {
     fn accepts_valid_logo_dimensions() {
         let rules = ProfileImageType::Logo.rules();
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            rules.min_width,
-            rules.min_height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, rules.min_width, rules.min_height);
 
         assert!(result.is_ok());
     }
@@ -196,11 +197,7 @@ mod tests {
     fn accepts_valid_banner_dimensions() {
         let rules = ProfileImageType::Banner.rules();
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Banner,
-            rules.min_width,
-            rules.min_height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Banner, rules.min_width, rules.min_height);
 
         assert!(result.is_ok());
     }
@@ -209,64 +206,36 @@ mod tests {
     fn rejects_width_below_minimum() {
         let rules = ProfileImageType::Logo.rules();
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            rules.min_width - 1,
-            rules.min_height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, rules.min_width - 1, rules.min_height);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::DimensionsTooSmall)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::DimensionsTooSmall)));
     }
 
     #[test]
     fn rejects_height_below_minimum() {
         let rules = ProfileImageType::Logo.rules();
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            rules.min_width,
-            rules.min_height - 1,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, rules.min_width, rules.min_height - 1);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::DimensionsTooSmall)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::DimensionsTooSmall)));
     }
 
     #[test]
     fn rejects_width_above_maximum() {
         let rules = ProfileImageType::Logo.rules();
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            rules.max_width + 1,
-            rules.min_height,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, rules.max_width + 1, rules.min_height);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::DimensionsTooLarge)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::DimensionsTooLarge)));
     }
 
     #[test]
     fn rejects_height_above_maximum() {
         let rules = ProfileImageType::Logo.rules();
 
-        let result = ImageValidator::validate_dimensions(
-            &ProfileImageType::Logo,
-            rules.min_width,
-            rules.max_height + 1,
-        );
+        let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, rules.min_width, rules.max_height + 1);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::DimensionsTooLarge)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::DimensionsTooLarge)));
     }
 
     #[test]
@@ -280,10 +249,7 @@ mod tests {
 
         let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, width, height);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidAspectRatio)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidAspectRatio)));
     }
 
     #[test]
@@ -297,10 +263,7 @@ mod tests {
 
         let result = ImageValidator::validate_dimensions(&ProfileImageType::Logo, width, height);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidAspectRatio)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidAspectRatio)));
     }
 
     #[test]
@@ -314,10 +277,7 @@ mod tests {
 
         let result = ImageValidator::validate_dimensions(&ProfileImageType::Banner, width, height);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidAspectRatio)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidAspectRatio)));
     }
 
     #[test]
@@ -331,10 +291,7 @@ mod tests {
 
         let result = ImageValidator::validate_dimensions(&ProfileImageType::Banner, width, height);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidAspectRatio)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidAspectRatio)));
     }
 
     // -------------------------------------------------------------------------
@@ -356,10 +313,7 @@ mod tests {
 
         let result = ImageValidator::read_dimensions(data);
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidImageFormat) | Err(ImageValidationError::InvalidImage)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidImageFormat) | Err(ImageValidationError::InvalidImage)));
     }
 
     // -------------------------------------------------------------------------
@@ -399,10 +353,7 @@ mod tests {
 
         let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/gif");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidContentType)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidContentType)));
     }
 
     #[test]
@@ -411,10 +362,7 @@ mod tests {
 
         let result = ImageValidator::validate(ProfileImageType::Banner, data, "image/jpeg");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidImageFormat)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidImageFormat)));
     }
 
     // -------------------------------------------------------------------------
@@ -443,10 +391,7 @@ mod tests {
 
         let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidImageFormat) | Err(ImageValidationError::InvalidImage)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidImageFormat) | Err(ImageValidationError::InvalidImage)));
     }
 
     #[test]
@@ -455,10 +400,7 @@ mod tests {
 
         let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::DimensionsTooSmall)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::DimensionsTooSmall)));
     }
 
     #[test]
@@ -467,10 +409,7 @@ mod tests {
 
         let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::DimensionsTooLarge)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::DimensionsTooLarge)));
     }
 
     #[test]
@@ -479,9 +418,6 @@ mod tests {
 
         let result = ImageValidator::validate(ProfileImageType::Logo, data, "image/png");
 
-        assert!(matches!(
-            result,
-            Err(ImageValidationError::InvalidAspectRatio)
-        ));
+        assert!(matches!(result, Err(ImageValidationError::InvalidAspectRatio)));
     }
 }

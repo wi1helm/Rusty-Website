@@ -14,10 +14,5 @@ struct DashboardTemplate {
 
 pub async fn get_page(CurrentUser(user): CurrentUser) -> Response {
     //TODO add and load statistics seperatly and remkae template add them.
-    DashboardTemplate {
-        app_name: APP_NAME,
-        year: APP_YEAR,
-        organization_name: user.organization.name,
-    }
-    .into_response()
+    DashboardTemplate { app_name: APP_NAME, year: APP_YEAR, organization_name: user.organization.name }.into_response()
 }

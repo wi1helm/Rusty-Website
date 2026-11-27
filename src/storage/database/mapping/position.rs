@@ -27,13 +27,7 @@ pub fn map_positions(rows: Vec<PositionRow>) -> Result<Vec<DatabasePosition>, Da
     for row in rows {
         let status = PositionStatus::from_str(&row.status).ok_or_else(|| DatabaseError::InvalidPositionStatus(row.status.clone()))?;
 
-        let status = DatabasePositionStatus {
-            id: row.status_id,
-            position_id: row.status_position_id,
-            status,
-            information: row.information,
-            created_at: row.status_created_at,
-        };
+        let status = DatabasePositionStatus { id: row.status_id, position_id: row.status_position_id, status, information: row.information, created_at: row.status_created_at };
 
         // Check whether we have already created this position.
         // TODO: This only checks last_mut(), so it relies on rows for the same

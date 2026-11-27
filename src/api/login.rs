@@ -1,9 +1,9 @@
 // routes/pages/login.rs
+use crate::api::error::{ApiSuccessResponse, api_error};
 use crate::api::validation::{is_valid_email, is_valid_password};
 use crate::auth::Authenticator;
 use crate::auth::session::SessionError;
 use crate::auth::{AuthenticationError, LoginCredentials};
-use crate::api::error::{ApiSuccessResponse, api_error};
 use crate::config::CookieConfig;
 use crate::routes::with_session_cookie;
 use axum::http::StatusCode;
@@ -40,10 +40,7 @@ impl LoginRequest {
             return Err(LoginValidationError::InvalidPassword);
         }
 
-        Ok(ValidatedLogin {
-            email: self.email.clone(),
-            password: self.password.clone(),
-        })
+        Ok(ValidatedLogin { email: self.email.clone(), password: self.password.clone() })
     }
 }
 
@@ -55,25 +52,19 @@ impl LoginRequest {
 pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookies): State<CookieConfig>, Json(input): Json<LoginRequest>) -> impl IntoResponse {
     let validated = match input.validate() {
         Ok(v) => v,
-        Err(LoginValidationError::InvalidEmail | LoginValidationError::InvalidPassword) => {
+        Err(LoginValidationError::InvalidEmail) => {
+            return api_error(StatusCode::BAD_REQUEST, "invalid-credentials", "Enter a valid email address and password.");
+        }
+        Err(LoginValidationError::InvalidPassword) => {
             return api_error(StatusCode::BAD_REQUEST, "invalid-credentials", "Enter a valid email address and password.");
         }
     };
 
-    let credentials = LoginCredentials {
-        email: validated.email,
-        password: validated.password,
-    };
+    let credentials = LoginCredentials { email: validated.email, password: validated.password };
 
     match authenticator.login(credentials).await {
-        Ok(session) => with_session_cookie(
-            (StatusCode::OK, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(),
-            &session.id,
-            &cookies,
-        ),
-        Err(AuthenticationError::InvalidCredentials) => {
-            api_error(StatusCode::UNAUTHORIZED, "invalid-credentials", "Incorrect email or password.")
-        }
+        Ok(session) => with_session_cookie((StatusCode::OK, Json(ApiSuccessResponse::redirect_to("/dashboard"))).into_response(), &session.id, &cookies),
+        Err(AuthenticationError::InvalidCredentials) => api_error(StatusCode::UNAUTHORIZED, "invalid-credentials", "Incorrect email or password."),
         Err(AuthenticationError::Database(error)) => {
             tracing::error!(?error, "database error during login");
             api_error(StatusCode::INTERNAL_SERVER_ERROR, "server-error", "Something went wrong. Please try again.")
@@ -84,8 +75,12 @@ pub async fn login(State(authenticator): State<Arc<Authenticator>>, State(cookie
         // this is an infrastructure failure, not the user's fault.
         Err(AuthenticationError::Session(session_err)) => {
             match &session_err {
-                SessionError::Cache(_) => { tracing::warn!("session cache error during login: {session_err}") }
-                SessionError::Serialization(_) => { tracing::error!("session serialization bug during login: {session_err}") }
+                SessionError::Cache(_) => {
+                    tracing::warn!("session cache error during login: {session_err}")
+                }
+                SessionError::Serialization(_) => {
+                    tracing::error!("session serialization bug during login: {session_err}")
+                }
             }
             api_error(StatusCode::SERVICE_UNAVAILABLE, "service-unavailable", "The service is temporarily unavailable. Please try again.")
         }
@@ -102,10 +97,7 @@ mod tests {
 
     #[test]
     fn validates_login_with_valid_credentials_format() {
-        let request = LoginRequest {
-            email: "member@example.com".to_owned(),
-            password: "long-enough-password".to_owned(),
-        };
+        let request = LoginRequest { email: "member@example.com".to_owned(), password: "long-enough-password".to_owned() };
 
         let validated = request.validate().expect("valid credentials should pass validation");
 
@@ -115,20 +107,14 @@ mod tests {
 
     #[test]
     fn rejects_invalid_email() {
-        let request = LoginRequest {
-            email: "not-an-email".to_owned(),
-            password: "long-enough-password".to_owned(),
-        };
+        let request = LoginRequest { email: "not-an-email".to_owned(), password: "long-enough-password".to_owned() };
 
         assert!(matches!(request.validate(), Err(LoginValidationError::InvalidEmail)));
     }
 
     #[test]
     fn rejects_invalid_password() {
-        let request = LoginRequest {
-            email: "member@example.com".to_owned(),
-            password: "short".to_owned(),
-        };
+        let request = LoginRequest { email: "member@example.com".to_owned(), password: "short".to_owned() };
 
         assert!(matches!(request.validate(), Err(LoginValidationError::InvalidPassword)));
     }

@@ -2,8 +2,8 @@
 
 mod authenticator;
 mod extractor;
-pub(crate) mod password;
 pub(crate) mod middleware;
+pub(crate) mod password;
 pub(crate) mod session;
 
 pub use authenticator::{AuthenticationError, Authenticator, LoginCredentials};
